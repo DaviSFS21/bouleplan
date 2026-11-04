@@ -11,7 +11,7 @@ docker compose up -d db   # from the repository root
 ./gradlew quarkusDev
 ```
 
-The `dev` profile connects to `localhost:5432` (database/user/password: `bouleplan`).
+The `dev` profile connects to the PostgreSQL from the root `compose.yaml` on `localhost:5432`. Credentials (`DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`) come from the root `.env` file (copy `.env.example`), which `build.gradle.kts` passes to `quarkusDev`.
 
 ## Verification
 

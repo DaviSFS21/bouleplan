@@ -39,6 +39,23 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-parameters")
 }
 
+// Dev mode: database credentials come from the repository root .env (shared
+// with Docker Compose and git-ignored). Each KEY=value line becomes an
+// environment variable of quarkusDev; blank lines and # comments are skipped.
+// A missing file is fine here: Quarkus then fails with a clear message naming
+// the unresolved ${DB_...} property.
+tasks.quarkusDev {
+    val envFile = rootDir.resolve("../.env")
+    if (envFile.isFile) {
+        environmentVariables.set(
+            envFile.readLines()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+                .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim() },
+        )
+    }
+}
+
 // Checkstyle: Google Style, zero tolerance.
 checkstyle {
     toolVersion = "13.4.0"

@@ -21,7 +21,13 @@ The name comes from the Boulé, the council of ancient Athens that prepared the 
 
 ## Running locally
 
-From the repository root, start the database:
+From the repository root, create your local `.env` once, then set your own password in it. It is git-ignored and holds the database credentials used by both Docker Compose and the API in dev mode:
+
+```bash
+cp .env.example .env
+```
+
+Start the database:
 
 ```bash
 docker compose up -d

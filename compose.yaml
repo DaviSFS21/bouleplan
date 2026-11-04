@@ -1,5 +1,9 @@
 # Bouléplan local development infrastructure.
-# Usage: docker compose up -d   (from the repository root)
+# Usage: cp .env.example .env   (once, then set your own values)
+#        docker compose up -d   (from the repository root)
+#
+# Credentials come from the git-ignored .env file in the repository root,
+# which Docker Compose loads automatically. Nothing secret lives here.
 #
 # The API in dev mode (./gradlew quarkusDev) connects to this database.
 # Tests do NOT use it: they start their own throwaway PostgreSQL through
@@ -10,15 +14,16 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: bouleplan
-      POSTGRES_USER: bouleplan
-      POSTGRES_PASSWORD: bouleplan
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USERNAME:?set DB_USERNAME in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bouleplan -d bouleplan"]
+      # $$ escapes Compose interpolation: the variables are read inside the container.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 10
