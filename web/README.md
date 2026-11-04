@@ -1,45 +1,48 @@
 # Bouléplan — web
 
-Frontend do Bouléplan (Next.js, App Router, TypeScript, pnpm).
+Bouléplan frontend (Next.js App Router, TypeScript, pnpm).
 
-## Requisitos
+## Requirements
 
-- Node.js 22 ou superior (`.node-version`)
-- pnpm 10 (versão exata em `packageManager`; use `corepack enable`)
+- Node.js 22 or later (`.node-version`)
+- pnpm 10 (exact version in `packageManager`; run `corepack enable`)
 
-## Instalação
+## Install
 
 ```bash
 pnpm install --frozen-lockfile
 ```
 
-## Desenvolvimento
+## Development
 
 ```bash
 pnpm dev
 ```
 
-Abre em <http://localhost:3000>.
+Opens at <http://localhost:3000>.
 
-## Verificações
+## Checks
 
-| Comando              | O que faz                                                    |
-| -------------------- | ------------------------------------------------------------ |
-| `pnpm lint`          | ESLint rígido (type-aware), falha com qualquer aviso         |
-| `pnpm typecheck`     | gera os tipos do Next (`next typegen`) e roda `tsc --noEmit` |
-| `pnpm format`        | Formata o projeto com Prettier                               |
-| `pnpm format:check`  | Verifica a formatação (usado na CI)                          |
-| `pnpm test`          | Testes com Vitest                                            |
-| `pnpm test:watch`    | Testes em modo watch                                         |
-| `pnpm test:coverage` | Testes com cobertura (`coverage/lcov.info` p/ SonarQube)     |
-| `pnpm build`         | Build de produção                                            |
-| `pnpm start`         | Serve o build de produção                                    |
+| Command              | What it does                                                   |
+| -------------------- | -------------------------------------------------------------- |
+| `pnpm lint`          | Strict type-aware ESLint; fails on any warning                 |
+| `pnpm typecheck`     | Generates Next.js types (`next typegen`), then `tsc --noEmit`  |
+| `pnpm format`        | Formats the project with Prettier                              |
+| `pnpm format:check`  | Checks formatting (used in CI)                                 |
+| `pnpm test`          | Runs the Vitest suite                                          |
+| `pnpm test:watch`    | Runs tests in watch mode                                       |
+| `pnpm test:coverage` | Runs tests with coverage (`coverage/lcov.info`, read by Sonar) |
+| `pnpm build`         | Production build                                               |
+| `pnpm start`         | Serves the production build                                    |
 
-## Telemetria
+## Telemetry
 
-A telemetria do Next.js é desativada definindo a variável de ambiente
-`NEXT_TELEMETRY_DISABLED=1` (a CI já faz isso). Localmente:
+Next.js telemetry is disabled by setting `NEXT_TELEMETRY_DISABLED=1` (CI already does). Locally:
 
 ```bash
 export NEXT_TELEMETRY_DISABLED=1
 ```
+
+## Language
+
+All code, comments, tests and docs are in English. User-facing UI text is in Brazilian Portuguese.

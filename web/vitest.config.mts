@@ -12,8 +12,8 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
-      // projectRoot '..': os caminhos no lcov ficam relativos à raiz do monorepo
-      // (web/src/...), que é de onde o SonarQube Cloud resolve os arquivos.
+      // projectRoot '..': lcov paths become relative to the monorepo root
+      // (web/src/...), which is where SonarQube Cloud resolves files from.
       reporter: ['text', ['lcov', { projectRoot: '..' }]],
       reportsDirectory: 'coverage',
       include: ['src/**'],

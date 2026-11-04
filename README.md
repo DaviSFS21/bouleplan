@@ -1,63 +1,67 @@
 # Bouléplan
 
-Gerenciador pessoal de iniciativas e tarefas: kanban de iniciativas, fases e tarefas, mais um planner semanal com três camadas visuais (compromisso fixo, tempo dedicado e prazo).
+Personal planner for initiatives and tasks: a kanban of initiatives, phases and tasks, plus a weekly planner with three visual layers (fixed commitments, dedicated time and deadlines).
 
-O nome vem do Boulé, o conselho da Atenas antiga que preparava a pauta sem decidir por ninguém: o app organiza e dá clareza, a decisão continua sua.
+The name comes from the Boulé, the council of ancient Athens that prepared the agenda without deciding for anyone: the app organizes and brings clarity, and the decision stays yours.
 
-## Estrutura do repositório
+## Repository layout
 
-| Pasta | O quê | Stack |
+| Folder | What | Stack |
 | --- | --- | --- |
-| [`api/`](api/README.md) | Backend REST | Java 21, Quarkus (imperativo, Panache), Gradle (Kotlin DSL), Flyway |
+| [`api/`](api/README.md) | REST backend | Java 21, Quarkus (imperative, Panache), Gradle (Kotlin DSL), Flyway |
 | [`web/`](web/README.md) | Frontend | Next.js (App Router), React, TypeScript, pnpm, Vitest |
-| `compose.yaml` | PostgreSQL para desenvolvimento | Docker Compose |
+| `compose.yaml` | PostgreSQL for local development | Docker Compose |
 | `.github/workflows/` | CI | GitHub Actions + SonarQube Cloud |
 
-## Pré-requisitos
+## Prerequisites
 
-- Docker (com Docker Compose)
+- Docker (with Docker Compose)
 - JDK 21
-- Node.js 22 e pnpm 10
+- Node.js 22 and pnpm 10
 
-## Rodando localmente
+## Running locally
 
-Na raiz, suba o banco:
+From the repository root, start the database:
 
 ```bash
 docker compose up -d
 ```
 
-Em um terminal, a API (em modo dev, com recarga automática):
+In one terminal, start the API in dev mode (live reload):
 
 ```bash
 cd api && ./gradlew quarkusDev
 ```
 
-Em outro terminal, o frontend:
+In another terminal, start the frontend:
 
 ```bash
 cd web && pnpm install && pnpm dev
 ```
 
-Cada projeto tem no próprio README os comandos de lint, testes e build.
+Each project's README lists its lint, test and build commands.
 
-## Qualidade e CI
+## Quality and CI
 
-Todo push na `main` e todo pull request passam pelo workflow [`CI`](.github/workflows/ci.yml):
+Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci.yml) workflow:
 
-1. **API**: Checkstyle e PMD (qualquer violação quebra o build), testes contra um PostgreSQL real e build.
-2. **Web**: Prettier, ESLint (zero avisos), checagem de tipos, testes com cobertura e build de produção.
-3. **Sonar**: junta a cobertura dos dois lados e roda o SonarQube Cloud. O job falha se o quality gate reprovar.
+1. **API**: Checkstyle and PMD (any violation fails the build), tests against a real PostgreSQL, and the build.
+2. **Web**: Prettier, ESLint (zero warnings), type checking, tests with coverage, and the production build.
+3. **Sonar**: merges coverage from both sides and runs SonarQube Cloud. The job fails if the quality gate fails.
 
-### Configuração única do SonarQube Cloud
+### One-time SonarQube Cloud setup
 
-1. Em [sonarcloud.io](https://sonarcloud.io), importe a organização do GitHub e o repositório `DaviSFS21/bouleplan`.
-2. Confira se a organização e a chave do projeto batem com [`sonar-project.properties`](sonar-project.properties) (`davisfs21` e `DaviSFS21_bouleplan`).
-3. Em *Administration → Analysis Method*, desligue a **Automatic Analysis** (a análise vem do CI).
-4. Gere um token em *My Account → Security* e cadastre-o no GitHub como secret de Actions chamado `SONAR_TOKEN`.
+1. On [sonarcloud.io](https://sonarcloud.io), import the GitHub organization and the `DaviSFS21/bouleplan` repository.
+2. Check that the organization and project key match [`sonar-project.properties`](sonar-project.properties) (`davisfs21` and `DaviSFS21_bouleplan`).
+3. Under *Administration → Analysis Method*, turn **Automatic Analysis** off (analysis runs in CI).
+4. Create a token under *My Account → Security* and add it to GitHub as an Actions secret named `SONAR_TOKEN`.
 
-## Documentação
+## Language
 
-- Produto, modelagem e roadmap: Notion (página "bouléplan").
-- Interface: Design System Bouléplan.
-- Decisões de arquitetura: `docs/adr/`, quando passarem a surgir com frequência.
+Everything in this repository (code, comments, tests, docs, commits and pull requests) is in English. User-facing UI text is in Brazilian Portuguese.
+
+## Documentation
+
+- Product, data model and roadmap: Notion ("bouléplan" page).
+- UI: the Bouléplan Design System.
+- Architecture decisions: `docs/adr/`, once they start coming up regularly.

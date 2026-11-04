@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import Home from './page';
 
 describe('Home', () => {
-  it('renderiza o título de nível 1 "Bouléplan"', () => {
+  it('renders the "Bouléplan" level-1 heading', () => {
     render(<Home />);
     expect(screen.getByRole('heading', { level: 1, name: 'Bouléplan' })).toBeInTheDocument();
   });

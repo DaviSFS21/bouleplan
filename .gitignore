@@ -1,21 +1,21 @@
-# Raiz do monorepo: só o que é comum aos dois projetos.
-# Cada projeto (api/, web/) tem o próprio .gitignore para os artefatos de build.
+# Monorepo root: only what both projects share.
+# Each project (api/, web/) has its own .gitignore for build output.
 
-# Sistema operacional
+# Operating system
 .DS_Store
 Thumbs.db
 
-# IDEs e editores
+# IDEs and editors
 .idea/
 *.iml
 .vscode/*
 !.vscode/extensions.json
 *.swp
 
-# Variáveis de ambiente locais (nunca versionar segredos)
+# Local environment variables (never commit secrets)
 .env
 .env.*
 !.env.example
 
-# Sonar (execução local do scanner)
+# Sonar (local scanner runs)
 .scannerwork/

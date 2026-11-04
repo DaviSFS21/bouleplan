@@ -1,13 +1,13 @@
-# CI do Bouléplan
+# Bouléplan CI
 #
-# Três jobs:
-#   api   → lint (Checkstyle + PMD), testes contra Postgres real (Dev Services) e build
-#   web   → formatação, lint, tipos, testes com cobertura e build de produção
-#   sonar → junta os relatórios dos dois e roda o SonarQube Cloud; falha se o
-#           quality gate reprovar
+# Three jobs:
+#   api   → lint (Checkstyle + PMD), tests against a real PostgreSQL (Dev Services), build
+#   web   → formatting, lint, types, tests with coverage, production build
+#   sonar → merges both reports and runs SonarQube Cloud; fails if the quality
+#           gate fails
 #
-# As actions são fixadas pelo SHA do commit (com a versão no comentário):
-# uma tag pode ser movida para outro código, o SHA não.
+# Actions are pinned to a commit SHA (version in the comment): a tag can be
+# moved to different code, a SHA cannot.
 
 name: CI
 
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   api:
-    name: API · lint, testes e build
+    name: API · lint, tests and build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -42,12 +42,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
-      # check = Checkstyle + PMD + testes + relatório JaCoCo; build = empacota a aplicação.
-      # Os testes sobem o Postgres via Testcontainers (Docker já vem no runner).
-      - name: Lint, testes e build
+      # check = Checkstyle + PMD + tests + JaCoCo report; build = packages the app.
+      # Tests start PostgreSQL through Testcontainers (the runner ships with Docker).
+      - name: Lint, tests and build
         run: ./gradlew check build
 
-      - name: Relatórios de teste (em caso de falha)
+      - name: Test reports (on failure)
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -58,7 +58,7 @@ jobs:
             api/build/reports/pmd/
           retention-days: 7
 
-      - name: Publicar insumos do Sonar
+      - name: Upload Sonar inputs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: api-sonar-inputs
@@ -69,7 +69,7 @@ jobs:
           retention-days: 1
 
   web:
-    name: Web · formatação, lint, tipos, testes e build
+    name: Web · format, lint, types, tests and build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -80,7 +80,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # A versão do pnpm vem do campo "packageManager" do web/package.json.
+      # The pnpm version comes from the "packageManager" field in web/package.json.
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           package_json_file: web/package.json
@@ -91,25 +91,25 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
 
-      - name: Instalar dependências (lockfile congelado)
+      - name: Install dependencies (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
-      - name: Formatação
+      - name: Format
         run: pnpm format:check
 
       - name: Lint
         run: pnpm lint
 
-      - name: Tipos
+      - name: Types
         run: pnpm typecheck
 
-      - name: Testes com cobertura
+      - name: Tests with coverage
         run: pnpm test:coverage
 
-      - name: Build de produção
+      - name: Production build
         run: pnpm build
 
-      - name: Publicar insumos do Sonar
+      - name: Upload Sonar inputs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: web-sonar-inputs
@@ -122,10 +122,10 @@ jobs:
     needs: [api, web]
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # PRs vindos de forks não recebem o SONAR_TOKEN; nesses casos o job é pulado.
+    # Pull requests from forks do not get SONAR_TOKEN, so the job is skipped for them.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      # Histórico completo: o Sonar usa o blame do git para separar "código novo".
+      # Full history: Sonar uses git blame to tell "new code" apart.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -140,9 +140,9 @@ jobs:
           name: web-sonar-inputs
           path: web/coverage
 
-      # Configuração em sonar-project.properties. qualitygate.wait faz o job
-      # esperar o resultado do gate e falhar se ele reprovar.
-      - name: Análise e quality gate
+      # Settings live in sonar-project.properties. qualitygate.wait makes the job
+      # wait for the gate result and fail if the gate fails.
+      - name: Analysis and quality gate
         uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

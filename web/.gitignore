@@ -1,4 +1,4 @@
-# dependências
+# dependencies
 node_modules
 
 # Next.js
@@ -6,11 +6,11 @@ node_modules
 out
 next-env.d.ts
 
-# testes e cobertura
+# tests and coverage
 coverage
 
 # TypeScript
 *.tsbuildinfo
 
-# ambiente local
+# local environment
 .env*.local

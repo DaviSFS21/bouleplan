@@ -1,9 +1,9 @@
-# Infraestrutura de desenvolvimento local do Bouléplan.
-# Uso: docker compose up -d   (na raiz do repositório)
+# Bouléplan local development infrastructure.
+# Usage: docker compose up -d   (from the repository root)
 #
-# A API em modo dev (./gradlew quarkusDev) se conecta a este banco.
-# Os testes NÃO usam este banco: sobem um Postgres próprio e descartável
-# via Quarkus Dev Services (Testcontainers), para cada execução começar limpa.
+# The API in dev mode (./gradlew quarkusDev) connects to this database.
+# Tests do NOT use it: they start their own throwaway PostgreSQL through
+# Quarkus Dev Services (Testcontainers), so every run starts clean.
 name: bouleplan
 
 services:

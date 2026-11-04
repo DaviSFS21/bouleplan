@@ -19,7 +19,7 @@ export default defineConfig([
     },
   },
   {
-    // Arquivos de configuração JS não fazem parte do tsconfig: sem regras que exigem tipos.
+    // JS config files are outside the tsconfig, so type-aware rules are disabled for them.
     files: ['**/*.{js,mjs,cjs}'],
     extends: [tseslint.configs.disableTypeChecked],
   },

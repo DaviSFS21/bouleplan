@@ -8,7 +8,7 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 2
 
-# Google Java Style: 2 espaços, linha de até 100 colunas.
+# Google Java Style: 2-space indent, 100-column lines.
 [*.java]
 max_line_length = 100
 

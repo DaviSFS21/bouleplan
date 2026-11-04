@@ -2,21 +2,21 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import RootLayout, { metadata } from './layout';
 
-// O layout raiz renderiza <html>, que não cabe dentro do container do Testing
-// Library; por isso a marcação é gerada no formato do servidor.
+// The root layout renders <html>, which cannot be mounted inside a Testing
+// Library container, so the markup is rendered the way the server does it.
 describe('RootLayout', () => {
-  it('declara o idioma pt-BR e renderiza o conteúdo da página', () => {
+  it('declares the pt-BR language and renders the page content', () => {
     const html = renderToStaticMarkup(
       <RootLayout>
-        <p>conteúdo</p>
+        <p>content</p>
       </RootLayout>,
     );
 
     expect(html).toMatch(/^<html lang="pt-BR">/);
-    expect(html).toContain('<body><p>conteúdo</p></body>');
+    expect(html).toContain('<body><p>content</p></body>');
   });
 
-  it('define título e descrição da aplicação', () => {
+  it('defines the app title and description', () => {
     expect(metadata).toEqual({
       title: 'Bouléplan',
       description: 'Gerenciador pessoal de iniciativas e tarefas.',
