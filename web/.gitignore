@@ -1,0 +1,16 @@
+# dependencies
+node_modules
+
+# Next.js
+.next
+out
+next-env.d.ts
+
+# tests and coverage
+coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# local environment
+.env*.local

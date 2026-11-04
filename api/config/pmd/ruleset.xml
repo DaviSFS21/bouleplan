@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<ruleset name="Bouleplan"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Strict ruleset for Bouleplan API (Quarkus/Panache + Google Style).</description>
+
+  <rule ref="category/java/bestpractices.xml">
+    <!-- RestAssured tests assert inside the given/when/then chain (.body(...)),
+         which the rule does not recognize as an assertion. -->
+    <exclude name="UnitTestShouldIncludeAssert"/>
+  </rule>
+
+  <rule ref="category/java/codestyle.xml">
+    <!-- Panache entities and CDI/JAX-RS beans rely on the implicit default constructor. -->
+    <exclude name="AtLeastOneConstructor"/>
+    <!-- Clashes with Google Style: descriptive (and long) names are desired. -->
+    <exclude name="LongVariable"/>
+    <!-- Forces "final" on every parameter/local variable; noisy, Google Style does not require it. -->
+    <exclude name="LocalVariableCouldBeFinal"/>
+    <exclude name="MethodArgumentCouldBeFinal"/>
+    <!-- Quarkus/JUnit 5 favor package-private test classes and methods. -->
+    <exclude name="CommentDefaultAccessModifier"/>
+  </rule>
+
+  <rule ref="category/java/design.xml">
+    <!-- Panache entities (public fields, active record) and DTOs are data classes by design. -->
+    <exclude name="DataClass"/>
+    <!-- Fluent APIs (RestAssured, Panache queries, Streams) idiomatically chain calls and trip the Law of Demeter. -->
+    <exclude name="LawOfDemeter"/>
+  </rule>
+
+  <rule ref="category/java/errorprone.xml">
+    <!-- JPA entities require a default constructor and mutable fields; beans are not Serializable. -->
+    <exclude name="BeanMembersShouldSerialize"/>
+  </rule>
+
+  <rule ref="category/java/multithreading.xml"/>
+  <rule ref="category/java/performance.xml"/>
+  <rule ref="category/java/security.xml"/>
+</ruleset>
