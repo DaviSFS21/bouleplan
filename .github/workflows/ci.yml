@@ -64,7 +64,7 @@ jobs:
           name: api-sonar-inputs
           path: |
             api/build/classes/
-            api/build/reports/jacoco/
+            api/build/jacoco-report/jacoco.xml
           if-no-files-found: error
           retention-days: 1
 
@@ -139,6 +139,12 @@ jobs:
         with:
           name: web-sonar-inputs
           path: web/coverage
+
+      # Sonar refuses to analyze .java files without a compiled-classes folder.
+      # While main holds only package-info.java files, Gradle emits no bytecode
+      # and the folder does not exist, so make sure both folders are present.
+      - name: Ensure compiled-classes folders exist
+        run: mkdir -p api/build/classes/java/main api/build/classes/java/test
 
       # Settings live in sonar-project.properties. qualitygate.wait makes the job
       # wait for the gate result and fail if the gate fails.
