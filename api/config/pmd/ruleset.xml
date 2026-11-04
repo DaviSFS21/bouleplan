@@ -31,8 +31,9 @@
   </rule>
 
   <rule ref="category/java/errorprone.xml">
-    <!-- JPA entities require a default constructor and mutable fields; beans are not Serializable. -->
-    <exclude name="BeanMembersShouldSerialize"/>
+    <!-- ArchUnit tests are static @ArchTest fields run by the ArchUnit engine, not @Test methods,
+         so the rule wrongly reports ArchitectureTest as a test class without test cases. -->
+    <exclude name="TestClassWithoutTestCases"/>
   </rule>
 
   <rule ref="category/java/multithreading.xml"/>

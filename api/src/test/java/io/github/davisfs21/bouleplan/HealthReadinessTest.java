@@ -22,7 +22,7 @@ class HealthReadinessTest {
         .statusCode(200)
         .body("status", equalTo("UP"))
         .body("checks.name", hasItem("Database connections health check"))
-        .body("checks.find { it.name == 'Database connections health check' }.status",
-            equalTo("UP"));
+        .body(
+            "checks.find { it.name == 'Database connections health check' }.status", equalTo("UP"));
   }
 }
