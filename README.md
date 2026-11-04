@@ -27,6 +27,8 @@ From the repository root, create your local `.env` once, then set your own passw
 cp .env.example .env
 ```
 
+If a PostgreSQL installed on your machine already uses port 5432, set `DB_PORT` in `.env` to a free port, such as `5433`. Otherwise the API connects to that server instead of the container and fails with a password authentication error.
+
 Start the database:
 
 ```bash
