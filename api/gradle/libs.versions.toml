@@ -1,0 +1,33 @@
+# Single place for every version in this project, so that Dependabot can update them.
+# Dependabot (gradle ecosystem) reads this file, but only bumps versions that belong to a
+# declared library or plugin.
+
+[versions]
+quarkus = "3.33.4.1"
+spotless = "8.10.4"
+google-java-format = "1.36.1"
+archunit = "1.5.1"
+checkstyle = "13.4.0"
+pmd = "7.29.0"
+jacoco = "0.8.14"
+
+[libraries]
+# The platform BOM and the Gradle plugin share one version: they must move together.
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
+# Not managed by the Quarkus BOM, hence the explicit version.
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+# The entries below exist only so that Dependabot tracks the tool versions. They are not
+# dependencies: the build reads their versions (libs.versions.*) to configure the Gradle
+# plugins, e.g. checkstyle { toolVersion = ... }. Dependabot does not update bare versions.
+checkstyle = { module = "com.puppycrawl.tools:checkstyle", version.ref = "checkstyle" }
+pmd-java = { module = "net.sourceforge.pmd:pmd-java", version.ref = "pmd" }
+jacoco-agent = { module = "org.jacoco:org.jacoco.agent", version.ref = "jacoco" }
+google-java-format = { module = "com.google.googlejavaformat:google-java-format", version.ref = "google-java-format" }
+
+# Quarkus extensions and rest-assured are intentionally NOT listed: the BOM manages their
+# versions, so they stay as plain "group:artifact" strings in build.gradle.kts.
+
+[plugins]
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

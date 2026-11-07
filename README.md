@@ -63,6 +63,11 @@ Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci
 2. Check that the organization and project key match [`sonar-project.properties`](sonar-project.properties) (`davisfs21` and `DaviSFS21_bouleplan`).
 3. Under *Administration → Analysis Method*, turn **Automatic Analysis** off (analysis runs in CI).
 4. Create a token under *My Account → Security* and add it to GitHub as an Actions secret named `SONAR_TOKEN`.
+5. Add the same token as a **Dependabot** secret named `SONAR_TOKEN` (*Settings → Secrets and variables → Dependabot*). Dependabot pull requests do not receive Actions secrets, so without it their `sonar` job fails.
+
+### Dependency updates
+
+[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for Gradle (`api/`), pnpm (`web/`) and GitHub Actions. A version is only proposed after it has been public for 14 days.
 
 ## Language
 

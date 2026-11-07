@@ -17,6 +17,9 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - Java 21, imperative Quarkus (never reactive), Panache, PostgreSQL, Flyway (Flyway owns the schema; Hibernate never generates tables).
 - Relaxed hexagonal architecture: the JPA/Panache entity carries the business rules (no duplicated domain class, no mapper); the separation lives in the ports (`application.port.in`/`out`) and adapters (`adapter.in.rest`, `adapter.out.persistence`). `domain` never depends on `adapter`.
 - Strict Checkstyle (Google Java Style) and PMD: any violation fails the build. Never disable a rule without a justification in the config file itself.
+- The architecture is enforced by ArchUnit (`ArchitectureTest`). Never weaken a rule to make code pass; fix the dependency instead.
+- Format with `./gradlew spotlessApply` (google-java-format); `check` fails on unformatted code.
+- All versions live in `api/gradle/libs.versions.toml` (Dependabot reads it). Never hard-code a version in `build.gradle.kts`.
 - `./gradlew check` must pass before any commit. Tests start PostgreSQL through Dev Services (requires Docker).
 
 ## Frontend (`web/`)
