@@ -3,19 +3,16 @@ plugins {
     jacoco
     checkstyle
     pmd
-    id("io.quarkus")
+    alias(libs.plugins.quarkus)
+    alias(libs.plugins.spotless)
 }
 
 repositories {
     mavenCentral()
 }
 
-val quarkusPlatformGroupId: String by project
-val quarkusPlatformArtifactId: String by project
-val quarkusPlatformVersion: String by project
-
 dependencies {
-    implementation(enforcedPlatform("$quarkusPlatformGroupId:$quarkusPlatformArtifactId:$quarkusPlatformVersion"))
+    implementation(enforcedPlatform(libs.quarkus.bom))
     implementation("io.quarkus:quarkus-rest-jackson")
     implementation("io.quarkus:quarkus-hibernate-orm-panache")
     implementation("io.quarkus:quarkus-jdbc-postgresql")
@@ -26,6 +23,7 @@ dependencies {
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.quarkus:quarkus-jacoco")
     testImplementation("io.rest-assured:rest-assured")
+    testImplementation(libs.archunit.junit5)
 }
 
 java {
@@ -58,7 +56,7 @@ tasks.quarkusDev {
 
 // Checkstyle: Google Style, zero tolerance.
 checkstyle {
-    toolVersion = "13.4.0"
+    toolVersion = libs.versions.checkstyle.get()
     configFile = layout.projectDirectory.file("config/checkstyle/checkstyle.xml").asFile
     maxWarnings = 0
     maxErrors = 0
@@ -66,9 +64,22 @@ checkstyle {
     isShowViolations = true
 }
 
+// Spotless: google-java-format is the single source of truth for formatting.
+// `check` depends on spotlessCheck, so unformatted code fails the build;
+// run `./gradlew spotlessApply` to fix it.
+spotless {
+    java {
+        target("src/main/java/**/*.java", "src/test/java/**/*.java")
+        googleJavaFormat(libs.versions.google.java.format.get())
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
 // PMD: custom ruleset, zero tolerance.
 pmd {
-    toolVersion = "7.29.0"
+    toolVersion = libs.versions.pmd.get()
     ruleSetFiles = files("config/pmd/ruleset.xml")
     ruleSets = emptyList()
     isIgnoreFailures = false
@@ -85,7 +96,7 @@ pmd {
 //   build/jacoco-report/jacoco.xml (settings in application.properties).
 // The Gradle jacocoTestReport task is therefore disabled.
 jacoco {
-    toolVersion = "0.8.14"
+    toolVersion = libs.versions.jacoco.get()
 }
 
 tasks.test {

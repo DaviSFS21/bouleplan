@@ -1,4 +1,4 @@
-package io.github.davisfs21.bouleplan;
+package br.com.davisoares.bouleplan;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
@@ -22,7 +22,7 @@ class HealthReadinessTest {
         .statusCode(200)
         .body("status", equalTo("UP"))
         .body("checks.name", hasItem("Database connections health check"))
-        .body("checks.find { it.name == 'Database connections health check' }.status",
-            equalTo("UP"));
+        .body(
+            "checks.find { it.name == 'Database connections health check' }.status", equalTo("UP"));
   }
 }
