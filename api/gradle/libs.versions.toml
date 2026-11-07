@@ -7,6 +7,7 @@ quarkus = "3.33.4.1"
 spotless = "8.10.4"
 google-java-format = "1.36.1"
 archunit = "1.5.1"
+assertj = "3.27.7"
 checkstyle = "14.3.0"
 pmd = "7.29.0"
 jacoco = "0.8.15"
@@ -16,6 +17,7 @@ jacoco = "0.8.15"
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 # Not managed by the Quarkus BOM, hence the explicit version.
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 
 # The entries below exist only so that Dependabot tracks the tool versions. They are not
 # dependencies: the build reads their versions (libs.versions.*) to configure the Gradle

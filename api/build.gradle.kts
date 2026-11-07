@@ -23,6 +23,7 @@ dependencies {
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.quarkus:quarkus-jacoco")
     testImplementation("io.rest-assured:rest-assured")
+    testImplementation(libs.assertj.core)
     testImplementation(libs.archunit.junit5)
 }
 
