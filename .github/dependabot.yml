@@ -37,6 +37,13 @@ updates:
       # upgrade with its own pull request, not an automatic minor bump.
       - dependency-name: "io.quarkus*"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # google-java-format 1.37.x introduced an experimental formatter-style
+      # API that Spotless 8.10 cannot call (NoSuchMethodError on
+      # JavaFormatterOptions.Style.valueOf). It is a dead end: no 1.38 was
+      # released and 2.0.0 stabilized the API. Spotless 8.11+ targets 2.0.0,
+      # and both are in the quality-tools group, so they arrive together.
+      - dependency-name: "com.google.googlejavaformat:google-java-format"
+        versions: ["1.37.x"]
     groups:
       quarkus:
         patterns: ["io.quarkus*"]
