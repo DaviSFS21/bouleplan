@@ -1,0 +1,21 @@
+# Monorepo root: only what both projects share.
+# Each project (api/, web/) has its own .gitignore for build output.
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# IDEs and editors
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Local environment variables (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Sonar (local scanner runs)
+.scannerwork/
