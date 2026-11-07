@@ -11,6 +11,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 ## Language
 - **Everything in the repository is in English**: identifiers, comments, Javadoc/TSDoc, test names, config and CI comments, READMEs, ADRs, commit messages and pull request descriptions.
 - The only exception is **user-facing UI text**, which is in Brazilian Portuguese (`pt-BR`).
+- Write few comments. Comment only a non-obvious *why* in one short line; never restate what the code or config says. Reasoning belongs in commit messages and pull request descriptions.
 - Table and column names follow the ERD (`initiative`, `phase`, `task`, `scheduled_item`…).
 
 ## Backend (`api/`)
