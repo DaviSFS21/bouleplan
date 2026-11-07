@@ -3,7 +3,7 @@
 # declared library or plugin.
 
 [versions]
-quarkus = "3.33.4.1"
+quarkus = "3.40.1.1"
 spotless = "8.10.4"
 google-java-format = "1.36.1"
 archunit = "1.5.1"
