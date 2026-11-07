@@ -1,4 +1,4 @@
-package io.github.davisfs21.bouleplan;
+package br.com.davisoares.bouleplan;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
@@ -22,19 +22,19 @@ import com.tngtech.archunit.lang.ArchRule;
  * the opt-ins can be removed so that such mistakes fail the build.
  */
 @AnalyzeClasses(
-    packages = "io.github.davisfs21.bouleplan",
+    packages = "br.com.davisoares.bouleplan",
     importOptions = ImportOption.DoNotIncludeTests.class)
 final class ArchitectureTest {
 
-  private static final String DOMAIN = "io.github.davisfs21.bouleplan.domain..";
-  private static final String APPLICATION = "io.github.davisfs21.bouleplan.application..";
-  private static final String ADAPTER = "io.github.davisfs21.bouleplan.adapter..";
-  private static final String ADAPTER_IN = "io.github.davisfs21.bouleplan.adapter.in..";
-  private static final String ADAPTER_OUT = "io.github.davisfs21.bouleplan.adapter.out..";
+  private static final String DOMAIN = "br.com.davisoares.bouleplan.domain..";
+  private static final String APPLICATION = "br.com.davisoares.bouleplan.application..";
+  private static final String ADAPTER = "br.com.davisoares.bouleplan.adapter..";
+  private static final String ADAPTER_IN = "br.com.davisoares.bouleplan.adapter.in..";
+  private static final String ADAPTER_OUT = "br.com.davisoares.bouleplan.adapter.out..";
   private static final String APPLICATION_SERVICE =
-      "io.github.davisfs21.bouleplan.application.service..";
+      "br.com.davisoares.bouleplan.application.service..";
   private static final String APPLICATION_PORT_OUT =
-      "io.github.davisfs21.bouleplan.application.port.out..";
+      "br.com.davisoares.bouleplan.application.port.out..";
 
   @ArchTest
   static final ArchRule DOMAIN_DOES_NOT_DEPEND_ON_APPLICATION_OR_ADAPTER =
@@ -105,7 +105,7 @@ final class ArchitectureTest {
   @ArchTest
   static final ArchRule TOP_LEVEL_SLICES_ARE_FREE_OF_CYCLES =
       slices()
-          .matching("io.github.davisfs21.bouleplan.(*)..")
+          .matching("br.com.davisoares.bouleplan.(*)..")
           .should()
           .beFreeOfCycles()
           .allowEmptyShould(true)

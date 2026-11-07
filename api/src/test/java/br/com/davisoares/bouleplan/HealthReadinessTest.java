@@ -1,4 +1,4 @@
-package io.github.davisfs21.bouleplan;
+package br.com.davisoares.bouleplan;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;

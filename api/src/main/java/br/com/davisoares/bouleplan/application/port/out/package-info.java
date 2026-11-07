@@ -1,2 +1,2 @@
 /** Outbound ports: repository and external-service interfaces required by the application. */
-package io.github.davisfs21.bouleplan.application.port.out;
+package br.com.davisoares.bouleplan.application.port.out;
