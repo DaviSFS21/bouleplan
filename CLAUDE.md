@@ -29,8 +29,10 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - The UI follows the Bouléplan Design System: always use its tokens, never hard-coded colors or sizes.
 
 ## Data model (MVP)
-ERD tables: `user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
+Eight tables: `app_user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`, `introspection`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
 - Every task points to a `phase`; an initiative without named phases gets an implicit phase (`is_implicit = true`), which the UI hides.
 - `is_blocked` is the task's own situation, independent of `status` (`to_do`, `in_progress`, `done`) and of `task_blocker`.
 - Archive and delete are reversible (`archived_at`, `deleted_at`); only the item acted on gets the timestamp.
 - `initiative.color` stores the token name, never the hex value.
+- `app_user` (not `user`, a PostgreSQL reserved word). No authentication yet: a migration seeds one local user that owns all data.
+- `introspection.answers` is `jsonb`: an ordered list of `{key, prompt, answer}`, keeping the question text with each answer.
