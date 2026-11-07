@@ -67,7 +67,7 @@ Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci
 
 ### Dependency updates
 
-[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for Gradle (`api/`), pnpm (`web/`) and GitHub Actions. A version is only proposed after it has been public for 14 days.
+[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for Gradle (`api/`), pnpm (`web/`) and GitHub Actions. A version is only proposed after it has been public for 14 days. Quarkus stays on its LTS line: Dependabot only proposes patch releases within it, and moving to a new LTS is a deliberate upgrade.
 
 ## Language
 
