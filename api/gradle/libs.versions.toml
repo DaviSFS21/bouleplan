@@ -5,11 +5,11 @@
 [versions]
 quarkus = "3.33.4.1"
 spotless = "8.10.4"
-google-java-format = "1.36.1"
+google-java-format = "1.37.0"
 archunit = "1.5.1"
-checkstyle = "13.4.0"
+checkstyle = "14.3.0"
 pmd = "7.29.0"
-jacoco = "0.8.14"
+jacoco = "0.8.15"
 
 [libraries]
 # The platform BOM and the Gradle plugin share one version: they must move together.
