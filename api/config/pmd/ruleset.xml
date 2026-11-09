@@ -9,6 +9,10 @@
     <!-- RestAssured tests assert inside the given/when/then chain (.body(...)),
          which the rule does not recognize as an assertion. -->
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <!-- Ports have one method today but are meant to grow; the annotation would promise otherwise. -->
+    <exclude name="ImplicitFunctionalInterface"/>
+    <!-- AssertJ tests check several properties of one outcome; splitting them hides the intent. -->
+    <exclude name="UnitTestContainsTooManyAsserts"/>
   </rule>
 
   <rule ref="category/java/codestyle.xml">
@@ -21,6 +25,11 @@
     <exclude name="MethodArgumentCouldBeFinal"/>
     <!-- Quarkus/JUnit 5 favor package-private test classes and methods. -->
     <exclude name="CommentDefaultAccessModifier"/>
+    <!-- "id" is the idiomatic name for identifiers, in entities and ports alike (see the ERD). -->
+    <exclude name="ShortVariable"/>
+    <exclude name="ShortMethodName"/>
+    <!-- Google Style declares locals close to their first use. -->
+    <exclude name="LocalVariableDeclarationShouldBeAtStartOfBlock"/>
   </rule>
 
   <rule ref="category/java/design.xml">

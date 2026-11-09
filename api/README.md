@@ -44,8 +44,8 @@ hexagonal architecture on the production classes:
    `org.jboss.resteasy`). JPA and Panache are allowed, because entities carry the business rules.
 6. No dependency cycles between the top-level slices `domain`, `application` and `adapter`.
 
-Rules currently opt in to `allowEmptyShould(true)` because the packages have no classes yet; see
-the comment in `ArchitectureTest` for why this is per rule and not global.
+Only the two rules whose subject is `adapter.in` (still empty) opt in to `allowEmptyShould(true)`; the
+comment in `ArchitectureTest` says why it is per rule and not global.
 
 ## Dependency versions
 

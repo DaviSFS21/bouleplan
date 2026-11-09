@@ -14,12 +14,9 @@ import com.tngtech.archunit.lang.ArchRule;
  * <p>Plain JUnit 5 (no {@code @QuarkusTest}) so that it stays fast: it only inspects the compiled
  * production classes.
  *
- * <p>Empty packages: while a package has no classes yet, a rule about it would fail with "failed to
- * check any classes". Every rule therefore opts in explicitly with {@code allowEmptyShould(true)}
- * instead of the global {@code archRule.failOnEmptyShould=false}. The global switch would also hide
- * a rule whose package pattern is mistyped (it would match nothing and pass forever) and would
- * silently apply to every future rule. Once the production code has classes in all these packages,
- * the opt-ins can be removed so that such mistakes fail the build.
+ * <p>{@code adapter.in} has no classes yet, so the two rules whose subject is that package opt in
+ * with {@code allowEmptyShould(true)} per rule (not the global {@code archRule.failOnEmptyShould}),
+ * so a mistyped pattern in any other rule still fails. Remove them when the REST adapter lands.
  */
 @AnalyzeClasses(
     packages = "br.com.davisoares.bouleplan",
@@ -44,7 +41,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage(APPLICATION, ADAPTER)
-          .allowEmptyShould(true)
           .because("the domain is the core and must not know the layers that use it");
 
   @ArchTest
@@ -55,7 +51,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage(ADAPTER)
-          .allowEmptyShould(true)
           .because("the application layer talks to the outside world only through ports");
 
   @ArchTest
@@ -77,7 +72,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage(ADAPTER_IN)
-          .allowEmptyShould(true)
           .because("adapters are independent of each other and are wired through the application");
 
   @ArchTest
@@ -99,7 +93,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage("jakarta.ws.rs..", "io.quarkus.rest..", "org.jboss.resteasy..")
-          .allowEmptyShould(true)
           .because("entities may use JPA and Panache, but must stay independent of the web layer");
 
   @ArchTest
@@ -108,7 +101,6 @@ final class ArchitectureTest {
           .matching("br.com.davisoares.bouleplan.(*)..")
           .should()
           .beFreeOfCycles()
-          .allowEmptyShould(true)
           .because("cycles between domain, application and adapter would defeat the layering");
 
   private ArchitectureTest() {}

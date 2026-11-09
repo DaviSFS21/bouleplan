@@ -4,7 +4,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 
 ## Way of working
 - Work in steps and stop for review at the end of each one; explain the reasoning behind decisions. When there is more than one reasonable path, present the options with pros and cons before choosing.
-- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request.
+- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request. Open the pull request as a **draft** as soon as the step starts, keep its sub-step checklist up to date, and mark it ready for review only when the step is done.
 - **Vertical slices**: one feature end to end (domain → API → screen) at a time.
 - **TDD**: write the test before the code.
 
@@ -29,8 +29,10 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - The UI follows the Bouléplan Design System: always use its tokens, never hard-coded colors or sizes.
 
 ## Data model (MVP)
-ERD tables: `user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
+Eight tables: `app_user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`, `introspection`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
 - Every task points to a `phase`; an initiative without named phases gets an implicit phase (`is_implicit = true`), which the UI hides.
 - `is_blocked` is the task's own situation, independent of `status` (`to_do`, `in_progress`, `done`) and of `task_blocker`.
 - Archive and delete are reversible (`archived_at`, `deleted_at`); only the item acted on gets the timestamp.
 - `initiative.color` stores the token name, never the hex value.
+- `app_user` (not `user`, a PostgreSQL reserved word). No authentication yet: a migration seeds one local user that owns all data.
+- `introspection.answers` is `jsonb`: an ordered list of `{key, prompt, answer}`, keeping the question text with each answer.
