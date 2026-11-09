@@ -4,7 +4,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 
 ## Way of working
 - Work in steps and stop for review at the end of each one; explain the reasoning behind decisions. When there is more than one reasonable path, present the options with pros and cons before choosing.
-- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request.
+- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request. Open the pull request as a **draft** as soon as the step starts, keep its sub-step checklist up to date, and mark it ready for review only when the step is done.
 - **Vertical slices**: one feature end to end (domain → API → screen) at a time.
 - **TDD**: write the test before the code.
 
