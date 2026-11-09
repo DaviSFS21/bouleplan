@@ -9,7 +9,7 @@ google-java-format = "1.36.1"
 archunit = "1.5.1"
 checkstyle = "14.3.0"
 pmd = "7.29.0"
-jacoco = "0.8.15"
+jacoco = "0.8.16"
 
 [libraries]
 # The platform BOM and the Gradle plugin share one version: they must move together.
