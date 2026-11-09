@@ -19,7 +19,7 @@ updates:
       - dependency-name: "io.quarkus*"
         update-types: ["version-update:semver-minor", "version-update:semver-major"]
       - dependency-name: "com.google.googlejavaformat:google-java-format"
-        versions: ["1.37.x"]
+        versions: ["[1.37.0,1.38.0)"]
     groups:
       quarkus:
         patterns: ["io.quarkus*"]
@@ -51,6 +51,8 @@ updates:
     labels: [dependencies, web]
     ignore:
       - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
     groups:
       next-react:
