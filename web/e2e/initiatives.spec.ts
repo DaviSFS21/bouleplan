@@ -24,7 +24,7 @@ function allTasks(page: Page) {
 }
 
 function initiativeItem(page: Page, name: string) {
-  return index(page).getByRole('button', { name });
+  return index(page).getByRole('button', { name: new RegExp(`^${name}`) });
 }
 
 async function dotColors(page: Page, name: string, token: string) {

@@ -93,7 +93,15 @@ class InitiativeResourceTest {
 
     assertThat(json.getMap("$").keySet())
         .isEqualTo(
-            Set.of("id", NAME, "description", "overallDeadline", COLOR, "origin", "createdAt"));
+            Set.of(
+                "id",
+                NAME,
+                "description",
+                "overallDeadline",
+                COLOR,
+                "origin",
+                "createdAt",
+                "updatedAt"));
     assertThat(UUID.fromString(json.getString("id"))).isNotNull();
     assertThat(json.getString(NAME)).isEqualTo("Contract");
     assertThat(json.getString(COLOR))

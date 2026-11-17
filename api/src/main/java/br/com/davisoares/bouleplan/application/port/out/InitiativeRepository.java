@@ -16,4 +16,10 @@ public interface InitiativeRepository {
 
   /** An active initiative of the user by id. */
   Optional<Initiative> findActiveByIdAndUser(UUID id, UUID userId);
+
+  /**
+   * An initiative of the user by id in any state, locked for update until the transaction ends, so
+   * concurrent writes to it are serialized.
+   */
+  Optional<Initiative> findByIdAndUserForUpdate(UUID id, UUID userId);
 }

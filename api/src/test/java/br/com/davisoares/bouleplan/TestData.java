@@ -2,6 +2,8 @@ package br.com.davisoares.bouleplan;
 
 import br.com.davisoares.bouleplan.domain.Initiative;
 import io.quarkus.narayana.jta.QuarkusTransaction;
+import jakarta.persistence.EntityManager;
+import java.util.UUID;
 
 /** Database cleanup shared by tests that commit data (HTTP calls run in their own transaction). */
 public final class TestData {
@@ -14,6 +16,38 @@ public final class TestData {
     QuarkusTransaction.requiringNew()
         .run(() -> {
           Initiative.deleteAll();
+        });
+  }
+
+  /** Inserts an archived, deleted initiative of another user and returns its id. */
+  public static String insertForeignInitiative(EntityManager entityManager) {
+    UUID otherUser = UUID.randomUUID();
+    UUID foreignId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
+              .setParameter(1, otherUser)
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into initiative (id, user_id, name, color, archived_at, deleted_at)"
+                      + " values (?1, ?2, 'Theirs', 'azul', now(), now())")
+              .setParameter(1, foreignId)
+              .setParameter(2, otherUser)
+              .executeUpdate();
+        });
+    return foreignId.toString();
+  }
+
+  /** Stamps {@code deleted_at} straight in the database, bypassing the use cases. */
+  public static void markDeleted(EntityManager entityManager, String id) {
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("update initiative set deleted_at = now() where id = ?1")
+              .setParameter(1, UUID.fromString(id))
+              .executeUpdate();
         });
   }
 }

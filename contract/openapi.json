@@ -22,7 +22,8 @@
                     "overallDeadline",
                     "color",
                     "origin",
-                    "createdAt"
+                    "createdAt",
+                    "updatedAt"
                 ],
                 "type": "object",
                 "properties": {
@@ -65,6 +66,9 @@
                         ]
                     },
                     "createdAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    },
+                    "updatedAt": {
                         "$ref": "#/components/schemas/OffsetDateTime"
                     }
                 }
@@ -121,6 +125,42 @@
                 "type": "string",
                 "format": "uuid",
                 "pattern": "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+            },
+            "UpdateInitiativeRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "overallDeadline": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "color": {
+                        "type": "string",
+                        "enum": [
+                            "amarelo",
+                            "lima",
+                            "verde",
+                            "turquesa",
+                            "azul",
+                            "roxo",
+                            "rosa",
+                            "marrom"
+                        ]
+                    }
+                }
             }
         }
     },
@@ -199,6 +239,102 @@
             }
         },
         "/initiatives/{id}": {
+            "delete": {
+                "summary": "Deletes an active initiative",
+                "operationId": "deleteInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Initiative deleted"
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Updates an active initiative; absent fields stay, null clears",
+                "operationId": "updateInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/merge-patch+json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateInitiativeRequest"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateInitiativeRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated initiative",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Initiative"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "get": {
                 "summary": "Gets an active initiative by id",
                 "operationId": "getInitiative",
@@ -228,6 +364,129 @@
                     },
                     "404": {
                         "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/initiatives/{id}/archive": {
+            "post": {
+                "summary": "Archives an active initiative",
+                "operationId": "archiveInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The archived initiative",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Initiative"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/initiatives/{id}/restore": {
+            "post": {
+                "summary": "Restores a deleted initiative; a no-op if it is not deleted",
+                "operationId": "restoreInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The initiative",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Initiative"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/initiatives/{id}/unarchive": {
+            "post": {
+                "summary": "Unarchives an initiative; a no-op if it is already active",
+                "operationId": "unarchiveInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The initiative",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Initiative"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No archived or active initiative with this id",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

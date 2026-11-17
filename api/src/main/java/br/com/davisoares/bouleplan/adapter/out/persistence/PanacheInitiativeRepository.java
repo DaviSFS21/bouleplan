@@ -4,6 +4,7 @@ import br.com.davisoares.bouleplan.application.port.out.InitiativeRepository;
 import br.com.davisoares.bouleplan.domain.Initiative;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +28,13 @@ public class PanacheInitiativeRepository
   @Override
   public Optional<Initiative> findActiveByIdAndUser(UUID id, UUID userId) {
     return find("id = ?1 and userId = ?2 and archivedAt is null and deletedAt is null", id, userId)
+        .firstResultOptional();
+  }
+
+  @Override
+  public Optional<Initiative> findByIdAndUserForUpdate(UUID id, UUID userId) {
+    return find("id = ?1 and userId = ?2", id, userId)
+        .withLock(LockModeType.PESSIMISTIC_WRITE)
         .firstResultOptional();
   }
 }

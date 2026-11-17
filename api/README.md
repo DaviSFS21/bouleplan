@@ -51,16 +51,27 @@ hexagonal architecture on the production classes:
 | `GET` | `/initiatives` | 200, active initiatives in creation order |
 | `POST` | `/initiatives` | 201 with `Location: /initiatives/{id}`; body `{"name": "..."}` |
 | `GET` | `/initiatives/{id}` | 200 if the initiative is active and the current user's, else 404 |
+| `PATCH` | `/initiatives/{id}` | 200; JSON merge patch (`application/merge-patch+json` or `application/json`) of `name`, `description`, `overallDeadline`, `color`: absent keeps, `null` clears; active only, else 404 |
+| `POST` | `/initiatives/{id}/archive` | 200; active only, else 404 |
+| `POST` | `/initiatives/{id}/unarchive` | 200; archived (or already active: no-op), else 404 |
+| `DELETE` | `/initiatives/{id}` | 204 (soft delete); active only, else 404 |
+| `POST` | `/initiatives/{id}/restore` | 200; deleted (or not deleted: no-op), else 404 |
 
 Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail` and `code`.
 Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |
+
+Descriptions normalize `\r\n` and a lone `\r` to `\n`; other control characters except `\t` are rejected.
+Deadlines must have a year from 1 to 9999.
+
+Writes to one initiative (update, archive, unarchive, delete, restore) load it with
+`select ... for update`, so concurrent writes are serialized and none is lost.
 
 Concurrent creates are serialized per user: the use case locks the user's `app_user` row
 (`select ... for update`) before choosing a color.
