@@ -28,6 +28,7 @@ public final class TestData {
           Panache.getEntityManager()
               .createNativeQuery("delete from calendar_event")
               .executeUpdate();
+          Panache.getEntityManager().createNativeQuery("delete from introspection").executeUpdate();
           Panache.getEntityManager().createNativeQuery("delete from task_blocker").executeUpdate();
           Task.deleteAll();
           Phase.deleteAll();

@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.domain.DomainRuleViolation;
+import br.com.davisoares.bouleplan.domain.IntrospectionClosedException;
 import br.com.davisoares.bouleplan.domain.ScheduleConflictException;
 import br.com.davisoares.bouleplan.domain.ScheduleRefusedException;
 import br.com.davisoares.bouleplan.domain.TaskBlockerException;
@@ -14,6 +15,7 @@ import org.jboss.resteasy.reactive.RestResponse;
 import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 
 /** Translates exceptions into RFC 9457 problem responses. */
+@SuppressWarnings("PMD.TooManyMethods") // one small mapper per exception type
 public class ProblemExceptionMappers {
 
   private static final String RULE_VIOLATION_TYPE = "/problems/rule-violation";
@@ -37,6 +39,13 @@ public class ProblemExceptionMappers {
   /** A scheduled item that contradicts another one: an overlap or a duplicate. */
   @ServerExceptionMapper
   public RestResponse<Problem> scheduleConflict(ScheduleConflictException exception) {
+    return problem(
+        409, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
+  }
+
+  /** A change to an introspection sheet that is already closed. */
+  @ServerExceptionMapper
+  public RestResponse<Problem> introspectionClosed(IntrospectionClosedException exception) {
     return problem(
         409, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
   }
