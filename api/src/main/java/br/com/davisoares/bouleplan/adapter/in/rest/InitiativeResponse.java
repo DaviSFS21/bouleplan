@@ -17,7 +17,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       "overallDeadline",
       "color",
       "origin",
-      "createdAt"
+      "createdAt",
+      "updatedAt"
     })
 public record InitiativeResponse(
     UUID id,
@@ -42,7 +43,8 @@ public record InitiativeResponse(
             type = SchemaType.STRING,
             enumeration = {"native"})
         String origin,
-    OffsetDateTime createdAt) {
+    OffsetDateTime createdAt,
+    OffsetDateTime updatedAt) {
 
   /** Maps the entity at the REST boundary, exposing token strings instead of enum constants. */
   public static InitiativeResponse from(Initiative initiative) {
@@ -53,6 +55,7 @@ public record InitiativeResponse(
         initiative.getOverallDeadline(),
         initiative.getColor().getToken(),
         initiative.getOrigin().getToken(),
-        initiative.getCreatedAt());
+        initiative.getCreatedAt(),
+        initiative.getUpdatedAt());
   }
 }

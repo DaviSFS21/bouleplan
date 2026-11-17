@@ -30,6 +30,59 @@ export interface paths {
         get: operations["getInitiative"];
         put?: never;
         post?: never;
+        /** Deletes an active initiative */
+        delete: operations["deleteInitiative"];
+        options?: never;
+        head?: never;
+        /** Updates an active initiative; absent fields stay, null clears */
+        patch: operations["updateInitiative"];
+        trace?: never;
+    };
+    "/initiatives/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archives an active initiative */
+        post: operations["archiveInitiative"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/initiatives/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restores a deleted initiative; a no-op if it is not deleted */
+        post: operations["restoreInitiative"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/initiatives/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unarchives an initiative; a no-op if it is already active */
+        post: operations["unarchiveInitiative"];
         delete?: never;
         options?: never;
         head?: never;
@@ -54,6 +107,7 @@ export interface components {
             /** @enum {string} */
             origin: "native";
             createdAt: components["schemas"]["OffsetDateTime"];
+            updatedAt: components["schemas"]["OffsetDateTime"];
         };
         /**
          * Format: date-time
@@ -79,6 +133,14 @@ export interface components {
         };
         /** Format: uuid */
         UUID: string;
+        UpdateInitiativeRequest: {
+            name?: string;
+            description?: string | null;
+            /** Format: date */
+            overallDeadline?: string | null;
+            /** @enum {string} */
+            color?: "amarelo" | "lima" | "verde" | "turquesa" | "azul" | "roxo" | "rosa" | "marrom";
+        };
     };
     responses: never;
     parameters: never;
@@ -164,6 +226,173 @@ export interface operations {
                 };
             };
             /** @description No active initiative with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Initiative deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No active initiative with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/merge-patch+json": components["schemas"]["UpdateInitiativeRequest"];
+                "application/json": components["schemas"]["UpdateInitiativeRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated initiative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Initiative"];
+                };
+            };
+            /** @description Rule violation or malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No active initiative with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archiveInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived initiative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Initiative"];
+                };
+            };
+            /** @description No active initiative with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restoreInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The initiative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Initiative"];
+                };
+            };
+            /** @description No initiative with this id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unarchiveInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The initiative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Initiative"];
+                };
+            };
+            /** @description No archived or active initiative with this id */
             404: {
                 headers: {
                     [name: string]: unknown;

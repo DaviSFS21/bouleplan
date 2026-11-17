@@ -1,7 +1,9 @@
 package br.com.davisoares.bouleplan.domain;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 
 /** Palette tokens, in palette order. The token name is stored, never a hex value. */
 public enum InitiativeColor {
@@ -27,12 +29,13 @@ public enum InitiativeColor {
 
   /** Resolves a stored token; fails on an unknown one. */
   public static InitiativeColor fromToken(String token) {
-    for (InitiativeColor color : values()) {
-      if (color.token.equals(token)) {
-        return color;
-      }
-    }
-    throw new IllegalArgumentException("Unknown color token: " + token);
+    return findByToken(token)
+        .orElseThrow(() -> new IllegalArgumentException("Unknown color token: " + token));
+  }
+
+  /** Resolves a token, empty if unknown. */
+  public static Optional<InitiativeColor> findByToken(String token) {
+    return Arrays.stream(values()).filter(color -> color.token.equals(token)).findFirst();
   }
 
   /** Least-used color among {@code inUse}; ties go to palette order, so colors cycle. */

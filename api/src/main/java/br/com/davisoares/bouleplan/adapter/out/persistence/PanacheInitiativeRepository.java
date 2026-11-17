@@ -29,4 +29,9 @@ public class PanacheInitiativeRepository
     return find("id = ?1 and userId = ?2 and archivedAt is null and deletedAt is null", id, userId)
         .firstResultOptional();
   }
+
+  @Override
+  public Optional<Initiative> findByIdAndUser(UUID id, UUID userId) {
+    return find("id = ?1 and userId = ?2", id, userId).firstResultOptional();
+  }
 }

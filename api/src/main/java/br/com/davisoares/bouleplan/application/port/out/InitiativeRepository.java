@@ -16,4 +16,7 @@ public interface InitiativeRepository {
 
   /** An active initiative of the user by id. */
   Optional<Initiative> findActiveByIdAndUser(UUID id, UUID userId);
+
+  /** An initiative of the user by id in any state (active, archived or deleted). */
+  Optional<Initiative> findByIdAndUser(UUID id, UUID userId);
 }

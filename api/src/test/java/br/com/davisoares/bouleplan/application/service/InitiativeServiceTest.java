@@ -37,6 +37,13 @@ class InitiativeServiceTest {
         }
 
         @Override
+        public Optional<Initiative> findByIdAndUser(UUID id, UUID userId) {
+          return stored.stream()
+              .filter(i -> id.equals(i.getId()) && userId.equals(i.getUserId()))
+              .findFirst();
+        }
+
+        @Override
         public Optional<Initiative> findActiveByIdAndUser(UUID id, UUID userId) {
           return stored.stream()
               .filter(Initiative::isActive)
