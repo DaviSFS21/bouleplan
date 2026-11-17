@@ -10,7 +10,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -172,7 +171,7 @@ public class Task extends PanacheEntityBase {
   /** Plans the task for the week starting on this Monday, or clears it with {@code null}. */
   public void planWeek(LocalDate weekStart) {
     if (Objects.nonNull(weekStart)
-        && (weekStart.getDayOfWeek() != DayOfWeek.MONDAY || !EntityText.hasValidYear(weekStart))) {
+        && (!CalendarDates.isMonday(weekStart) || !EntityText.hasValidYear(weekStart))) {
       throw new InvalidTaskException(
           "task.planned-week.invalid",
           "Planned week must start on a Monday with a year between "
