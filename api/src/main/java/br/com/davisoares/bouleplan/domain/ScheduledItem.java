@@ -23,6 +23,9 @@ import org.hibernate.annotations.UuidGenerator;
 @Table(name = "scheduled_item")
 public class ScheduledItem extends PanacheEntityBase {
 
+  /** Highest day-list order a client may set; appends and shifts stay far from overflow. */
+  public static final int MAX_SORT_ORDER = 1_000_000;
+
   private static final String INVALID = "scheduled-item.time.invalid";
 
   @Id @GeneratedValue @UuidGenerator private UUID id;
@@ -81,9 +84,12 @@ public class ScheduledItem extends PanacheEntityBase {
 
   /** Fails unless the date and order make a day-list entry. */
   public static void requireDayListEntry(LocalDate date, int sortOrder) {
-    if (date == null || !EntityText.hasValidYear(date) || sortOrder < 0) {
+    if (date == null
+        || !EntityText.hasValidYear(date)
+        || sortOrder < 0
+        || sortOrder > MAX_SORT_ORDER) {
       throw new InvalidScheduleException(
-          INVALID, "A day-list entry needs a valid date and a non-negative order");
+          INVALID, "A day-list entry needs a valid date and an order from 0 to " + MAX_SORT_ORDER);
     }
   }
 

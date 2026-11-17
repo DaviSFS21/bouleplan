@@ -67,7 +67,7 @@ import { WeekGrid } from './week-grid';
 import styles from './planner-screen.module.css';
 
 const DRAG_ACTIVATION_DISTANCE = 6;
-const TRAY = '[aria-label="Para planejar"]';
+const TRAY = '[data-planner-tray]';
 
 function isWeekStart(value: string | null): value is string {
   return value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && weekStartOf(value) === value;
@@ -475,7 +475,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
           </button>
         </div>
       </header>
-      <div role="status" aria-label="Alertas da semana">
+      <div role="status" aria-label="Alertas da semana" className={styles.alerts}>
         {atRisk.length > 0 ? (
           <StatusStrip
             tone="atencao"

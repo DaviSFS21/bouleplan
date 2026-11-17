@@ -175,6 +175,8 @@ class ScheduledItemUpdateResourceTest {
     PlannerApi.patchItem(first, "{\"sortOrder\": null}").body(SORT_ORDER, equalTo(2));
     InitiativeAssertions.assertProblem(
         PlannerApi.patchItem(first, "{\"sortOrder\": -1}"), 400, PlannerApi.ITEM_TIME);
+    InitiativeAssertions.assertProblem(
+        PlannerApi.patchItem(first, "{\"sortOrder\": 2147483647}"), 400, PlannerApi.ITEM_TIME);
     PlannerApi.planner(PlannerApi.MONDAY)
         .body("items.taskId", org.hamcrest.Matchers.contains(otherTaskId, taskId));
   }

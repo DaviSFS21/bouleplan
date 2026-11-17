@@ -63,10 +63,17 @@ class ScheduledItemTest {
   }
 
   @Test
-  @DisplayName("a day-list entry needs a date and a non-negative order")
+  @DisplayName("a day-list entry needs a date and an order from 0 to the maximum")
   void dayListRules() {
     assertThat(codeOf(() -> ScheduledItem.dayListEntry(TASK_ID, null, 0))).isEqualTo(TIME_INVALID);
     assertThat(codeOf(() -> ScheduledItem.dayListEntry(TASK_ID, DAY, -1))).isEqualTo(TIME_INVALID);
+    assertThat(
+            codeOf(
+                () -> ScheduledItem.dayListEntry(TASK_ID, DAY, ScheduledItem.MAX_SORT_ORDER + 1)))
+        .isEqualTo(TIME_INVALID);
+    assertThat(
+            ScheduledItem.dayListEntry(TASK_ID, DAY, ScheduledItem.MAX_SORT_ORDER).getSortOrder())
+        .isEqualTo(ScheduledItem.MAX_SORT_ORDER);
   }
 
   @Test

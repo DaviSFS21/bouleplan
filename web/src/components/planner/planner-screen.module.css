@@ -116,3 +116,8 @@
   gap: var(--space-4);
   min-width: 0;
 }
+
+/* Kept mounted (and in the accessibility tree) so a new alert is announced; empty, it cancels the flex gap. */
+.alerts:empty {
+  margin-block-end: calc(-1 * var(--space-4));
+}
