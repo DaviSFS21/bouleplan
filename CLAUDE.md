@@ -3,7 +3,8 @@
 Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.md` and the README of the project you are changing.
 
 ## Way of working
-- Work in steps and stop for review at the end of each one; explain the reasoning behind decisions. When there is more than one reasonable path, present the options with pros and cons before choosing.
+- **Autonomous mode** (since 2026-11-17): the owner does not review code step by step. Work slice by slice to the end of the roadmap: plan, implement (parallel agents), verify (all CI checks plus end-to-end tests), independent review, fix, pull request, green CI. Decide product questions from Notion and the design system and record each decision in the pull request description. Stop only for real blockers (credentials, GitHub settings, a decision that contradicts Notion).
+- Roadmap: initiatives; initiative panel; phases; task kanban; task panel and blockers; weekly planner (with a proposed design for the deadline-without-reserved-time alert); mobile and accessibility; Introspecto; production containers. Integrations and AI are out of scope.
 - Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request. Open the pull request as a **draft** as soon as the step starts, keep its sub-step checklist up to date, and mark it ready for review only when the step is done.
 - **Vertical slices**: one feature end to end (domain → API → screen) at a time.
 - **TDD**: write the test before the code.
