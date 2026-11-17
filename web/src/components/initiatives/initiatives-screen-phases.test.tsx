@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -387,6 +387,21 @@ describe('renaming a phase', () => {
     expect(backend.bodies).toEqual([{ name: 'Demolição!' }]);
   });
 
+  it('does not return focus to the row when Enter only confirms a composition', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    renderWithQuery(<InitiativesScreen />);
+    await openInitiative(user, 'Reforma');
+
+    await openMenu(user, 'Demolição', 'Editar nome');
+    const field = within(index()).getByRole('textbox', { name: 'Nome da fase' });
+    fireEvent.keyDown(field, { key: 'Enter', isComposing: true });
+    fireEvent.keyUp(field, { key: 'Enter' });
+    await user.click(within(index()).getByRole('button', { name: /^Reforma/ }));
+
+    expect(phaseButton('Fase 1 · Demolição')).not.toHaveFocus();
+  });
+
   it('reports a blank name and keeps the old one', async () => {
     const user = userEvent.setup();
     const backend = serve([reforma], [demolition]);
@@ -672,7 +687,7 @@ describe('archiving or deleting an initiative with phases', () => {
     expect(await screen.findByText('Iniciativa arquivada')).toBeVisible();
   });
 
-  it('keeps the plain notice when the phases were never loaded', async () => {
+  it('counts the phases even when they were never loaded', async () => {
     const user = userEvent.setup();
     serve([reforma, horta], [seeds]);
     renderWithQuery(<InitiativesScreen />);
@@ -681,6 +696,228 @@ describe('archiving or deleting an initiative with phases', () => {
     await user.click(within(nav).getByRole('button', { name: 'Ações de Horta' }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
 
-    expect(await screen.findByText('Iniciativa arquivada')).toBeVisible();
+    expect(await screen.findByText('Iniciativa arquivada, com 1 fase')).toBeVisible();
+  });
+
+  it('keeps the plain notice when counting the phases fails', async () => {
+    const user = userEvent.setup();
+    serve([reforma, horta], [seeds]);
+    server.use(http.get('*/api/initiatives/:id/phases', () => problemResponse('internal', 500)));
+    renderWithQuery(<InitiativesScreen />);
+    const nav = await screen.findByRole('navigation', { name: 'Iniciativas' });
+
+    await user.click(within(nav).getByRole('button', { name: 'Ações de Horta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
+
+    expect(await screen.findByText('Iniciativa excluída')).toBeVisible();
+  });
+
+  it('undo restores the selection together with the phase filter', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition, flooring]);
+    renderWithQuery(<InitiativesScreen />);
+    await openInitiative(user, 'Reforma');
+    await user.click(await within(index()).findByRole('button', { name: 'Fase 2 · Piso' }));
+
+    await user.click(within(index()).getByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    await screen.findByText('Iniciativa arquivada, com 2 fases');
+    expect(window.location.search).toBe('');
+
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Piso' })).toBeVisible();
+    expect(window.location.search).toBe(`?iniciativa=${reforma.id}&fase=${flooring.id}`);
+  });
+});
+
+describe('panel details', () => {
+  async function openPanelFrom(user: ReturnType<typeof userEvent.setup>, opener: string) {
+    const main = screen.getByRole('main');
+    await user.click(within(main).getByRole('button', { name: opener, expanded: false }));
+    return screen.getByRole('complementary', { name: 'Iniciativa' });
+  }
+
+  it('keeps the panel open when Escape cancels "+ Nova fase"', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('heading', { level: 1, name: 'Reforma' });
+    const panel = await openPanelFrom(user, 'Reforma');
+    await user.click(await within(panel).findByRole('button', { name: '+ Nova fase' }));
+    expect(within(panel).getByRole('textbox', { name: 'Nome da nova fase' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByRole('complementary', { name: 'Iniciativa' })).toBeVisible();
+    expect(
+      within(panel).queryByRole('textbox', { name: 'Nome da nova fase' }),
+    ).not.toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: '+ Nova fase' })).toHaveFocus();
+  });
+
+  it('returns focus to the overline button after filtering from the panel and closing', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('heading', { level: 1, name: 'Reforma' });
+    const panel = await openPanelFrom(user, 'Reforma');
+
+    await user.click(await within(panel).findByRole('button', { name: 'Fase 1 · Demolição' }));
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
+
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('button', { name: 'Reforma' })).toHaveFocus();
+    expect(screen.getByRole('heading', { level: 1, name: 'Demolição' })).toBeVisible();
+  });
+
+  it('returns focus to the title button after clearing the filter and closing', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    navigateTo(`/?iniciativa=${reforma.id}&fase=${demolition.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('heading', { level: 1, name: 'Demolição' });
+    await openPanelFrom(user, 'Reforma');
+
+    await user.click(phaseButton('Fase 1 · Demolição'));
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
+
+    const heading = screen.getByRole('heading', { level: 1, name: 'Reforma' });
+    expect(within(heading).getByRole('button', { name: 'Reforma' })).toHaveFocus();
+  });
+
+  it('falls back to the index row when the panel was opened from the URL', async () => {
+    const user = userEvent.setup();
+    serve([reforma], []);
+    navigateTo(`/?iniciativa=${reforma.id}&detalhes=1`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('complementary', { name: 'Iniciativa' });
+
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
+
+    expect(within(index()).getByRole('button', { name: /^Reforma/ })).toHaveFocus();
+  });
+
+  it('does not carry a typed phase name over to another initiative', async () => {
+    const user = userEvent.setup();
+    const backend = serve([reforma, horta], [demolition, seeds]);
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('heading', { level: 1, name: 'Reforma' });
+    const panel = await openPanelFrom(user, 'Reforma');
+    await user.click(await within(panel).findByRole('button', { name: '+ Nova fase' }));
+    await user.type(within(panel).getByRole('textbox', { name: 'Nome da nova fase' }), 'Piso');
+
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+
+    expect(await within(panel).findByRole('button', { name: 'Fase 1 · Sementes' })).toBeVisible();
+    expect(
+      within(panel).queryByRole('textbox', { name: 'Nome da nova fase' }),
+    ).not.toBeInTheDocument();
+    expect(backend.bodies).toEqual([]);
+  });
+
+  it('toggles the phase filter from the panel', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('heading', { level: 1, name: 'Reforma' });
+    const panel = await openPanelFrom(user, 'Reforma');
+    const button = await within(panel).findByRole('button', { name: 'Fase 1 · Demolição' });
+
+    await user.click(button);
+    expect(window.location.search).toContain('fase=');
+    await user.click(button);
+
+    expect(window.location.search).toBe(`?iniciativa=${reforma.id}&detalhes=1`);
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+describe('"Nova fase" in the initiative menu', () => {
+  it('selects the initiative, opens the field for it and focuses it', async () => {
+    const user = userEvent.setup();
+    const backend = serve([reforma, horta], [demolition, seeds]);
+    renderWithQuery(<InitiativesScreen />);
+    const nav = await screen.findByRole('navigation', { name: 'Iniciativas' });
+
+    await user.click(within(nav).getByRole('button', { name: 'Ações de Horta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+
+    const field = await within(nav).findByRole('textbox', { name: 'Nome da nova fase' });
+    expect(field).toHaveFocus();
+    expect(window.location.search).toBe(`?iniciativa=${horta.id}`);
+    await user.type(field, 'Colheita{Enter}');
+    await within(nav).findByRole('button', { name: 'Fase 2 · Colheita' });
+    expect(backend.phases.map((item) => item.initiativeId)).toEqual([
+      reforma.id,
+      horta.id,
+      horta.id,
+    ]);
+  });
+
+  it('keeps the phase filter when the initiative is already selected, and focuses the field again', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    renderWithQuery(<InitiativesScreen />);
+    await openInitiative(user, 'Reforma');
+    await user.click(await within(index()).findByRole('button', { name: 'Fase 1 · Demolição' }));
+
+    await user.click(within(index()).getByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+    await within(index()).findByRole('textbox', { name: 'Nome da nova fase' });
+    expect(window.location.search).toBe(`?iniciativa=${reforma.id}&fase=${demolition.id}`);
+
+    await user.click(within(index()).getByRole('button', { name: /^Reforma/ }));
+    await user.click(within(index()).getByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+
+    expect(
+      await within(index()).findByRole('textbox', { name: 'Nome da nova fase' }),
+    ).toHaveFocus();
+  });
+
+  it('applies the intent once and does not leave it pending for later', async () => {
+    const user = userEvent.setup();
+    serve([reforma, horta], [seeds]);
+    let broken = true;
+    server.use(
+      http.get('*/api/initiatives/:id/phases', ({ params }) =>
+        broken && params.id === horta.id
+          ? problemResponse('internal', 500)
+          : HttpResponse.json(params.id === horta.id ? [seeds] : []),
+      ),
+    );
+    renderWithQuery(<InitiativesScreen />);
+    const nav = await screen.findByRole('navigation', { name: 'Iniciativas' });
+
+    await user.click(within(nav).getByRole('button', { name: 'Ações de Horta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+    await within(nav).findByText('Não foi possível carregar as fases.');
+    await user.click(within(nav).getByRole('button', { name: /^Reforma/ }));
+    broken = false;
+    await user.click(within(nav).getByRole('button', { name: /^Horta/ }));
+
+    expect(await within(nav).findByRole('button', { name: 'Fase 1 · Sementes' })).toBeVisible();
+    expect(within(nav).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('does not reopen the field after it was cancelled', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    renderWithQuery(<InitiativesScreen />);
+    await openInitiative(user, 'Reforma');
+    await within(index()).findByRole('button', { name: 'Fase 1 · Demolição' });
+    await user.click(within(index()).getByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+    await within(index()).findByRole('textbox', { name: 'Nome da nova fase' });
+
+    await user.keyboard('{Escape}');
+    await user.click(phaseButton('Fase 1 · Demolição'));
+
+    expect(within(index()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

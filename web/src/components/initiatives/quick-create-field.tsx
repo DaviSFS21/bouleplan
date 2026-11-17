@@ -15,6 +15,8 @@ interface QuickCreateFieldProps {
   errorMessage: (failure: unknown) => string;
   onCreate: (name: string) => Promise<void>;
   keepOpen?: boolean;
+  // Each new positive value opens the field and focuses it.
+  openSignal?: number;
 }
 
 export function QuickCreateField({
@@ -25,8 +27,10 @@ export function QuickCreateField({
   errorMessage,
   onCreate,
   keepOpen = false,
+  openSignal = 0,
 }: Readonly<QuickCreateFieldProps>) {
   const [open, setOpen] = useState(false);
+  const [handledSignal, setHandledSignal] = useState(0);
   const [name, setName] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +40,14 @@ export function QuickCreateField({
   const errorId = useId();
   const hintId = useId();
 
+  if (openSignal !== handledSignal) {
+    setHandledSignal(openSignal);
+    if (openSignal > 0) setOpen(true);
+  }
+
   useEffect(() => {
     if (open) input.current?.focus();
-  }, [open]);
+  }, [open, openSignal]);
 
   useEffect(() => {
     if (!open && restoreFocus.current) {
@@ -78,6 +87,7 @@ export function QuickCreateField({
       event.preventDefault();
       void submit();
     } else if (event.key === 'Escape') {
+      event.stopPropagation();
       close();
       restoreFocus.current = true;
     }

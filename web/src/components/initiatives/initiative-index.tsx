@@ -23,6 +23,8 @@ export interface PhaseIndexProps {
   onRename: (phase: Phase, name: string) => void;
   onArchive: (phase: Phase) => void;
   onDelete: (phase: Phase) => void;
+  newPhaseSignal: number;
+  onNewPhaseHandled: () => void;
 }
 
 type InitiativeIndexProps = Readonly<{
@@ -35,6 +37,7 @@ type InitiativeIndexProps = Readonly<{
   onEditColor: (id: string) => void;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
+  onNewPhase: (id: string) => void;
   phaseIndex: PhaseIndexProps;
   actionError: string | null;
   focusRequest: FocusRequest | null;
@@ -50,6 +53,7 @@ export function InitiativeIndex({
   onEditColor,
   onArchive,
   onDelete,
+  onNewPhase,
   phaseIndex,
   actionError,
   focusRequest,
@@ -144,6 +148,12 @@ export function InitiativeIndex({
                       label: 'Cor…',
                       onSelect: () => {
                         onEditColor(initiative.id);
+                      },
+                    },
+                    {
+                      label: 'Nova fase',
+                      onSelect: () => {
+                        onNewPhase(initiative.id);
                       },
                     },
                     { separator: true },

@@ -8,7 +8,7 @@ import { initiative, phase, problemResponse } from '@/test/fixtures';
 import { server } from '@/test/server';
 import { ApiError } from './problem';
 import {
-  cachedPhaseCount,
+  fetchPhaseCount,
   phasesKey,
   useArchivePhase,
   useCreatePhase,
@@ -39,7 +39,7 @@ function wrapper({ children }: Readonly<{ children: ReactNode }>) {
 function useAllHooks() {
   return {
     list: usePhases(INITIATIVE_ID),
-    count: cachedPhaseCount(useQueryClient(), INITIATIVE_ID),
+    client: useQueryClient(),
     create: useCreatePhase(),
     update: useUpdatePhase(),
     archive: useArchivePhase(),
@@ -64,9 +64,35 @@ describe('usePhases', () => {
   });
 
   it('loads the phases of the initiative', async () => {
-    const { result } = await loaded([demolition]);
+    await loaded([demolition]);
+  });
 
-    expect(result.current.count).toBe(1);
+  it('counts the phases fresh, even when they were never loaded', async () => {
+    server.use(
+      http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([demolition, flooring])),
+    );
+    const { result } = renderHook(() => useQueryClient(), { wrapper });
+
+    await expect(fetchPhaseCount(result.current, INITIATIVE_ID)).resolves.toBe(2);
+  });
+
+  it('counts 0 when the request fails', async () => {
+    server.use(http.get('*/api/initiatives/:id/phases', () => problemResponse('internal', 500)));
+    const { result } = renderHook(() => useQueryClient(), { wrapper });
+
+    await expect(fetchPhaseCount(result.current, INITIATIVE_ID)).resolves.toBe(0);
+  });
+
+  it('counts 0 when the request is too slow', async () => {
+    server.use(
+      http.get('*/api/initiatives/:id/phases', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        return HttpResponse.json([demolition]);
+      }),
+    );
+    const { result } = renderHook(() => useQueryClient(), { wrapper });
+
+    await expect(fetchPhaseCount(result.current, INITIATIVE_ID, 20)).resolves.toBe(0);
   });
 
   it('does not fetch without an initiative id', async () => {

@@ -19,6 +19,8 @@ type PhaseListProps = Readonly<{
   onRename: (phase: Phase, name: string) => void;
   onArchive: (phase: Phase) => void;
   onDelete: (phase: Phase) => void;
+  newPhaseSignal: number;
+  onNewPhaseHandled: () => void;
 }>;
 
 export function PhaseList({
@@ -29,6 +31,8 @@ export function PhaseList({
   onRename,
   onArchive,
   onDelete,
+  newPhaseSignal,
+  onNewPhaseHandled,
 }: PhaseListProps) {
   const root = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
@@ -40,6 +44,10 @@ export function PhaseList({
       root.current?.querySelector<HTMLElement>(`[data-phase-id="${focusTarget.id}"]`)?.focus();
     }
   }, [focusTarget]);
+
+  useEffect(() => {
+    if (newPhaseSignal > 0) onNewPhaseHandled();
+  }, [newPhaseSignal, onNewPhaseHandled]);
 
   function endEdit(id: string) {
     setEditingId(null);
@@ -58,7 +66,13 @@ export function PhaseList({
               <div
                 className={styles.editing}
                 onKeyDownCapture={(event) => {
-                  if (event.key === 'Enter' || event.key === 'Escape') returnFocus.current = true;
+                  const ends =
+                    event.key === 'Escape' ||
+                    (event.key === 'Enter' && !event.nativeEvent.isComposing);
+                  if (ends) returnFocus.current = true;
+                }}
+                onKeyUpCapture={() => {
+                  returnFocus.current = false;
                 }}
                 onBlur={(event) => {
                   if (!event.currentTarget.contains(event.relatedTarget)) endEdit(phase.id);
@@ -128,6 +142,7 @@ export function PhaseList({
         errorMessage={createPhaseMessage}
         onCreate={onCreate}
         keepOpen
+        openSignal={newPhaseSignal}
       />
     </div>
   );

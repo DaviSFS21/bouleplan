@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import type { Initiative, Phase } from '@/api/types';
 import styles from './initiative-board.module.css';
 
@@ -7,6 +7,7 @@ interface InitiativeBoardProps {
   phase: Phase | null;
   detailsOpen: boolean;
   onOpenDetails: () => void;
+  openerRef: RefObject<HTMLButtonElement | null>;
 }
 
 export function InitiativeBoard({
@@ -14,6 +15,7 @@ export function InitiativeBoard({
   phase,
   detailsOpen,
   onOpenDetails,
+  openerRef,
 }: Readonly<InitiativeBoardProps>) {
   let title: ReactNode = 'Todas as tarefas';
   if (phase) {
@@ -21,6 +23,7 @@ export function InitiativeBoard({
   } else if (initiative) {
     title = (
       <button
+        ref={openerRef}
         type="button"
         className={styles.titleButton}
         aria-expanded={detailsOpen}
@@ -38,6 +41,7 @@ export function InitiativeBoard({
           <p className={styles.overline}>
             {phase ? (
               <button
+                ref={openerRef}
                 type="button"
                 className={styles.overlineButton}
                 aria-expanded={detailsOpen}

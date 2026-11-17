@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { useUpdateInitiative, type InitiativeChanges } from '@/api/initiatives';
 import {
   BLANK_NAME_MESSAGE,
@@ -36,8 +36,10 @@ interface InitiativePanelProps {
   initiative: Initiative;
   phases: readonly Phase[] | undefined;
   selectedPhaseId: string | null;
-  onSelectPhase: (id: string) => void;
+  onSelectPhase: (id: string | null) => void;
   onCreatePhase: (name: string) => Promise<void>;
+  opener: RefObject<HTMLElement | null>;
+  fallbackFocus: () => HTMLElement | null;
   request: PanelRequest | null;
   onRequestHandled: () => void;
   onClose: () => void;
@@ -54,6 +56,8 @@ export function InitiativePanel({
   selectedPhaseId,
   onSelectPhase,
   onCreatePhase,
+  opener,
+  fallbackFocus,
   request,
   onRequestHandled,
   onClose,
@@ -160,6 +164,8 @@ export function InitiativePanel({
       eyebrow="Iniciativa"
       actions={menu}
       footer={footer}
+      opener={opener}
+      fallbackFocus={fallbackFocus}
       onClose={onClose}
     >
       <InlineText
@@ -264,7 +270,7 @@ export function InitiativePanel({
                   className={styles.phase}
                   aria-pressed={selectedPhaseId === phase.id}
                   onClick={() => {
-                    onSelectPhase(phase.id);
+                    onSelectPhase(selectedPhaseId === phase.id ? null : phase.id);
                   }}
                 >
                   {phaseLabel(position, phase.name)}
@@ -275,6 +281,7 @@ export function InitiativePanel({
         ) : null}
         {phases?.length === 0 ? <p className={styles.meta}>Nenhuma fase ainda.</p> : null}
         <QuickCreateField
+          key={initiative.id}
           triggerLabel="+ Nova fase"
           inputLabel="Nome da nova fase"
           placeholder="Nome da fase"

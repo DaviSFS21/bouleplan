@@ -186,6 +186,7 @@ describe('index action menus', () => {
       'Abrir detalhes',
       'Editar nome',
       'Cor…',
+      'Nova fase',
       'Arquivar',
       'Excluir',
     ]);
@@ -562,6 +563,8 @@ describe('InitiativePanel footer', () => {
         selectedPhaseId={null}
         onSelectPhase={vi.fn()}
         onCreatePhase={vi.fn()}
+        opener={{ current: null }}
+        fallbackFocus={() => null}
         request={null}
         onRequestHandled={vi.fn()}
         now={new Date('2026-11-17T12:00:00-03:00')}

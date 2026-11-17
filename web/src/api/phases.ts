@@ -8,17 +8,44 @@ export function phasesKey(initiativeId: string) {
   return ['initiatives', initiativeId, 'phases'] as const;
 }
 
+function listPhases(initiativeId: string) {
+  return unwrap(api.GET('/initiatives/{id}/phases', { params: { path: { id: initiativeId } } }));
+}
+
 export function usePhases(initiativeId: string | null) {
   return useQuery({
     queryKey: phasesKey(initiativeId ?? ''),
-    queryFn: () =>
-      unwrap(api.GET('/initiatives/{id}/phases', { params: { path: { id: initiativeId ?? '' } } })),
+    queryFn: () => listPhases(initiativeId ?? ''),
     enabled: initiativeId !== null,
   });
 }
 
-export function cachedPhaseCount(queryClient: QueryClient, initiativeId: string): number {
-  return queryClient.getQueryData<Phase[]>(phasesKey(initiativeId))?.length ?? 0;
+// Counts the phases fresh, so the answer is right even if they were never loaded; 0 on failure.
+export async function fetchPhaseCount(
+  queryClient: QueryClient,
+  initiativeId: string,
+  timeoutMs = 1500,
+): Promise<number> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error('Counting phases timed out'));
+    }, timeoutMs);
+  });
+  try {
+    const phases = await Promise.race([
+      queryClient.query({
+        queryKey: phasesKey(initiativeId),
+        queryFn: () => listPhases(initiativeId),
+      }),
+      timeout,
+    ]);
+    return phases.length;
+  } catch {
+    return 0;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function runScoped<TVariables, TData>(

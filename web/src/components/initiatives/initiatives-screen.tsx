@@ -22,7 +22,7 @@ import {
   renamePhaseMessage,
 } from '@/api/messages';
 import {
-  cachedPhaseCount,
+  fetchPhaseCount,
   useArchivePhase,
   useCreatePhase,
   useDeletePhase,
@@ -78,10 +78,19 @@ export function InitiativesScreen() {
   const [actionError, setActionError] = useState<{ message: string; search: string } | null>(null);
   const [request, setRequest] = useState<PanelRequest | null>(null);
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
+  const [newPhaseRequest, setNewPhaseRequest] = useState<{
+    initiativeId: string;
+    nonce: number;
+  } | null>(null);
   const counter = useRef(0);
+  const opener = useRef<HTMLButtonElement | null>(null);
 
   const clearRequest = useCallback(() => {
     setRequest(null);
+  }, []);
+
+  const clearNewPhaseRequest = useCallback(() => {
+    setNewPhaseRequest(null);
   }, []);
 
   function currentParams() {
@@ -100,6 +109,7 @@ export function InitiativesScreen() {
   }
 
   function select(id: string | null) {
+    setNewPhaseRequest(null);
     navigate((params) => {
       params.delete(PHASE_PARAM);
       if (id === null) {
@@ -112,6 +122,7 @@ export function InitiativesScreen() {
   }
 
   function openDetails(id: string, intent: PanelIntent = null) {
+    if (id !== currentParams().get(SELECTION_PARAM)) setNewPhaseRequest(null);
     counter.current += 1;
     setRequest(intent === null ? null : { intent, id: counter.current, target: id });
     navigate((params) => {
@@ -144,6 +155,7 @@ export function InitiativesScreen() {
       return;
     }
     const wasSelected = currentParams().get(SELECTION_PARAM) === id;
+    const phaseFilter = wasSelected ? currentParams().get(PHASE_PARAM) : null;
     if (wasSelected) select(null);
     counter.current += 1;
     setFocusRequest({ id: neighbour?.id ?? null, nonce: counter.current });
@@ -156,6 +168,7 @@ export function InitiativesScreen() {
             navigate((params) => {
               params.set(SELECTION_PARAM, id);
               params.delete(DETAILS_PARAM);
+              if (phaseFilter) params.set(PHASE_PARAM, phaseFilter);
             });
           },
           () => {
@@ -166,17 +179,18 @@ export function InitiativesScreen() {
     });
   }
 
-  function archive(id: string) {
-    const count = cachedPhaseCount(queryClient, id);
+  async function archive(id: string) {
+    const count = await fetchPhaseCount(queryClient, id);
     return leave(id, archiveInitiative.mutateAsync, unarchiveInitiative.mutateAsync, {
       done: `Iniciativa arquivada${phaseCountSuffix(count)}`,
       failed: ARCHIVE_INITIATIVE_FAILED_MESSAGE,
     });
   }
 
-  function remove(id: string) {
+  async function remove(id: string) {
+    const count = await fetchPhaseCount(queryClient, id);
     return leave(id, deleteInitiative.mutateAsync, restoreInitiative.mutateAsync, {
-      done: `Iniciativa excluída${phaseCountSuffix(cachedPhaseCount(queryClient, id))}`,
+      done: `Iniciativa excluída${phaseCountSuffix(count)}`,
       failed: DELETE_INITIATIVE_FAILED_MESSAGE,
     });
   }
@@ -212,6 +226,17 @@ export function InitiativesScreen() {
   const detailsOpen = selected !== null && searchParams.get(DETAILS_PARAM) === '1';
   const phases = phasesQuery.data;
   const filteredPhase = phases?.find(({ id }) => id === searchParams.get(PHASE_PARAM)) ?? null;
+
+  function newPhaseIn(id: string) {
+    navigate((params) => {
+      if (params.get(SELECTION_PARAM) !== id) {
+        params.delete(PHASE_PARAM);
+        params.set(SELECTION_PARAM, id);
+      }
+    });
+    counter.current += 1;
+    setNewPhaseRequest({ initiativeId: id, nonce: counter.current });
+  }
 
   function selectPhase(id: string | null) {
     navigate((params) => {
@@ -299,6 +324,7 @@ export function InitiativesScreen() {
         onDelete={(id) => {
           void remove(id);
         }}
+        onNewPhase={newPhaseIn}
         phaseIndex={{
           phases,
           failed: phasesQuery.isError && !phases,
@@ -314,6 +340,9 @@ export function InitiativesScreen() {
               failed: ARCHIVE_PHASE_FAILED_MESSAGE,
             });
           },
+          newPhaseSignal:
+            newPhaseRequest?.initiativeId === selected?.id ? (newPhaseRequest?.nonce ?? 0) : 0,
+          onNewPhaseHandled: clearNewPhaseRequest,
           onDelete: (phase) => {
             void leavePhase(phase, deletePhase.mutateAsync, restorePhase.mutateAsync, {
               done: 'Fase excluída',
@@ -328,6 +357,7 @@ export function InitiativesScreen() {
         initiative={selected}
         phase={filteredPhase}
         detailsOpen={detailsOpen}
+        openerRef={opener}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
         }}
@@ -339,6 +369,10 @@ export function InitiativesScreen() {
           selectedPhaseId={filteredPhase?.id ?? null}
           onSelectPhase={selectPhase}
           onCreatePhase={(name) => createPhaseIn(selected.id, name)}
+          opener={opener}
+          fallbackFocus={() =>
+            document.querySelector<HTMLElement>(`[data-initiative-id="${selected.id}"]`)
+          }
           request={request}
           onRequestHandled={clearRequest}
           onClose={closeDetails}

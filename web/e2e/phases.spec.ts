@@ -18,11 +18,11 @@ function index(page: Page) {
 }
 
 function phaseButton(page: Page, label: string) {
-  return index(page).getByRole('button', { name: label });
+  return index(page).getByRole('button', { name: label, exact: true });
 }
 
 async function createPhases(page: Page, ...names: string[]) {
-  await index(page).getByRole('button', { name: '+ Nova fase' }).click();
+  await index(page).getByRole('button', { name: '+ Nova fase', exact: true }).click();
   const field = page.getByLabel('Nome da nova fase');
   for (const [position, name] of names.entries()) {
     await field.fill(name);
@@ -34,7 +34,7 @@ async function createPhases(page: Page, ...names: string[]) {
 
 async function phaseMenu(page: Page, name: string, item: string) {
   await index(page)
-    .getByRole('button', { name: `Ações da fase ${name}` })
+    .getByRole('button', { name: `Ações da fase ${name}`, exact: true })
     .click();
   await page.getByRole('menuitem', { name: item }).click();
 }
@@ -61,7 +61,9 @@ test('filters by a phase, shows the path, survives a reload and clears on a seco
   await expect(phaseButton(page, 'Fase 2 · Piso')).toHaveAttribute('aria-pressed', 'true');
   await expect(page).toHaveURL(/\?iniciativa=[0-9a-f-]+&fase=[0-9a-f-]+$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Piso' })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('button', { name: 'Reforma' })).toBeVisible();
+  await expect(
+    page.getByRole('main').getByRole('button', { name: 'Reforma', exact: true }),
+  ).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Piso' })).toBeVisible();
@@ -128,13 +130,15 @@ test('lists, filters and creates phases in the panel', async ({ page }) => {
   await page.getByRole('heading', { level: 1 }).getByRole('button', { name: 'Reforma' }).click();
   const panel = page.getByRole('complementary', { name: 'Iniciativa' });
 
-  await expect(panel.getByRole('button', { name: 'Fase 1 · Demolição' })).toBeVisible();
-  await panel.getByRole('button', { name: '+ Nova fase' }).click();
+  await expect(
+    panel.getByRole('button', { name: 'Fase 1 · Demolição', exact: true }),
+  ).toBeVisible();
+  await panel.getByRole('button', { name: '+ Nova fase', exact: true }).click();
   await panel.getByLabel('Nome da nova fase').fill('Piso');
   await panel.getByLabel('Nome da nova fase').press('Enter');
-  await expect(panel.getByRole('button', { name: 'Fase 2 · Piso' })).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Fase 2 · Piso', exact: true })).toBeVisible();
 
-  await panel.getByRole('button', { name: 'Fase 2 · Piso' }).click();
+  await panel.getByRole('button', { name: 'Fase 2 · Piso', exact: true }).click();
 
   await expect(page.getByRole('heading', { level: 1, name: 'Piso' })).toBeVisible();
   await expect(page).toHaveURL(/detalhes=1/);
@@ -144,7 +148,7 @@ test('counts the phases in the archive notice of the initiative', async ({ page 
   await createInitiative(page, 'Reforma');
   await createPhases(page, 'Demolição', 'Piso');
 
-  await index(page).getByRole('button', { name: 'Ações de Reforma' }).click();
+  await index(page).getByRole('button', { name: 'Ações de Reforma', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
 
   await expect(page.getByText('Iniciativa arquivada, com 2 fases')).toBeVisible();
