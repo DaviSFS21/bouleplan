@@ -1,3 +1,4 @@
+import { KeyboardCode } from '@dnd-kit/core';
 import type {
   Announcements,
   CollisionDetection,
@@ -8,6 +9,13 @@ import type { Task, TaskStatus } from '@/api/types';
 import { statusTitle } from './task-filter';
 
 export const DRAG_ACTIVATION_DISTANCE = 6;
+
+// Enter opens the task, so only Space picks it up and drops it.
+export const KEYBOARD_CODES = {
+  start: [KeyboardCode.Space],
+  cancel: [KeyboardCode.Esc],
+  end: [KeyboardCode.Space],
+};
 
 export interface DraggedTask {
   task: Task;
@@ -65,7 +73,7 @@ export const columnKeyboardCoordinates: KeyboardCoordinateGetter = (
 
 export const screenReaderInstructions: ScreenReaderInstructions = {
   draggable:
-    'Para pegar a tarefa, pressione Espaço ou Enter. Use as setas para a esquerda e para a direita para escolher a coluna, Espaço ou Enter para soltar e Esc para cancelar.',
+    'Para pegar a tarefa, pressione Espaço. Use as setas para a esquerda e para a direita para escolher a coluna, Espaço para soltar e Esc para cancelar. Enter abre a tarefa.',
 };
 
 export const announcements: Announcements = {

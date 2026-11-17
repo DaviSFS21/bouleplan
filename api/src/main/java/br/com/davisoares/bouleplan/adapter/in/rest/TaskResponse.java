@@ -1,10 +1,12 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
+import br.com.davisoares.bouleplan.application.port.in.TaskRelations;
 import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
@@ -24,6 +26,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       "status",
       "isBlocked",
       "plannedWeekStart",
+      "blocks",
+      "blockedBy",
       "createdAt",
       "updatedAt"
     })
@@ -51,11 +55,14 @@ public record TaskResponse(
     @JsonProperty("isBlocked") @Schema(name = "isBlocked") boolean isBlocked,
     @Schema(implementation = String.class, format = "date", nullable = true)
         LocalDate plannedWeekStart,
+    @Schema(description = "Visible tasks this one blocks, in task list order") List<UUID> blocks,
+    @Schema(description = "Visible tasks that block this one, in task list order")
+        List<UUID> blockedBy,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt) {
 
   /** Maps the entity at the REST boundary, hiding the implicit phase. */
-  public static TaskResponse from(Task task) {
+  public static TaskResponse from(Task task, TaskRelations relations) {
     Phase phase = task.getPhase();
     return new TaskResponse(
         task.getId(),
@@ -69,6 +76,8 @@ public record TaskResponse(
         task.getStatus().getToken(),
         task.isBlocked(),
         task.getPlannedWeekStart(),
+        relations.blocks(),
+        relations.blockedBy(),
         task.getCreatedAt(),
         task.getUpdatedAt());
   }

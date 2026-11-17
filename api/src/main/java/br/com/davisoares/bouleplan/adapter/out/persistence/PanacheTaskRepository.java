@@ -6,6 +6,7 @@ import br.com.davisoares.bouleplan.domain.Task;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,9 @@ public class PanacheTaskRepository implements TaskRepository, PanacheRepositoryB
           + " and p.initiativeId in (select i.id from Initiative i"
           + " where i.userId = ?1 and i.archivedAt is null and i.deletedAt is null)";
 
+  private static final String LIST_ORDER =
+      " order by t.priority, t.deadline nulls last, t.createdAt, t.id";
+
   @Override
   public void save(Task task) {
     persist(task);
@@ -28,8 +32,12 @@ public class PanacheTaskRepository implements TaskRepository, PanacheRepositoryB
 
   @Override
   public List<Task> findVisibleByUser(UUID userId) {
-    return list(
-        VISIBLE_OF_USER + " order by t.priority, t.deadline nulls last, t.createdAt, t.id", userId);
+    return list(VISIBLE_OF_USER + LIST_ORDER, userId);
+  }
+
+  @Override
+  public List<Task> findVisibleByIdsAndUser(Collection<UUID> ids, UUID userId) {
+    return list(VISIBLE_OF_USER + " and t.id in ?2" + LIST_ORDER, userId, ids);
   }
 
   @Override

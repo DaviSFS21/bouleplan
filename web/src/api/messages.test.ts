@@ -10,6 +10,7 @@ import {
   phaseCountSuffix,
   renamePhaseMessage,
   updateInitiativeMessage,
+  blockerMessage,
 } from './messages';
 import { ApiError } from './problem';
 
@@ -125,6 +126,10 @@ describe('task messages', () => {
     ],
     ['deadline', 'internal', 'Não foi possível salvar o prazo. Tente de novo.'],
     ['isBlocked', 'internal', 'Não foi possível atualizar o bloqueio. Tente de novo.'],
+    ['phaseId', 'http.404', 'Essa fase não existe mais.'],
+    ['phaseId', 'internal', 'Não foi possível mudar a fase. Tente de novo.'],
+    ['plannedWeekStart', 'task.planned-week.invalid', 'Escolha uma semana válida.'],
+    ['plannedWeekStart', 'internal', 'Não foi possível salvar a semana. Tente de novo.'],
   ] as const)('maps %s failures with %s when updating', (field, code, message) => {
     expect(updateTaskMessage(failure(code), field)).toBe(message);
   });
@@ -133,6 +138,24 @@ describe('task messages', () => {
     expect(createTaskMessage(new TypeError('x'))).toBe(CREATE_TASK_FALLBACK_MESSAGE);
     expect(updateTaskMessage(new TypeError('x'), 'title')).toBe(
       'Não foi possível salvar o título. Tente de novo.',
+    );
+  });
+});
+
+describe('blockerMessage', () => {
+  it.each([
+    ['add', 'task.blocker.self', 'Uma tarefa não pode bloquear a si mesma.'],
+    ['add', 'task.blocker.cycle', 'Isso criaria um ciclo: a outra tarefa já depende desta.'],
+    ['remove', 'http.404', 'Essa tarefa não existe mais.'],
+    ['add', 'internal', 'Não foi possível adicionar o bloqueio. Tente de novo.'],
+    ['remove', 'internal', 'Não foi possível remover o bloqueio. Tente de novo.'],
+  ] as const)('maps %s failures with %s', (action, code, message) => {
+    expect(blockerMessage(failure(code), action)).toBe(message);
+  });
+
+  it('uses the fallback for errors that are not ApiError', () => {
+    expect(blockerMessage(new TypeError('x'), 'add')).toBe(
+      'Não foi possível adicionar o bloqueio. Tente de novo.',
     );
   });
 });

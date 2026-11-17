@@ -31,6 +31,8 @@ interface DeadlineFieldProps {
   value: string | null;
   onChange: (value: string | null) => void;
   today?: string;
+  // Replaces the default wording and overdue style, as the card words its deadline.
+  display?: { text: string; alert: boolean };
 }
 
 export function DeadlineField({
@@ -38,6 +40,7 @@ export function DeadlineField({
   value,
   onChange,
   today = localToday(),
+  display,
 }: Readonly<DeadlineFieldProps>) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -45,8 +48,8 @@ export function DeadlineField({
   const trigger = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
   const finished = useRef(false);
-  const overdue = value !== null && value < today;
-  const text = value === null ? 'sem prazo' : formatDeadline(value, today);
+  const overdue = display ? display.alert : value !== null && value < today;
+  const text = display?.text ?? (value === null ? 'sem prazo' : formatDeadline(value, today));
 
   useEffect(() => {
     if (editing) input.current?.focus();
@@ -108,11 +111,11 @@ export function DeadlineField({
           ref={trigger}
           type="button"
           className={[styles.value, overdue ? styles.overdue : ''].join(' ')}
-          aria-label={`${label}: ${text}${overdue ? ', vencido' : ''}`}
+          aria-label={`${label}: ${text}${overdue && !display ? ', vencido' : ''}`}
           onClick={startEditing}
         >
           {text}
-          {overdue ? <span className={styles.badge}>· vencido</span> : null}
+          {overdue && !display ? <span className={styles.badge}>· vencido</span> : null}
         </button>
       )}
       {value !== null ? (

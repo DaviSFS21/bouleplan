@@ -40,17 +40,20 @@ public class TaskService
   private final PhaseRepository phases;
   private final InitiativeRepository initiatives;
   private final CurrentUser currentUser;
+  private final TaskLocker locker;
 
   /** Wires the outbound ports. */
   public TaskService(
       TaskRepository tasks,
       PhaseRepository phases,
       InitiativeRepository initiatives,
-      CurrentUser currentUser) {
+      CurrentUser currentUser,
+      TaskLocker locker) {
     this.tasks = tasks;
     this.phases = phases;
     this.initiatives = initiatives;
     this.currentUser = currentUser;
+    this.locker = locker;
   }
 
   @Override
@@ -81,31 +84,52 @@ public class TaskService
   @Override
   @Transactional
   public Optional<Task> update(UUID id, UpdateTaskCommand command) {
-    return findActiveForUpdate(id)
-        .map(task -> {
-          if (command.title().present()) {
-            task.rename(command.title().value());
-          }
-          if (command.description().present()) {
-            task.describe(command.description().value());
-          }
-          if (command.deadline().present()) {
-            task.scheduleDeadline(command.deadline().value());
-          }
-          if (command.estimatedEffort().present()) {
-            task.estimate(command.estimatedEffort().value());
-          }
-          if (command.priority().present()) {
-            task.prioritize(command.priority().value());
-          }
-          if (command.status().present()) {
-            task.moveTo(command.status().value());
-          }
-          if (command.blocked().present()) {
-            task.markBlocked(command.blocked().value());
-          }
-          return task;
-        });
+    Optional<Task> updated;
+    if (command.phaseId().present()) {
+      updated =
+          locker
+              .lockForMove(id, command.phaseId().value())
+              .filter(move -> move.task().isActive())
+              .map(move -> {
+                move.task().moveToPhase(move.target());
+                return move.task();
+              });
+    } else {
+      updated = findActiveForUpdate(id);
+    }
+    return updated.map(task -> applyChanges(task, command));
+  }
+
+  private static Task applyChanges(Task task, UpdateTaskCommand command) {
+    if (command.title().present()) {
+      task.rename(command.title().value());
+    }
+    if (command.description().present()) {
+      task.describe(command.description().value());
+    }
+    if (command.deadline().present()) {
+      task.scheduleDeadline(command.deadline().value());
+    }
+    if (command.estimatedEffort().present()) {
+      task.estimate(command.estimatedEffort().value());
+    }
+    return applyState(task, command);
+  }
+
+  private static Task applyState(Task task, UpdateTaskCommand command) {
+    if (command.priority().present()) {
+      task.prioritize(command.priority().value());
+    }
+    if (command.status().present()) {
+      task.moveTo(command.status().value());
+    }
+    if (command.blocked().present()) {
+      task.markBlocked(command.blocked().value());
+    }
+    if (command.plannedWeekStart().present()) {
+      task.planWeek(command.plannedWeekStart().value());
+    }
+    return task;
   }
 
   @Override
@@ -171,19 +195,7 @@ public class TaskService
     return lockForWrite(id).filter(Task::isActive);
   }
 
-  // Lock order: initiative, then phase, then task. Nothing is loaded before its parent is locked.
   private Optional<Task> lockForWrite(UUID id) {
-    UUID userId = currentUser.id();
-    return tasks
-        .findLocation(id)
-        .flatMap(location ->
-            initiatives
-                .findByIdAndUserForUpdate(location.initiativeId(), userId)
-                .filter(Initiative::isActive)
-                .flatMap(initiative ->
-                    phases.findByIdAndInitiativeForUpdate(
-                        location.phaseId(), location.initiativeId()))
-                .filter(Phase::isActive)
-                .flatMap(phase -> tasks.findByIdForUpdate(id)));
+    return locker.lock(id);
   }
 }

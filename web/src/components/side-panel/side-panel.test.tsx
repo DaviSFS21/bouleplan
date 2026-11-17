@@ -136,3 +136,22 @@ describe('SidePanel', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 });
+
+describe('SidePanel eyebrow style', () => {
+  it('shows the path style as plain text and keeps links inside it', () => {
+    render(
+      <SidePanel
+        label="Tarefa"
+        eyebrow={<a href="/x">Reforma</a>}
+        eyebrowStyle="path"
+        onClose={vi.fn()}
+      >
+        <p>Conteúdo</p>
+      </SidePanel>,
+    );
+
+    const link = screen.getByRole('link', { name: 'Reforma' });
+    expect(link.parentElement?.className).toContain('path');
+    expect(link.parentElement?.className).not.toContain('eyebrow');
+  });
+});

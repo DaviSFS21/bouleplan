@@ -259,6 +259,68 @@ export function useRestoreTask() {
   return useBringBackTask('/tasks/{id}/restore');
 }
 
+interface BlockerPair {
+  blockingId: string;
+  blockedId: string;
+}
+
+function withRelation(
+  list: Task[] | undefined,
+  { blockingId, blockedId }: BlockerPair,
+  on: boolean,
+) {
+  const toggle = (ids: string[], id: string) =>
+    on ? (ids.includes(id) ? ids : [...ids, id]) : ids.filter((other) => other !== id);
+  return list?.map((item) => {
+    if (item.id === blockingId) return { ...item, blocks: toggle(item.blocks, blockedId) };
+    if (item.id === blockedId) return { ...item, blockedBy: toggle(item.blockedBy, blockingId) };
+    return item;
+  });
+}
+
+function useBlockerChange(method: 'PUT' | 'DELETE') {
+  const queryClient = useQueryClient();
+  return useMemo(
+    () => ({
+      mutateAsync: (pair: BlockerPair) => {
+        const on = method === 'PUT';
+        return runScoped(
+          queryClient,
+          `task-${pair.blockingId}`,
+          pair,
+          async (input) => {
+            const params = { params: { path: input } };
+            await unwrap(
+              on
+                ? api.PUT('/tasks/{blockingId}/blocks/{blockedId}', params)
+                : api.DELETE('/tasks/{blockingId}/blocks/{blockedId}', params),
+            );
+          },
+          () => undefined,
+          {
+            apply: (input) => {
+              void cancelRefetches(queryClient);
+              setList(queryClient, (list) => withRelation(list, input, on));
+            },
+            rollback: (input) => {
+              setList(queryClient, (list) => withRelation(list, input, !on));
+            },
+          },
+        );
+      },
+    }),
+    [queryClient, method],
+  );
+}
+
+export function useAddBlocker() {
+  return useBlockerChange('PUT');
+}
+
+export function useRemoveBlocker() {
+  return useBlockerChange('DELETE');
+}
+
 const hiddenByPhase = new WeakMap<QueryClient, Map<string, Task[]>>();
 
 // A phase that is archived or deleted takes its tasks off the board before the refetch answers.

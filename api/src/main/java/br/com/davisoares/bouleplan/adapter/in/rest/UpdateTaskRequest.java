@@ -3,6 +3,7 @@ package br.com.davisoares.bouleplan.adapter.in.rest;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 import org.eclipse.microprofile.openapi.annotations.enums.SchemaType;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
@@ -30,4 +31,17 @@ public record UpdateTaskRequest(
             type = SchemaType.STRING,
             enumeration = {"to_do", "in_progress", "done"})
         String status,
-    @JsonProperty("isBlocked") @Schema(name = "isBlocked") Boolean isBlocked) {}
+    @JsonProperty("isBlocked") @Schema(name = "isBlocked") Boolean isBlocked,
+    @Schema(
+            implementation = String.class,
+            format = "uuid",
+            description =
+                "An active named phase of the same initiative; null is the implicit phase",
+            nullable = true)
+        UUID phaseId,
+    @Schema(
+            implementation = String.class,
+            format = "date",
+            description = "A Monday",
+            nullable = true)
+        LocalDate plannedWeekStart) {}

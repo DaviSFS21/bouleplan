@@ -58,7 +58,9 @@ describe('keyboard drag and drop', () => {
       first.getAttribute('aria-describedby') ?? 'missing',
     );
 
-    expect(instructions).toHaveTextContent(/Para pegar a tarefa, pressione Espaço ou Enter/);
+    expect(instructions).toHaveTextContent(
+      /Para pegar a tarefa, pressione Espaço\. .*Enter abre a tarefa\./,
+    );
     expect(first).toHaveAttribute('aria-roledescription', 'tarefa arrastável');
   });
 

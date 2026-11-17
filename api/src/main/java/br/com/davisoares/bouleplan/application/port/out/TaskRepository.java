@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan.application.port.out;
 
 import br.com.davisoares.bouleplan.domain.Task;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,9 @@ public interface TaskRepository {
 
   /** An active task by id, if its phase and initiative are active and the user's. */
   Optional<Task> findVisibleByIdAndUser(UUID id, UUID userId);
+
+  /** The visible tasks among the given ids, in the order of {@link #findVisibleByUser}. */
+  List<Task> findVisibleByIdsAndUser(Collection<UUID> ids, UUID userId);
 
   /** The phase and initiative of a task in any state, read without loading the task. */
   Optional<TaskLocation> findLocation(UUID id);

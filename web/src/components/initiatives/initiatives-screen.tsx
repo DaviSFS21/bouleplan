@@ -1,8 +1,8 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+import { useIsMutating, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   useArchiveInitiative,
   useCreateInitiative,
@@ -38,11 +38,9 @@ import { Loading } from '@/components/loading/loading';
 import { InitiativeBoard } from './initiative-board';
 import { InitiativeIndex, type FocusRequest } from './initiative-index';
 import { InitiativePanel, type PanelIntent, type PanelRequest } from './initiative-panel';
+import type { TaskPanelControl } from '@/components/tasks/task-board';
+import { DETAILS_PARAM, PHASE_PARAM, SELECTION_PARAM, TASK_PARAM } from './url-params';
 import styles from './initiatives-screen.module.css';
-
-const SELECTION_PARAM = 'iniciativa';
-const DETAILS_PARAM = 'detalhes';
-const PHASE_PARAM = 'fase';
 
 export function InitiativesFallback() {
   return (
@@ -64,6 +62,15 @@ export function InitiativesScreen() {
   const requestedId = searchParams.get(SELECTION_PARAM);
   const selectedInitiativeId = data?.some(({ id }) => id === requestedId) ? requestedId : null;
   const tasksQuery = useTasks();
+  const taskParam = searchParams.get(TASK_PARAM);
+  const taskWriting = useIsMutating({
+    predicate: (mutation) => mutation.options.scope?.id.startsWith('task-') === true,
+  });
+  const liveInitiatives = new Set(data?.map(({ id }) => id));
+  const knownTask = tasksQuery.data?.find(
+    ({ id, initiativeId }) => id === taskParam && liveInitiatives.has(initiativeId),
+  );
+  const openTaskId = knownTask?.id ?? null;
   const phasesQuery = usePhases(selectedInitiativeId);
   const createPhase = useCreatePhase();
   const updatePhase = useUpdatePhase();
@@ -103,6 +110,18 @@ export function InitiativesScreen() {
     setNewPhaseRequest(null);
   }, []);
 
+  const settled = data !== undefined && tasksQuery.data !== undefined && !tasksQuery.isFetching;
+  const dropTaskParam = taskParam !== null && openTaskId === null && settled && taskWriting === 0;
+
+  // An unknown, hidden or removed task leaves no panel and no stale link.
+  useEffect(() => {
+    if (!dropTaskParam) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete(TASK_PARAM);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [dropTaskParam, router, pathname]);
+
   function currentParams() {
     return new URLSearchParams(window.location.search);
   }
@@ -139,8 +158,47 @@ export function InitiativesScreen() {
       if (params.get(SELECTION_PARAM) !== id) params.delete(PHASE_PARAM);
       params.set(SELECTION_PARAM, id);
       params.set(DETAILS_PARAM, '1');
+      params.delete(TASK_PARAM);
     });
   }
+
+  function openTask(id: string) {
+    const current = currentParams();
+    if (current.get(TASK_PARAM) === id && !current.has(DETAILS_PARAM)) return;
+    navigate((params) => {
+      params.set(TASK_PARAM, id);
+      params.delete(DETAILS_PARAM);
+    });
+  }
+
+  function closeTask(id?: string) {
+    if (id !== undefined && currentParams().get(TASK_PARAM) !== id) return;
+    navigate((params) => {
+      params.delete(TASK_PARAM);
+    });
+  }
+
+  function reopenTask(id: string) {
+    const params = currentParams();
+    if (params.has(TASK_PARAM) || params.get(DETAILS_PARAM) === '1') return;
+    openTask(id);
+  }
+
+  function selectTaskPath(initiativeId: string, phaseId: string | null) {
+    navigate((params) => {
+      params.set(SELECTION_PARAM, initiativeId);
+      if (phaseId === null) params.delete(PHASE_PARAM);
+      else params.set(PHASE_PARAM, phaseId);
+    });
+  }
+
+  const taskPanel: TaskPanelControl = {
+    openId: openTaskId,
+    open: openTask,
+    close: closeTask,
+    reopen: reopenTask,
+    selectPath: selectTaskPath,
+  };
 
   function closeDetails() {
     navigate((params) => {
@@ -247,7 +305,8 @@ export function InitiativesScreen() {
 
   const selected = data.find((initiative) => initiative.id === requestedId) ?? null;
 
-  const detailsOpen = selected !== null && searchParams.get(DETAILS_PARAM) === '1';
+  const detailsOpen =
+    selected !== null && searchParams.get(DETAILS_PARAM) === '1' && openTaskId === null;
   const phases = phasesQuery.data;
   const filteredPhase = phases?.find(({ id }) => id === searchParams.get(PHASE_PARAM)) ?? null;
 
@@ -389,6 +448,7 @@ export function InitiativesScreen() {
         onRetryTasks={() => {
           void tasksQuery.refetch();
         }}
+        taskPanel={taskPanel}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
         }}

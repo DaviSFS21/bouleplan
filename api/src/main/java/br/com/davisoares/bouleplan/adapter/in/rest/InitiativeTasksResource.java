@@ -27,11 +27,14 @@ import org.jboss.resteasy.reactive.RestResponse;
 public class InitiativeTasksResource {
 
   private final CreateTaskUseCase createTask;
+  private final TaskResponses responses;
   private final ObjectMapper objectMapper;
 
   /** Wires the inbound ports. */
-  public InitiativeTasksResource(CreateTaskUseCase createTask, ObjectMapper objectMapper) {
+  public InitiativeTasksResource(
+      CreateTaskUseCase createTask, TaskResponses responses, ObjectMapper objectMapper) {
     this.createTask = createTask;
+    this.responses = responses;
     this.objectMapper = objectMapper;
   }
 
@@ -79,7 +82,7 @@ public class InitiativeTasksResource {
             .orElseThrow(NotFoundException::new);
     return RestResponse.ResponseBuilder.<TaskResponse>created(
             URI.create("/tasks/" + created.getId()))
-        .entity(TaskResponse.from(created))
+        .entity(responses.of(created))
         .build();
   }
 }

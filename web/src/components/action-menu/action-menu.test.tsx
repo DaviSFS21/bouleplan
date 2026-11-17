@@ -361,3 +361,28 @@ describe('ActionMenu in a portal', () => {
     remove.mockRestore();
   });
 });
+
+describe('ActionMenu with its own trigger', () => {
+  it('renders the given content and class on the trigger and still works as a menu', async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ActionMenu
+        label="Estado: A fazer"
+        trigger={{ className: 'custom', children: <span>A fazer</span> }}
+        items={[{ label: 'Feito', onSelect }]}
+      />,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Estado: A fazer' });
+    expect(trigger).toHaveClass('custom');
+    expect(trigger).toHaveTextContent('A fazer');
+    expect(trigger.querySelector('svg')).toBeNull();
+
+    await user.click(trigger);
+    await user.click(screen.getByRole('menuitem', { name: 'Feito' }));
+
+    expect(onSelect).toHaveBeenCalledOnce();
+    expect(trigger).toHaveFocus();
+  });
+});

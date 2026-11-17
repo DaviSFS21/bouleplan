@@ -1,27 +1,24 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import type { Task, TaskPriority, TaskStatus } from '@/api/types';
-import { ActionMenu, type ActionMenuEntry } from '@/components/action-menu/action-menu';
+import {
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
+import type { Task } from '@/api/types';
+import { ActionMenu } from '@/components/action-menu/action-menu';
 import { InlineText } from '@/components/inline-text/inline-text';
-import { BlockedSelo, PrioritySelo, seloClassName } from '@/components/selo/selo';
+import { BlockedSelo, PrioritySelo } from '@/components/selo/selo';
 import { deadlineLabel } from './task-deadline';
 import type { DraggedTask } from './task-dnd';
-import { STATUSES, statusTitle } from './task-filter';
+import { taskMenuItems, type TaskActions } from './task-menu';
 import styles from './task-card.module.css';
 
 const TITLE_MAX_LENGTH = 300;
-const PRIORITIES: readonly TaskPriority[] = ['P1', 'P2', 'P3'];
-
-export interface TaskActions {
-  onRename: (task: Task, title: string) => void;
-  onPriority: (task: Task, priority: TaskPriority) => void;
-  onMove: (task: Task, status: TaskStatus) => void;
-  onToggleBlocked: (task: Task) => void;
-  onArchive: (task: Task) => void;
-  onDelete: (task: Task) => void;
-}
 
 interface TaskCardProps {
   task: Task;
@@ -30,6 +27,18 @@ interface TaskCardProps {
   color: string;
   now: Date;
   actions: TaskActions;
+  isOpen?: boolean;
+}
+
+// Pointer and key events from the menu and the title field must not open the task.
+const INTERACTIVE = 'button, input, textarea, a, [role="menu"]';
+
+function relationsLabel(task: Task): string | null {
+  const parts = [
+    task.blocks.length > 0 ? `bloqueia ${String(task.blocks.length)}` : null,
+    task.blockedBy.length > 0 ? `esperando ${String(task.blockedBy.length)}` : null,
+  ].filter((part) => part !== null);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 interface TaskCardBodyProps {
@@ -42,6 +51,7 @@ interface TaskCardBodyProps {
 
 function CardBody({ task, path, now, title, menu }: Readonly<TaskCardBodyProps>) {
   const deadline = deadlineLabel(task.deadline, now, task.status === 'done');
+  const relations = relationsLabel(task);
   return (
     <>
       <div className={styles.selos}>
@@ -55,6 +65,7 @@ function CardBody({ task, path, now, title, menu }: Readonly<TaskCardBodyProps>)
       <p className={styles.meta}>
         <span className={deadline.alert ? styles.alert : undefined}>{deadline.text}</span>
       </p>
+      {relations ? <p className={styles.meta}>{relations}</p> : null}
     </>
   );
 }
@@ -64,7 +75,7 @@ export function TaskCardPreview({
   path,
   color,
   now,
-}: Readonly<Omit<TaskCardProps, 'actions'>>) {
+}: Readonly<Omit<TaskCardProps, 'actions' | 'isOpen'>>) {
   return (
     <div
       className={[styles.card, styles.dragging].join(' ')}
@@ -75,15 +86,23 @@ export function TaskCardPreview({
   );
 }
 
-export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardProps>) {
+export function TaskCard({
+  task,
+  path,
+  color,
+  now,
+  actions,
+  isOpen = false,
+}: Readonly<TaskCardProps>) {
   const [editing, setEditing] = useState(false);
   const card = useRef<HTMLElement | null>(null);
   const returnFocus = useRef(false);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
-    id: task.id,
-    data: { task } satisfies DraggedTask,
-    disabled: editing,
-  });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging, active } =
+    useDraggable({
+      id: task.id,
+      data: { task } satisfies DraggedTask,
+      disabled: editing,
+    });
 
   function endEdit() {
     setEditing(false);
@@ -93,57 +112,32 @@ export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardP
     }
   }
 
-  const items: ActionMenuEntry[] = [
-    {
-      label: 'Editar título',
-      onSelect: () => {
-        setEditing(true);
-      },
-    },
-    { separator: true },
-    {
-      group: 'Prioridade',
-      items: PRIORITIES.map((priority) => ({
-        label: priority,
-        checked: task.priority === priority,
-        chipClassName: seloClassName(priority),
-        onSelect: () => {
-          actions.onPriority(task, priority);
-        },
-      })),
-    },
-    { separator: true },
-    {
-      group: 'Mover para',
-      items: STATUSES.map((status) => ({
-        label: statusTitle(status),
-        checked: task.status === status,
-        onSelect: () => {
-          actions.onMove(task, status);
-        },
-      })),
-    },
-    { separator: true },
-    {
-      label: task.isBlocked ? 'Desbloquear' : 'Marcar como bloqueada',
-      onSelect: () => {
-        actions.onToggleBlocked(task);
-      },
-    },
-    { separator: true },
-    {
-      label: 'Arquivar',
-      onSelect: () => {
-        actions.onArchive(task);
-      },
-    },
-    {
-      label: 'Excluir',
-      onSelect: () => {
-        actions.onDelete(task);
-      },
-    },
-  ];
+  function startEditing() {
+    setEditing(true);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    listeners?.onKeyDown?.(event);
+    if (event.defaultPrevented || event.target !== event.currentTarget || editing || active) return;
+    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      actions.onOpen(task, true);
+    } else if (
+      event.key.toLowerCase() === 'e' &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      event.preventDefault();
+      startEditing();
+    }
+  }
+
+  function handleClick(event: MouseEvent<HTMLElement>) {
+    if ((event.target as Element).closest(INTERACTIVE) !== null) return;
+    if (isOpen) actions.onClose();
+    else actions.onOpen(task);
+  }
 
   const title = editing ? (
     <div
@@ -177,6 +171,8 @@ export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardP
     <li className={styles.item}>
       <article
         {...listeners}
+        onKeyDown={handleKeyDown}
+        onClick={handleClick}
         tabIndex={attributes.tabIndex}
         aria-describedby={attributes['aria-describedby']}
         aria-label={task.title}
@@ -186,7 +182,10 @@ export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardP
           setNodeRef(element);
           setActivatorNodeRef(element);
         }}
-        className={isDragging ? [styles.card, styles.source].join(' ') : styles.card}
+        className={[styles.card, isDragging ? styles.source : '', isOpen ? styles.open : '']
+          .filter(Boolean)
+          .join(' ')}
+        aria-current={isOpen ? 'true' : undefined}
         style={{ '--ini': `var(--ini-${color})` } as CSSProperties}
         data-task-id={task.id}
       >
@@ -195,7 +194,12 @@ export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardP
           path={path}
           now={now}
           title={title}
-          menu={<ActionMenu label={`Ações da tarefa ${task.title}`} items={items} />}
+          menu={
+            <ActionMenu
+              label={`Ações da tarefa ${task.title}`}
+              items={taskMenuItems(task, actions, { onEditTitle: startEditing, withOpen: true })}
+            />
+          }
         />
       </article>
     </li>

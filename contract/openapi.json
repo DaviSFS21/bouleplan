@@ -209,6 +209,8 @@
                     "status",
                     "isBlocked",
                     "plannedWeekStart",
+                    "blocks",
+                    "blockedBy",
                     "createdAt",
                     "updatedAt"
                 ],
@@ -277,6 +279,24 @@
                             "null"
                         ],
                         "format": "date"
+                    },
+                    "blocks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+                        },
+                        "description": "Visible tasks this one blocks, in task list order"
+                    },
+                    "blockedBy": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+                        },
+                        "description": "Visible tasks that block this one, in task list order"
                     },
                     "createdAt": {
                         "$ref": "#/components/schemas/OffsetDateTime"
@@ -384,6 +404,22 @@
                     },
                     "isBlocked": {
                         "type": "boolean"
+                    },
+                    "phaseId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "An active named phase of the same initiative; null is the implicit phase",
+                        "format": "uuid"
+                    },
+                    "plannedWeekStart": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A Monday",
+                        "format": "date"
                     }
                 }
             }
@@ -1180,6 +1216,98 @@
                                     "items": {
                                         "$ref": "#/components/schemas/Task"
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{blockingId}/blocks/{blockedId}": {
+            "delete": {
+                "summary": "Ends the blocking of a task by another; a no-op if there is no link",
+                "operationId": "removeTaskBlocker",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "blockedId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    },
+                    {
+                        "name": "blockingId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "The link does not exist"
+                    },
+                    "404": {
+                        "description": "Either task is not an active task in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "summary": "Makes a task block another; a no-op if the link exists",
+                "operationId": "addTaskBlocker",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "blockedId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    },
+                    {
+                        "name": "blockingId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "The link exists"
+                    },
+                    "404": {
+                        "description": "Either task is not an active task in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "task.blocker.self for the same task twice, task.blocker.cycle if the blocked task already blocks the blocking one, directly or through other tasks, hidden or not",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
                                 }
                             }
                         }

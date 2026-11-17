@@ -103,7 +103,17 @@ export function createTaskMessage(error: unknown): string {
 }
 
 export type TaskField =
-  'title' | 'description' | 'deadline' | 'estimatedEffort' | 'priority' | 'status' | 'isBlocked';
+  | 'title'
+  | 'description'
+  | 'deadline'
+  | 'estimatedEffort'
+  | 'priority'
+  | 'status'
+  | 'isBlocked'
+  | 'phaseId'
+  | 'plannedWeekStart';
+
+export const INVALID_EFFORT_MESSAGE = 'Use de 0,01 a 999 horas, com até 2 casas decimais.';
 
 const UPDATE_TASK_MESSAGES: Readonly<Record<TaskField, Readonly<Record<string, string>>>> = {
   title: TASK_TITLE_MESSAGES,
@@ -112,10 +122,12 @@ const UPDATE_TASK_MESSAGES: Readonly<Record<TaskField, Readonly<Record<string, s
     'task.description.invalid-characters': 'A descrição tem caracteres inválidos.',
   },
   deadline: { 'task.deadline.invalid': 'Use uma data válida.' },
-  estimatedEffort: { 'task.effort.invalid': 'Use de 0,01 a 999 horas, com até 2 casas decimais.' },
+  estimatedEffort: { 'task.effort.invalid': INVALID_EFFORT_MESSAGE },
   priority: {},
   status: {},
   isBlocked: {},
+  phaseId: { 'http.404': 'Essa fase não existe mais.' },
+  plannedWeekStart: { 'task.planned-week.invalid': 'Escolha uma semana válida.' },
 };
 
 const UPDATE_TASK_FALLBACK_MESSAGES: Readonly<Record<TaskField, string>> = {
@@ -126,6 +138,8 @@ const UPDATE_TASK_FALLBACK_MESSAGES: Readonly<Record<TaskField, string>> = {
   priority: 'Não foi possível mudar a prioridade. Tente de novo.',
   status: 'Não foi possível mover a tarefa. Tente de novo.',
   isBlocked: 'Não foi possível atualizar o bloqueio. Tente de novo.',
+  phaseId: 'Não foi possível mudar a fase. Tente de novo.',
+  plannedWeekStart: 'Não foi possível salvar a semana. Tente de novo.',
 };
 
 export function updateTaskMessage(error: unknown, field: TaskField): string {
@@ -133,4 +147,20 @@ export function updateTaskMessage(error: unknown, field: TaskField): string {
   return error instanceof ApiError
     ? (UPDATE_TASK_MESSAGES[field][error.code] ?? fallback)
     : fallback;
+}
+
+export const ADD_BLOCKER_FALLBACK_MESSAGE = 'Não foi possível adicionar o bloqueio. Tente de novo.';
+export const REMOVE_BLOCKER_FALLBACK_MESSAGE =
+  'Não foi possível remover o bloqueio. Tente de novo.';
+
+const BLOCKER_MESSAGES: Readonly<Record<string, string>> = {
+  'task.blocker.self': 'Uma tarefa não pode bloquear a si mesma.',
+  'task.blocker.cycle': 'Isso criaria um ciclo: a outra tarefa já depende desta.',
+  'http.404': 'Essa tarefa não existe mais.',
+};
+
+export function blockerMessage(error: unknown, action: 'add' | 'remove'): string {
+  const fallback =
+    action === 'add' ? ADD_BLOCKER_FALLBACK_MESSAGE : REMOVE_BLOCKER_FALLBACK_MESSAGE;
+  return error instanceof ApiError ? (BLOCKER_MESSAGES[error.code] ?? fallback) : fallback;
 }

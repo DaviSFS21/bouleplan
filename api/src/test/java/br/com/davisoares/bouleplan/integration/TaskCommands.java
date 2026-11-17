@@ -22,6 +22,21 @@ final class TaskCommands {
         Change.absent(),
         Change.absent(),
         Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.absent());
+  }
+
+  static UpdateTaskCommand moveTo(UUID phaseId) {
+    return new UpdateTaskCommand(
+        Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.absent(),
+        Change.of(phaseId),
         Change.absent());
   }
 }

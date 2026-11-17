@@ -32,6 +32,14 @@
   outline-offset: 2px;
 }
 
+.card.open,
+.card.open:hover {
+  box-shadow:
+    var(--sombra-destaque),
+    0 0 0 2px var(--tinta),
+    inset 3px 0 0 var(--ini, var(--neutro));
+}
+
 .source {
   opacity: 0.4;
 }

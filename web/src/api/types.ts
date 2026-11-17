@@ -11,5 +11,13 @@ export type TaskStatus = Task['status'];
 export type CreateTaskBody = components['schemas']['CreateTaskRequest'];
 export type TaskChanges = Pick<
   components['schemas']['UpdateTaskRequest'],
-  'title' | 'priority' | 'status' | 'isBlocked'
+  | 'title'
+  | 'description'
+  | 'deadline'
+  | 'estimatedEffort'
+  | 'priority'
+  | 'status'
+  | 'isBlocked'
+  | 'phaseId'
+  | 'plannedWeekStart'
 >;
