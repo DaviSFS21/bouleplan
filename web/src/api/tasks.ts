@@ -115,6 +115,37 @@ export function useCreateTask() {
   );
 }
 
+function withChanges(list: Task[] | undefined, id: string, changes: TaskChanges) {
+  return list?.map((item) => (item.id === id ? { ...item, ...changes } : item));
+}
+
+function withServerFields(list: Task[] | undefined, updated: Task, keys: (keyof TaskChanges)[]) {
+  return list?.map((item) => {
+    if (item.id !== updated.id) return item;
+    const merged = { ...item, updatedAt: updated.updatedAt };
+    for (const key of keys) Object.assign(merged, { [key]: updated[key] });
+    return merged;
+  });
+}
+
+function withRestored(
+  list: Task[] | undefined,
+  id: string,
+  keys: (keyof TaskChanges)[],
+  sent: TaskChanges,
+  before: Task,
+) {
+  return list?.map((item) => {
+    if (item.id !== id) return item;
+    const restored = { ...item };
+    for (const key of keys) {
+      // A later queued change may own the field by now.
+      if (item[key] === sent[key]) Object.assign(restored, { [key]: before[key] });
+    }
+    return restored;
+  });
+}
+
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMemo(
@@ -136,34 +167,15 @@ export function useUpdateTask() {
             ),
           (updated) => {
             // Only this change's fields: later queued changes are already on screen.
-            setList(queryClient, (list) =>
-              list?.map((item) => {
-                if (item.id !== updated.id) return item;
-                const merged = { ...item, updatedAt: updated.updatedAt };
-                for (const key of keys) Object.assign(merged, { [key]: updated[key] });
-                return merged;
-              }),
-            );
+            setList(queryClient, (list) => withServerFields(list, updated, keys));
           },
           {
             apply: (body) => {
               void cancelRefetches(queryClient);
-              setList(queryClient, (list) =>
-                list?.map((item) => (item.id === task.id ? { ...item, ...body } : item)),
-              );
+              setList(queryClient, (list) => withChanges(list, task.id, body));
             },
             rollback: (body) => {
-              setList(queryClient, (list) =>
-                list?.map((item) => {
-                  if (item.id !== task.id) return item;
-                  const restored = { ...item };
-                  for (const key of keys) {
-                    // A later queued change may own the field by now.
-                    if (item[key] === body[key]) Object.assign(restored, { [key]: before[key] });
-                  }
-                  return restored;
-                }),
-              );
+              setList(queryClient, (list) => withRestored(list, task.id, keys, body, before));
             },
           },
         );
@@ -264,5 +276,7 @@ export function hideTasksOfPhase(queryClient: QueryClient, phaseId: string) {
 export function showTasksOfPhase(queryClient: QueryClient, phaseId: string) {
   const back = hiddenByPhase.get(queryClient)?.get(phaseId) ?? [];
   hiddenByPhase.get(queryClient)?.delete(phaseId);
-  setList(queryClient, (list) => back.reduce<Task[] | undefined>(addToList, list));
+  setList(queryClient, (list) =>
+    back.reduce<Task[] | undefined>((shown, task) => addToList(shown, task), list),
+  );
 }
