@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 import {
   useArchiveInitiative,
@@ -12,9 +13,25 @@ import {
 } from '@/api/initiatives';
 import {
   ARCHIVE_INITIATIVE_FAILED_MESSAGE,
+  ARCHIVE_PHASE_FAILED_MESSAGE,
+  BLANK_PHASE_NAME_MESSAGE,
   DELETE_INITIATIVE_FAILED_MESSAGE,
+  DELETE_PHASE_FAILED_MESSAGE,
   UNDO_FAILED_MESSAGE,
+  phaseCountSuffix,
+  renamePhaseMessage,
 } from '@/api/messages';
+import {
+  cachedPhaseCount,
+  useArchivePhase,
+  useCreatePhase,
+  useDeletePhase,
+  usePhases,
+  useRestorePhase,
+  useUnarchivePhase,
+  useUpdatePhase,
+} from '@/api/phases';
+import type { Phase } from '@/api/types';
 import { useToast } from '@/components/toast/toast';
 import { Loading } from '@/components/loading/loading';
 import { InitiativeBoard } from './initiative-board';
@@ -24,6 +41,7 @@ import styles from './initiatives-screen.module.css';
 
 const SELECTION_PARAM = 'iniciativa';
 const DETAILS_PARAM = 'detalhes';
+const PHASE_PARAM = 'fase';
 
 export function InitiativesFallback() {
   return (
@@ -41,6 +59,16 @@ export function InitiativesScreen() {
   const searchParams = useSearchParams();
   const { data, isError, isFetching, refetch } = useInitiatives();
   const createInitiative = useCreateInitiative();
+  const queryClient = useQueryClient();
+  const requestedId = searchParams.get(SELECTION_PARAM);
+  const selectedInitiativeId = data?.some(({ id }) => id === requestedId) ? requestedId : null;
+  const phasesQuery = usePhases(selectedInitiativeId);
+  const createPhase = useCreatePhase();
+  const updatePhase = useUpdatePhase();
+  const archivePhase = useArchivePhase();
+  const unarchivePhase = useUnarchivePhase();
+  const deletePhase = useDeletePhase();
+  const restorePhase = useRestorePhase();
 
   const toast = useToast();
   const archiveInitiative = useArchiveInitiative();
@@ -73,6 +101,7 @@ export function InitiativesScreen() {
 
   function select(id: string | null) {
     navigate((params) => {
+      params.delete(PHASE_PARAM);
       if (id === null) {
         params.delete(SELECTION_PARAM);
         params.delete(DETAILS_PARAM);
@@ -86,6 +115,7 @@ export function InitiativesScreen() {
     counter.current += 1;
     setRequest(intent === null ? null : { intent, id: counter.current, target: id });
     navigate((params) => {
+      if (params.get(SELECTION_PARAM) !== id) params.delete(PHASE_PARAM);
       params.set(SELECTION_PARAM, id);
       params.set(DETAILS_PARAM, '1');
     });
@@ -137,15 +167,16 @@ export function InitiativesScreen() {
   }
 
   function archive(id: string) {
+    const count = cachedPhaseCount(queryClient, id);
     return leave(id, archiveInitiative.mutateAsync, unarchiveInitiative.mutateAsync, {
-      done: 'Iniciativa arquivada',
+      done: `Iniciativa arquivada${phaseCountSuffix(count)}`,
       failed: ARCHIVE_INITIATIVE_FAILED_MESSAGE,
     });
   }
 
   function remove(id: string) {
     return leave(id, deleteInitiative.mutateAsync, restoreInitiative.mutateAsync, {
-      done: 'Iniciativa excluída',
+      done: `Iniciativa excluída${phaseCountSuffix(cachedPhaseCount(queryClient, id))}`,
       failed: DELETE_INITIATIVE_FAILED_MESSAGE,
     });
   }
@@ -176,10 +207,75 @@ export function InitiativesScreen() {
     );
   }
 
-  const requestedId = searchParams.get(SELECTION_PARAM);
   const selected = data.find((initiative) => initiative.id === requestedId) ?? null;
 
   const detailsOpen = selected !== null && searchParams.get(DETAILS_PARAM) === '1';
+  const phases = phasesQuery.data;
+  const filteredPhase = phases?.find(({ id }) => id === searchParams.get(PHASE_PARAM)) ?? null;
+
+  function selectPhase(id: string | null) {
+    navigate((params) => {
+      if (id === null) params.delete(PHASE_PARAM);
+      else params.set(PHASE_PARAM, id);
+    });
+  }
+
+  async function createPhaseIn(initiativeId: string, name: string) {
+    await createPhase.mutateAsync({ initiativeId, name });
+  }
+
+  async function renamePhase(phase: Phase, name: string) {
+    if (name === '') {
+      reportError(BLANK_PHASE_NAME_MESSAGE);
+      return;
+    }
+    setActionError(null);
+    try {
+      await updatePhase.mutateAsync({ phase, name });
+    } catch (failure) {
+      reportError(renamePhaseMessage(failure));
+    }
+  }
+
+  async function leavePhase(
+    phase: Phase,
+    action: (phase: Phase) => Promise<unknown>,
+    undo: (phase: Phase) => Promise<unknown>,
+    messages: { done: string; failed: string },
+  ) {
+    const list = phases ?? [];
+    const position = list.findIndex(({ id }) => id === phase.id);
+    const neighbour = list[position + 1] ?? list[position - 1];
+    setActionError(null);
+    try {
+      await action(phase);
+    } catch {
+      reportError(messages.failed);
+      return;
+    }
+    const wasFiltered = currentParams().get(PHASE_PARAM) === phase.id;
+    if (wasFiltered) selectPhase(null);
+    counter.current += 1;
+    setFocusRequest({ id: phase.initiativeId, phaseId: neighbour?.id, nonce: counter.current });
+    toast.show({
+      message: messages.done,
+      onUndo: () => {
+        undo(phase).then(
+          () => {
+            if (!wasFiltered) return;
+            navigate((params) => {
+              if (params.get(SELECTION_PARAM) === phase.initiativeId) {
+                params.set(PHASE_PARAM, phase.id);
+              }
+            });
+          },
+          () => {
+            reportError(UNDO_FAILED_MESSAGE);
+          },
+        );
+      },
+    });
+  }
 
   return (
     <main className={styles.screen}>
@@ -203,11 +299,34 @@ export function InitiativesScreen() {
         onDelete={(id) => {
           void remove(id);
         }}
+        phaseIndex={{
+          phases,
+          failed: phasesQuery.isError && !phases,
+          selectedId: filteredPhase?.id ?? null,
+          onSelect: selectPhase,
+          onCreate: (name) => createPhaseIn(selected?.id ?? '', name),
+          onRename: (phase, name) => {
+            void renamePhase(phase, name);
+          },
+          onArchive: (phase) => {
+            void leavePhase(phase, archivePhase.mutateAsync, unarchivePhase.mutateAsync, {
+              done: 'Fase arquivada',
+              failed: ARCHIVE_PHASE_FAILED_MESSAGE,
+            });
+          },
+          onDelete: (phase) => {
+            void leavePhase(phase, deletePhase.mutateAsync, restorePhase.mutateAsync, {
+              done: 'Fase excluída',
+              failed: DELETE_PHASE_FAILED_MESSAGE,
+            });
+          },
+        }}
         actionError={actionError?.search === searchParams.toString() ? actionError.message : null}
         focusRequest={focusRequest}
       />
       <InitiativeBoard
         initiative={selected}
+        phase={filteredPhase}
         detailsOpen={detailsOpen}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
@@ -216,6 +335,10 @@ export function InitiativesScreen() {
       {selected && detailsOpen ? (
         <InitiativePanel
           initiative={selected}
+          phases={phases}
+          selectedPhaseId={filteredPhase?.id ?? null}
+          onSelectPhase={selectPhase}
+          onCreatePhase={(name) => createPhaseIn(selected.id, name)}
           request={request}
           onRequestHandled={clearRequest}
           onClose={closeDetails}

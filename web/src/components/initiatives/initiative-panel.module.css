@@ -77,3 +77,37 @@
   letter-spacing: var(--type-sobretitulo-tracking);
   text-transform: uppercase;
 }
+
+.phases {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phase {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tinta);
+  font: 400 15px/22px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.phase:hover {
+  background: var(--papel-elevado);
+}
+
+.phase[aria-pressed='true'] {
+  font-weight: 500;
+  box-shadow: inset 2px 0 0 var(--terracota);
+}
+
+.phase:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}

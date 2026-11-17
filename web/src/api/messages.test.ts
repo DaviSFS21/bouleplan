@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createInitiativeMessage, updateInitiativeMessage } from './messages';
+import {
+  CREATE_PHASE_FALLBACK_MESSAGE,
+  RENAME_PHASE_FALLBACK_MESSAGE,
+  createInitiativeMessage,
+  createPhaseMessage,
+  phaseCountSuffix,
+  renamePhaseMessage,
+  updateInitiativeMessage,
+} from './messages';
 import { ApiError } from './problem';
 
 function failure(code: string) {
@@ -55,5 +63,36 @@ describe('updateInitiativeMessage', () => {
     expect(updateInitiativeMessage(new TypeError('fetch failed'), 'name')).toBe(
       'Não foi possível salvar. Tente de novo.',
     );
+  });
+});
+
+describe('phase messages', () => {
+  it.each([
+    ['phase.name.blank', 'Dê um nome à fase.'],
+    ['phase.name.too-long', 'Use no máximo 200 caracteres.'],
+    ['phase.name.invalid-characters', 'O nome tem caracteres inválidos.'],
+    ['http.500', 'Não foi possível criar a fase. Tente de novo.'],
+  ])('maps %s when creating', (code, message) => {
+    expect(createPhaseMessage(failure(code))).toBe(message);
+  });
+
+  it.each([
+    ['phase.name.blank', 'Dê um nome à fase.'],
+    ['internal', 'Não foi possível salvar o nome. Tente de novo.'],
+  ])('maps %s when renaming', (code, message) => {
+    expect(renamePhaseMessage(failure(code))).toBe(message);
+  });
+
+  it('uses the fallbacks for errors that are not ApiError', () => {
+    expect(createPhaseMessage(new TypeError('x'))).toBe(CREATE_PHASE_FALLBACK_MESSAGE);
+    expect(renamePhaseMessage(new TypeError('x'))).toBe(RENAME_PHASE_FALLBACK_MESSAGE);
+  });
+
+  it.each([
+    [0, ''],
+    [1, ', com 1 fase'],
+    [3, ', com 3 fases'],
+  ])('suffixes %s phases as "%s"', (count, suffix) => {
+    expect(phaseCountSuffix(count)).toBe(suffix);
   });
 });

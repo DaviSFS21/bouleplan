@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
+import { runScoped as runScopedMutation } from './scoped-mutation';
 import type { Initiative } from './types';
 
 const initiativesKey = ['initiatives'] as const;
@@ -20,7 +21,7 @@ export function useCreateInitiative() {
       queryClient.setQueryData<Initiative[]>(initiativesKey, (current) =>
         current && !current.some(({ id }) => id === created.id) ? [...current, created] : current,
       );
-      return queryClient.invalidateQueries({ queryKey: initiativesKey });
+      return queryClient.invalidateQueries({ queryKey: initiativesKey, exact: true });
     },
   });
 }
@@ -44,7 +45,6 @@ function addToList(list: Initiative[] | undefined, added: Initiative) {
   return list && !list.some(({ id }) => id === added.id) ? [...list, added] : list;
 }
 
-// A mutation scope runs mutations with the same id one after another.
 function runScoped<TVariables, TData>(
   queryClient: QueryClient,
   id: string,
@@ -52,18 +52,13 @@ function runScoped<TVariables, TData>(
   mutationFn: (variables: TVariables) => Promise<TData>,
   onSuccess: (data: TData) => void,
 ): Promise<TData> {
-  // No observer is attached, so the cache garbage-collects the mutation after gcTime.
-  const mutation = queryClient
-    .getMutationCache()
-    .build<TData, Error, TVariables, unknown>(queryClient, {
-      mutationFn,
-      scope: { id: `initiative-${id}` },
-      onSuccess: async (data) => {
-        onSuccess(data);
-        await queryClient.invalidateQueries({ queryKey: initiativesKey });
-      },
-    });
-  return mutation.execute(variables);
+  return runScopedMutation(
+    queryClient,
+    { scope: `initiative-${id}`, invalidate: initiativesKey },
+    variables,
+    mutationFn,
+    onSuccess,
+  );
 }
 
 function setList(

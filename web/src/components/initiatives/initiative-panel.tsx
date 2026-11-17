@@ -4,17 +4,21 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useUpdateInitiative, type InitiativeChanges } from '@/api/initiatives';
 import {
   BLANK_NAME_MESSAGE,
+  BLANK_PHASE_NAME_MESSAGE,
+  createPhaseMessage,
   SAVE_FAILED_MESSAGES,
   updateInitiativeMessage,
   type InitiativeField,
 } from '@/api/messages';
-import type { Initiative } from '@/api/types';
+import type { Initiative, Phase } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { ColorPicker, colorName, type ColorToken } from '@/components/color-picker/color-picker';
 import { DeadlineField, localToday } from '@/components/deadline-field/deadline-field';
 import { InlineText } from '@/components/inline-text/inline-text';
 import { SidePanel } from '@/components/side-panel/side-panel';
 import { formatDate, formatElapsed } from './initiative-dates';
+import { phaseLabel } from './phase-label';
+import { QuickCreateField } from './quick-create-field';
 import styles from './initiative-panel.module.css';
 
 const NAME_MAX_LENGTH = 200;
@@ -30,6 +34,10 @@ export interface PanelRequest {
 
 interface InitiativePanelProps {
   initiative: Initiative;
+  phases: readonly Phase[] | undefined;
+  selectedPhaseId: string | null;
+  onSelectPhase: (id: string) => void;
+  onCreatePhase: (name: string) => Promise<void>;
   request: PanelRequest | null;
   onRequestHandled: () => void;
   onClose: () => void;
@@ -42,6 +50,10 @@ interface InitiativePanelProps {
 
 export function InitiativePanel({
   initiative,
+  phases,
+  selectedPhaseId,
+  onSelectPhase,
+  onCreatePhase,
   request,
   onRequestHandled,
   onClose,
@@ -239,6 +251,37 @@ export function InitiativePanel({
           onCommit={(text) => {
             void save('description', { description: text === '' ? null : text });
           }}
+        />
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.eyebrow}>Fases</h2>
+        {phases ? (
+          <ul className={styles.phases}>
+            {phases.map((phase, position) => (
+              <li key={phase.id}>
+                <button
+                  type="button"
+                  className={styles.phase}
+                  aria-pressed={selectedPhaseId === phase.id}
+                  onClick={() => {
+                    onSelectPhase(phase.id);
+                  }}
+                >
+                  {phaseLabel(position, phase.name)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {phases?.length === 0 ? <p className={styles.meta}>Nenhuma fase ainda.</p> : null}
+        <QuickCreateField
+          triggerLabel="+ Nova fase"
+          inputLabel="Nome da nova fase"
+          placeholder="Nome da fase"
+          blankMessage={BLANK_PHASE_NAME_MESSAGE}
+          errorMessage={createPhaseMessage}
+          onCreate={onCreatePhase}
+          keepOpen
         />
       </section>
     </SidePanel>

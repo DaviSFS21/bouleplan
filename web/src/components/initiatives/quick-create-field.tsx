@@ -2,15 +2,30 @@
 
 import { CircleAlert } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { BLANK_NAME_MESSAGE, createInitiativeMessage } from '@/api/messages';
 import { Icon } from '@/components/icon/icon';
-import styles from './initiative-index.module.css';
+import styles from './quick-create-field.module.css';
 
 const NAME_MAX_LENGTH = 200;
 
-export function NewInitiativeField({
+interface QuickCreateFieldProps {
+  triggerLabel: string;
+  inputLabel: string;
+  placeholder: string;
+  blankMessage: string;
+  errorMessage: (failure: unknown) => string;
+  onCreate: (name: string) => Promise<void>;
+  keepOpen?: boolean;
+}
+
+export function QuickCreateField({
+  triggerLabel,
+  inputLabel,
+  placeholder,
+  blankMessage,
+  errorMessage,
   onCreate,
-}: Readonly<{ onCreate: (name: string) => Promise<void> }>) {
+  keepOpen = false,
+}: Readonly<QuickCreateFieldProps>) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [pending, setPending] = useState(false);
@@ -41,16 +56,17 @@ export function NewInitiativeField({
   async function submit() {
     const trimmed = name.trim();
     if (trimmed === '') {
-      setError(BLANK_NAME_MESSAGE);
+      setError(blankMessage);
       return;
     }
     setPending(true);
     setError(null);
     try {
       await onCreate(trimmed);
-      close();
+      if (keepOpen) setName('');
+      else close();
     } catch (failure) {
-      setError(createInitiativeMessage(failure));
+      setError(errorMessage(failure));
     } finally {
       setPending(false);
     }
@@ -77,7 +93,7 @@ export function NewInitiativeField({
           setOpen(true);
         }}
       >
-        + Nova iniciativa
+        {triggerLabel}
       </button>
     );
   }
@@ -89,8 +105,8 @@ export function NewInitiativeField({
         className={error ? [styles.input, styles.inputError].join(' ') : styles.input}
         type="text"
         maxLength={NAME_MAX_LENGTH}
-        placeholder="Nome da iniciativa"
-        aria-label="Nome da nova iniciativa"
+        placeholder={placeholder}
+        aria-label={inputLabel}
         aria-invalid={error ? true : undefined}
         aria-busy={pending ? true : undefined}
         aria-describedby={error ? `${errorId} ${hintId}` : hintId}

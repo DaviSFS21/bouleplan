@@ -43,6 +43,7 @@ function serve(initial: Initiative[]): Backend {
   };
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(backend.items)),
+    http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
     http.patch('*/api/initiatives/:id', async ({ request, params }) => {
       const body = (await request.json()) as Record<string, unknown>;
       backend.patches.push(body);
@@ -557,6 +558,10 @@ describe('InitiativePanel footer', () => {
     renderWithQuery(
       <InitiativePanel
         initiative={{ ...reforma, updatedAt: '2026-11-17T11:58:00-03:00' }}
+        phases={[]}
+        selectedPhaseId={null}
+        onSelectPhase={vi.fn()}
+        onCreatePhase={vi.fn()}
         request={null}
         onRequestHandled={vi.fn()}
         now={new Date('2026-11-17T12:00:00-03:00')}
