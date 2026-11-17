@@ -50,11 +50,20 @@ hexagonal architecture on the production classes:
 | --- | --- | --- |
 | `GET` | `/initiatives` | 200, active initiatives in creation order |
 | `POST` | `/initiatives` | 201 with `Location: /initiatives/{id}`; body `{"name": "..."}` |
+| `GET` | `/initiatives/{id}` | 200 if the initiative is active and the current user's, else 404 |
 
-Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status` and `detail`:
-`/problems/invalid-initiative` (400), `/problems/malformed-request` (400), `/problems/http-error`
-(framework errors such as 404/405/415, keeping their status) and `/problems/internal` (500, message
-logged and never returned).
+Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail` and `code`.
+Clients show their own (pt-BR) text chosen by `code`, never `detail`.
+
+| `type` | Status | `code` |
+| --- | --- | --- |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters` |
+| `/problems/malformed-request` | 400 | `http.400` |
+| `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
+| `/problems/internal` | 500 | `internal` (message logged, never returned) |
+
+Concurrent creates are serialized per user: the use case locks the user's `app_user` row
+(`select ... for update`) before choosing a color.
 
 ## API contract
 

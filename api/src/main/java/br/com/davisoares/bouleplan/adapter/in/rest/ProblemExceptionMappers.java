@@ -1,6 +1,6 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
-import br.com.davisoares.bouleplan.domain.InvalidInitiativeException;
+import br.com.davisoares.bouleplan.domain.DomainRuleViolation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.ws.rs.Priorities;
@@ -15,11 +15,15 @@ public class ProblemExceptionMappers {
 
   private static final Logger LOG = Logger.getLogger(ProblemExceptionMappers.class);
 
-  /** Domain rule violation. */
+  /** Any broken domain rule. */
   @ServerExceptionMapper
-  public RestResponse<Problem> invalidInitiative(InvalidInitiativeException exception) {
+  public RestResponse<Problem> ruleViolation(DomainRuleViolation exception) {
     return problem(
-        400, "/problems/invalid-initiative", "Invalid initiative", exception.getMessage());
+        400,
+        "/problems/rule-violation",
+        "Rule violation",
+        exception.code(),
+        exception.getMessage());
   }
 
   /** Mistyped JSON body; outranks Quarkus' built-in mapper, which answers with plain JSON. */
@@ -44,6 +48,7 @@ public class ProblemExceptionMappers {
             response.getStatus(),
             "/problems/http-error",
             response.getStatusInfo().getReasonPhrase(),
+            "http." + response.getStatus(),
             "The request could not be processed");
   }
 
@@ -51,18 +56,23 @@ public class ProblemExceptionMappers {
   @ServerExceptionMapper
   public RestResponse<Problem> internal(Exception exception) {
     LOG.error("Unexpected error", exception);
-    return problem(500, "/problems/internal", "Internal error", "An unexpected error occurred");
+    return problem(
+        500, "/problems/internal", "Internal error", "internal", "An unexpected error occurred");
   }
 
   private static RestResponse<Problem> malformedRequest() {
     return problem(
-        400, "/problems/malformed-request", "Malformed request", "The request body is not valid");
+        400,
+        "/problems/malformed-request",
+        "Malformed request",
+        "http.400",
+        "The request body is not valid");
   }
 
   private static RestResponse<Problem> problem(
-      int status, String type, String title, String detail) {
+      int status, String type, String title, String code, String detail) {
     return RestResponse.ResponseBuilder.<Problem>create(status)
-        .entity(new Problem(type, title, status, detail))
+        .entity(new Problem(type, title, status, detail, code))
         .type(Problem.MEDIA_TYPE)
         .build();
   }

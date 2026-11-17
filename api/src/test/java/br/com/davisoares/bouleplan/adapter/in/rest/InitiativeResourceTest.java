@@ -6,11 +6,14 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import io.restassured.path.json.JsonPath;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import java.time.OffsetDateTime;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +24,12 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class InitiativeResourceTest {
+
+  private static final String YELLOW = "amarelo";
+
+  private static final String FIRST = "First";
+
+  @Inject EntityManager entityManager;
 
   @BeforeEach
   void cleanDatabase() {
@@ -41,7 +50,7 @@ class InitiativeResourceTest {
             .statusCode(201)
             .contentType(ContentType.JSON)
             .body(NAME, Matchers.equalTo("Study plan"))
-            .body(COLOR, Matchers.equalTo("amarelo"))
+            .body(COLOR, Matchers.equalTo(YELLOW))
             .body("origin", Matchers.equalTo("native"))
             .body("description", Matchers.nullValue())
             .body("overallDeadline", Matchers.nullValue())
@@ -54,7 +63,7 @@ class InitiativeResourceTest {
   @Test
   @DisplayName("the second initiative gets lime")
   void secondGetsLime() {
-    InitiativeApi.create("First");
+    InitiativeApi.create(FIRST);
 
     InitiativeApi.post("{\"name\": \"Second\"}")
         .statusCode(201)
@@ -64,7 +73,7 @@ class InitiativeResourceTest {
   @Test
   @DisplayName("listing returns the created initiatives in creation order")
   void listInOrder() {
-    InitiativeApi.create("First");
+    InitiativeApi.create(FIRST);
     InitiativeApi.create("Second");
 
     given()
@@ -73,8 +82,8 @@ class InitiativeResourceTest {
         .then()
         .statusCode(200)
         .body("$", Matchers.hasSize(2))
-        .body(NAME, Matchers.contains("First", "Second"))
-        .body(COLOR, Matchers.contains("amarelo", "lima"));
+        .body(NAME, Matchers.contains(FIRST, "Second"))
+        .body(COLOR, Matchers.contains(YELLOW, "lima"));
   }
 
   @Test
@@ -88,8 +97,81 @@ class InitiativeResourceTest {
     assertThat(UUID.fromString(json.getString("id"))).isNotNull();
     assertThat(json.getString(NAME)).isEqualTo("Contract");
     assertThat(json.getString(COLOR))
-        .isIn("amarelo", "lima", "verde", "turquesa", "azul", "roxo", "rosa", "marrom");
+        .isIn(YELLOW, "lima", "verde", "turquesa", "azul", "roxo", "rosa", "marrom");
     assertThat(json.getString("origin")).isEqualTo("native");
     assertThat(OffsetDateTime.parse(json.getString("createdAt"))).isNotNull();
+  }
+
+  @Test
+  @DisplayName("GET by id returns the initiative the Location header points to")
+  void returnsLocationTarget() {
+    String location =
+        InitiativeApi.post("{\"name\": \"First\"}").statusCode(201).extract().header("Location");
+
+    given()
+        .when()
+        .get(location)
+        .then()
+        .statusCode(200)
+        .contentType(ContentType.JSON)
+        .body(NAME, Matchers.equalTo(FIRST))
+        .body(COLOR, Matchers.equalTo(YELLOW));
+  }
+
+  @Test
+  @DisplayName("GET by id hides an initiative of another user")
+  void hidesForeignInitiative() {
+    UUID otherUser = UUID.randomUUID();
+    UUID foreignId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(
+            () -> {
+              entityManager
+                  .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
+                  .setParameter(1, otherUser)
+                  .executeUpdate();
+              entityManager
+                  .createNativeQuery(
+                      "insert into initiative (id, user_id, name, color)"
+                          + " values (?1, ?2, 'Theirs', 'azul')")
+                  .setParameter(1, foreignId)
+                  .setParameter(2, otherUser)
+                  .executeUpdate();
+            });
+
+    try {
+      given().when().get(InitiativeApi.PATH + "/" + foreignId).then().statusCode(404);
+    } finally {
+      QuarkusTransaction.requiringNew()
+          .run(
+              () -> {
+                entityManager
+                    .createNativeQuery("delete from initiative where user_id = ?1")
+                    .setParameter(1, otherUser)
+                    .executeUpdate();
+                entityManager
+                    .createNativeQuery("delete from app_user where id = ?1")
+                    .setParameter(1, otherUser)
+                    .executeUpdate();
+              });
+    }
+  }
+
+  @Test
+  @DisplayName("a soft-deleted initiative is neither listed nor returned by id")
+  void softDeletedIsHidden() {
+    String json = InitiativeApi.create("Gone");
+    UUID id = UUID.fromString(JsonPath.from(json).getString("id"));
+    QuarkusTransaction.requiringNew()
+        .run(
+            () ->
+                entityManager
+                    .createNativeQuery("update initiative set deleted_at = now() where id = ?1")
+                    .setParameter(1, id)
+                    .executeUpdate());
+
+    given().when().get(InitiativeApi.PATH).then().body("$", Matchers.empty());
+    given().when().get(InitiativeApi.PATH + "/" + id).then().statusCode(404);
+    InitiativeApi.post("{\"name\": \"Next\"}").body(COLOR, Matchers.equalTo(YELLOW));
   }
 }

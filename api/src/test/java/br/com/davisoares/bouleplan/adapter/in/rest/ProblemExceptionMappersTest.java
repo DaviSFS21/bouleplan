@@ -22,17 +22,20 @@ class ProblemExceptionMappersTest {
     assertThat(response.getEntity().type()).isEqualTo("/problems/internal");
     assertThat(response.getEntity().status()).isEqualTo(500);
     assertThat(response.getEntity().detail()).doesNotContain("secret");
+    assertThat(response.getEntity().code()).isEqualTo("internal");
   }
 
   @Test
   @DisplayName("a domain violation becomes a 400 carrying the rule message")
   void invalidInitiative() {
     RestResponse<Problem> response =
-        mappers.invalidInitiative(new InvalidInitiativeException("Name must not be blank"));
+        mappers.ruleViolation(
+            new InvalidInitiativeException("initiative.name.blank", "Name must not be blank"));
 
     assertThat(response.getStatus()).isEqualTo(400);
-    assertThat(response.getEntity().type()).isEqualTo("/problems/invalid-initiative");
+    assertThat(response.getEntity().type()).isEqualTo("/problems/rule-violation");
     assertThat(response.getEntity().detail()).isEqualTo("Name must not be blank");
+    assertThat(response.getEntity().code()).isEqualTo("initiative.name.blank");
   }
 
   @Test
@@ -43,5 +46,6 @@ class ProblemExceptionMappersTest {
     assertThat(response.getStatus()).isEqualTo(404);
     assertThat(response.getEntity().status()).isEqualTo(404);
     assertThat(response.getEntity().type()).isEqualTo("/problems/http-error");
+    assertThat(response.getEntity().code()).isEqualTo("http.404");
   }
 }

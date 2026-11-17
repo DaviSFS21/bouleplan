@@ -81,20 +81,21 @@
                     "type",
                     "title",
                     "status",
-                    "detail"
+                    "detail",
+                    "code"
                 ],
                 "type": "object",
                 "properties": {
                     "type": {
                         "type": "string",
                         "examples": [
-                            "/problems/invalid-initiative"
+                            "/problems/rule-violation"
                         ]
                     },
                     "title": {
                         "type": "string",
                         "examples": [
-                            "Invalid initiative"
+                            "Rule violation"
                         ]
                     },
                     "status": {
@@ -106,6 +107,13 @@
                     },
                     "detail": {
                         "type": "string"
+                    },
+                    "code": {
+                        "type": "string",
+                        "description": "Stable code clients map to their own text: a domain code such as initiative.name.blank, http.<status> or internal",
+                        "examples": [
+                            "initiative.name.blank"
+                        ]
                     }
                 }
             },
@@ -178,7 +186,48 @@
                         }
                     },
                     "400": {
-                        "description": "Invalid initiative or malformed request",
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/initiatives/{id}": {
+            "get": {
+                "summary": "Gets an active initiative by id",
+                "operationId": "getInitiative",
+                "tags": [
+                    "Initiatives"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The initiative",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Initiative"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

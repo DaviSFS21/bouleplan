@@ -60,12 +60,19 @@ public class Initiative extends PanacheEntityBase {
 
   /** Creates a native, active initiative; the name is trimmed and validated. */
   public static Initiative create(UUID userId, String name, InitiativeColor color) {
-    if (name == null || name.isBlank()) {
-      throw new InvalidInitiativeException("Initiative name must not be blank");
+    String trimmed = name == null ? "" : stripInvisible(name);
+    if (trimmed.isEmpty()) {
+      throw new InvalidInitiativeException(
+          "initiative.name.blank", "Initiative name must not be blank");
     }
-    String trimmed = name.strip();
+    if (trimmed.chars().anyMatch(Character::isISOControl)) {
+      throw new InvalidInitiativeException(
+          "initiative.name.invalid-characters",
+          "Initiative name must not contain control characters");
+    }
     if (trimmed.length() > MAX_NAME_LENGTH) {
       throw new InvalidInitiativeException(
+          "initiative.name.too-long",
           "Initiative name must have at most " + MAX_NAME_LENGTH + " characters");
     }
     Initiative initiative = new Initiative();
@@ -74,6 +81,28 @@ public class Initiative extends PanacheEntityBase {
     initiative.color = color;
     initiative.origin = InitiativeOrigin.NATIVE;
     return initiative;
+  }
+
+  private static boolean isInvisible(char c) {
+    return Character.isWhitespace(c)
+        || Character.isSpaceChar(c)
+        || c == '\u200B'
+        || c == '\u200C'
+        || c == '\u200D'
+        || c == '\u2060'
+        || c == '\uFEFF';
+  }
+
+  private static String stripInvisible(String value) {
+    int start = 0;
+    int end = value.length();
+    while (start < end && isInvisible(value.charAt(start))) {
+      start++;
+    }
+    while (end > start && isInvisible(value.charAt(end - 1))) {
+      end--;
+    }
+    return value.substring(start, end);
   }
 
   /** Stamps {@code archivedAt}, which frees the color and hides it from active lists. */
