@@ -98,7 +98,8 @@ class TaskPatchValidationResourceTest {
       "{\"deadline\": \"2026-02-30\"}",
       "{\"estimatedEffort\": \"2\"}",
       "{\"estimatedEffort\": true}",
-      "{\"estimatedEffort\": []}"
+      "{\"estimatedEffort\": []}",
+      "{\"estimatedEffort\": 1e99999999999}"
     };
     for (String body : bodies) {
       InitiativeAssertions.assertMalformed(TaskApi.patch(id, body));

@@ -51,7 +51,7 @@ final class JsonBodies {
           .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
           .with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
           .readTree(body == null ? "" : body);
-    } catch (JsonProcessingException e) {
+    } catch (JsonProcessingException | NumberFormatException e) {
       throw new MalformedRequestException(e);
     }
   }

@@ -56,7 +56,7 @@ public class TaskLifecycleResource {
               schema = @Schema(implementation = TaskResponse.class)))
   @APIResponse(
       responseCode = Responses.NOT_FOUND,
-      description = Responses.NO_PHASE,
+      description = Responses.NO_TASK,
       content =
           @Content(
               mediaType = Problem.MEDIA_TYPE,
@@ -98,7 +98,7 @@ public class TaskLifecycleResource {
   @APIResponse(responseCode = "204", description = "Task deleted")
   @APIResponse(
       responseCode = Responses.NOT_FOUND,
-      description = Responses.NO_PHASE,
+      description = Responses.NO_TASK,
       content =
           @Content(
               mediaType = Problem.MEDIA_TYPE,

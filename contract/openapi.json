@@ -1209,7 +1209,7 @@
                         "description": "Task deleted"
                     },
                     "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
+                        "description": "No active task with this id in an active phase and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1353,7 +1353,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
+                        "description": "No active task with this id in an active phase and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

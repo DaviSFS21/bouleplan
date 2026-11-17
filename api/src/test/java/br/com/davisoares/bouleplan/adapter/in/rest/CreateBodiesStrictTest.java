@@ -18,7 +18,8 @@ class CreateBodiesStrictTest {
     "{\"other\": \"A\"}",
     "[]",
     "\"A\"",
-    "{\"name\": \"A\"} x"
+    "{\"name\": \"A\"} x",
+    "{\"name\": 1e99999999999}"
   };
 
   private String initiativeId;
