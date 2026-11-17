@@ -474,7 +474,7 @@ describe('archive and delete', () => {
       await user.click(trigger);
       await user.click(screen.getByRole('menuitem', { name: action }));
 
-      expect(await screen.findByRole('status')).toHaveTextContent(message);
+      expect(await screen.findByText(message)).toBeVisible();
       expect(backend.calls).toEqual([`${call} ${reforma.id}`]);
       expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
       expect(window.location.search).toBe('');
@@ -652,7 +652,7 @@ describe('archive and delete of a non-selected initiative', () => {
 
       await user.click(screen.getByRole('menuitem', { name: action }));
 
-      expect(await screen.findByRole('status')).toHaveTextContent(message);
+      expect(await screen.findByText(message)).toBeVisible();
       expect(backend.calls).toEqual([`${call} ${horta.id}`]);
       expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
       expect(screen.getByRole('heading', { level: 1, name: 'Reforma' })).toBeVisible();
@@ -675,7 +675,7 @@ describe('archive and delete of a non-selected initiative', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ações de Horta' }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
 
     expect(panel).toBeInTheDocument();
     expect(window.location.search).toBe(detailsUrl(reforma.id).slice(1));
@@ -696,7 +696,7 @@ describe('focus after archive or delete', () => {
 
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
 
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
     expect(within(index()).getByRole('button', { name: expected })).toHaveFocus();
   });
 
@@ -707,7 +707,7 @@ describe('focus after archive or delete', () => {
     await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
     await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
 
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
     expect(within(index()).getByRole('button', { name: 'Todas as tarefas' })).toHaveFocus();
   });
 
@@ -716,7 +716,7 @@ describe('focus after archive or delete', () => {
     const { backend, panel } = await renderOpen();
     await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
 
     await user.keyboard('{Control>}z{/Control}');
 

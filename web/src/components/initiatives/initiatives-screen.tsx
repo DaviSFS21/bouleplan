@@ -83,11 +83,19 @@ export function InitiativesScreen() {
     nonce: number;
   } | null>(null);
   const counter = useRef(0);
+  const leaving = useRef(new Set<string>());
   const opener = useRef<HTMLButtonElement | null>(null);
 
   const clearRequest = useCallback(() => {
     setRequest(null);
   }, []);
+
+  const phasesFailed = phasesQuery.isError && !phasesQuery.data;
+
+  // The phase section is not rendered while the phases are failed, so it cannot consume the intent.
+  if (phasesFailed && newPhaseRequest?.initiativeId === selectedInitiativeId) {
+    setNewPhaseRequest(null);
+  }
 
   const clearNewPhaseRequest = useCallback(() => {
     setNewPhaseRequest(null);
@@ -122,7 +130,7 @@ export function InitiativesScreen() {
   }
 
   function openDetails(id: string, intent: PanelIntent = null) {
-    if (id !== currentParams().get(SELECTION_PARAM)) setNewPhaseRequest(null);
+    setNewPhaseRequest(null);
     counter.current += 1;
     setRequest(intent === null ? null : { intent, id: counter.current, target: id });
     navigate((params) => {
@@ -179,19 +187,33 @@ export function InitiativesScreen() {
     });
   }
 
-  async function archive(id: string) {
-    const count = await fetchPhaseCount(queryClient, id);
-    return leave(id, archiveInitiative.mutateAsync, unarchiveInitiative.mutateAsync, {
-      done: `Iniciativa arquivada${phaseCountSuffix(count)}`,
-      failed: ARCHIVE_INITIATIVE_FAILED_MESSAGE,
+  async function leaveOnce(id: string, run: () => Promise<void>) {
+    if (leaving.current.has(id)) return;
+    leaving.current.add(id);
+    try {
+      await run();
+    } finally {
+      leaving.current.delete(id);
+    }
+  }
+
+  function archive(id: string) {
+    return leaveOnce(id, async () => {
+      const count = await fetchPhaseCount(queryClient, id);
+      await leave(id, archiveInitiative.mutateAsync, unarchiveInitiative.mutateAsync, {
+        done: `Iniciativa arquivada${phaseCountSuffix(count)}`,
+        failed: ARCHIVE_INITIATIVE_FAILED_MESSAGE,
+      });
     });
   }
 
-  async function remove(id: string) {
-    const count = await fetchPhaseCount(queryClient, id);
-    return leave(id, deleteInitiative.mutateAsync, restoreInitiative.mutateAsync, {
-      done: `Iniciativa excluída${phaseCountSuffix(count)}`,
-      failed: DELETE_INITIATIVE_FAILED_MESSAGE,
+  function remove(id: string) {
+    return leaveOnce(id, async () => {
+      const count = await fetchPhaseCount(queryClient, id);
+      await leave(id, deleteInitiative.mutateAsync, restoreInitiative.mutateAsync, {
+        done: `Iniciativa excluída${phaseCountSuffix(count)}`,
+        failed: DELETE_INITIATIVE_FAILED_MESSAGE,
+      });
     });
   }
 
@@ -327,7 +349,7 @@ export function InitiativesScreen() {
         onNewPhase={newPhaseIn}
         phaseIndex={{
           phases,
-          failed: phasesQuery.isError && !phases,
+          failed: phasesFailed,
           selectedId: filteredPhase?.id ?? null,
           onSelect: selectPhase,
           onCreate: (name) => createPhaseIn(selected?.id ?? '', name),

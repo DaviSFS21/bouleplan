@@ -20,7 +20,7 @@ export function usePhases(initiativeId: string | null) {
   });
 }
 
-// Counts the phases fresh, so the answer is right even if they were never loaded; 0 on failure.
+// Counts from the cache while it is fresh, else fetches, so never-loaded phases count too; 0 on failure.
 export async function fetchPhaseCount(
   queryClient: QueryClient,
   initiativeId: string,

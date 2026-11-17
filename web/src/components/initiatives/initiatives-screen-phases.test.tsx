@@ -921,3 +921,61 @@ describe('"Nova fase" in the initiative menu', () => {
     expect(within(index()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 });
+
+describe('guards and stale intents', () => {
+  it('sends one archive request when "Arquivar" is chosen twice during the count wait', async () => {
+    const user = userEvent.setup();
+    serve([reforma], [demolition]);
+    let archives = 0;
+    server.use(
+      http.get('*/api/initiatives/:id/phases', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        return HttpResponse.json([demolition]);
+      }),
+      http.post('*/api/initiatives/:id/archive', () => {
+        archives += 1;
+        return archives === 1 ? HttpResponse.json(reforma) : problemResponse('http.404', 404);
+      }),
+    );
+    renderWithQuery(<InitiativesScreen />);
+    const nav = await screen.findByRole('navigation', { name: 'Iniciativas' });
+
+    for (let times = 0; times < 2; times += 1) {
+      await user.click(within(nav).getByRole('button', { name: 'Ações de Reforma' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    }
+
+    expect(await screen.findByText('Iniciativa arquivada, com 1 fase')).toBeVisible();
+    expect(archives).toBe(1);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not replay "Nova fase" after a failed phases load', async () => {
+    const user = userEvent.setup();
+    const backend = serve([reforma], []);
+    let broken = true;
+    server.use(
+      http.get('*/api/initiatives/:id/phases', () =>
+        broken ? problemResponse('internal', 500) : HttpResponse.json(backend.phases),
+      ),
+    );
+    renderWithQuery(<InitiativesScreen />);
+    const nav = await screen.findByRole('navigation', { name: 'Iniciativas' });
+    await user.click(within(nav).getByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Nova fase' }));
+    await within(nav).findByText('Não foi possível carregar as fases.');
+    broken = false;
+
+    await user.click(screen.getByRole('button', { name: 'Reforma', expanded: false }));
+    const panel = screen.getByRole('complementary', { name: 'Iniciativa' });
+    await user.click(within(panel).getByRole('button', { name: '+ Nova fase' }));
+    await user.type(
+      within(panel).getByRole('textbox', { name: 'Nome da nova fase' }),
+      'Piso{Enter}',
+    );
+
+    expect(await within(nav).findByRole('button', { name: 'Fase 1 · Piso' })).toBeVisible();
+    expect(within(nav).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('textbox', { name: 'Nome da nova fase' })).toHaveFocus();
+  });
+});
