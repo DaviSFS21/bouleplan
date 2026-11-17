@@ -48,6 +48,7 @@ final class JsonBodies {
       return mapper
           .reader()
           .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+          .with(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY)
           .readTree(body == null ? "" : body);
     } catch (JsonProcessingException e) {
       throw new MalformedRequestException(e);
