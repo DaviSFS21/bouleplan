@@ -15,6 +15,9 @@ export interface TaskActions {
   onToggleBlocked: (task: Task) => void;
   onArchive: (task: Task) => void;
   onDelete: (task: Task) => void;
+  // Both are set where the week is known; without them the menu has no such item.
+  onAddToToday?: (task: Task) => void;
+  isInTodayList?: (task: Task) => boolean;
 }
 
 interface TaskMenuOptions {
@@ -41,6 +44,16 @@ export function taskMenuItems(
         ]
       : []),
     { label: 'Editar título', shortcut: 'E', onSelect: onEditTitle },
+    ...(actions.onAddToToday && task.status !== 'done' && actions.isInTodayList?.(task) !== true
+      ? [
+          {
+            label: 'Pôr na lista de hoje',
+            onSelect: () => {
+              actions.onAddToToday?.(task);
+            },
+          },
+        ]
+      : []),
     { separator: true },
     {
       group: 'Prioridade',

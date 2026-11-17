@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.application.port.in.TaskRelations;
+import br.com.davisoares.bouleplan.application.port.in.TaskReservation;
 import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -28,6 +29,8 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
       "plannedWeekStart",
       "blocks",
       "blockedBy",
+      "reservedMinutes",
+      "reservedByDeadlineMinutes",
       "createdAt",
       "updatedAt"
     })
@@ -58,11 +61,17 @@ public record TaskResponse(
     @Schema(description = "Visible tasks this one blocks, in task list order") List<UUID> blocks,
     @Schema(description = "Visible tasks that block this one, in task list order")
         List<UUID> blockedBy,
+    @Schema(description = "Minutes of the visible dedicated blocks of the task")
+        long reservedMinutes,
+    @Schema(
+            description =
+                "Minutes of the blocks dated on or before the deadline; all of them without one")
+        long reservedByDeadlineMinutes,
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt) {
 
   /** Maps the entity at the REST boundary, hiding the implicit phase. */
-  public static TaskResponse from(Task task, TaskRelations relations) {
+  public static TaskResponse from(Task task, TaskRelations relations, TaskReservation reservation) {
     Phase phase = task.getPhase();
     return new TaskResponse(
         task.getId(),
@@ -78,6 +87,8 @@ public record TaskResponse(
         task.getPlannedWeekStart(),
         relations.blocks(),
         relations.blockedBy(),
+        reservation.reservedMinutes(),
+        reservation.reservedByDeadlineMinutes(),
         task.getCreatedAt(),
         task.getUpdatedAt());
   }

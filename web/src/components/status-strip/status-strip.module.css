@@ -1,0 +1,63 @@
+.strip {
+  --st: var(--ardosia);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--st) 10%, var(--papel));
+  box-shadow: inset 3px 0 0 var(--st);
+  color: var(--tinta);
+  font: var(--type-texto-pequeno);
+  font-family: var(--font-ui);
+}
+
+.erro {
+  --st: var(--erro);
+}
+
+.atencao {
+  --st: var(--terracota-escuro);
+}
+
+.sucesso {
+  --st: var(--oliva);
+}
+
+.info {
+  --st: var(--ardosia);
+}
+
+.strip strong {
+  font-weight: 600;
+}
+
+.icon {
+  display: inline-flex;
+  margin-top: 2px;
+  color: var(--st);
+  flex: none;
+}
+
+.text {
+  flex: 1;
+}
+
+.action {
+  padding: 0 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tinta);
+  font: var(--type-botao);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}

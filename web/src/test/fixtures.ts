@@ -1,5 +1,5 @@
 import { HttpResponse } from 'msw';
-import type { Initiative, Phase, Task } from '@/api/types';
+import type { CalendarEvent, Initiative, Phase, ScheduledItem, Task } from '@/api/types';
 
 export function initiative(overrides: Partial<Initiative> = {}): Initiative {
   return {
@@ -66,10 +66,39 @@ export function task(overrides: Partial<Task> = {}): Task {
     status: 'to_do',
     isBlocked: false,
     plannedWeekStart: null,
+    reservedMinutes: 0,
+    reservedByDeadlineMinutes: 0,
     blocks: [],
     blockedBy: [],
     createdAt: '2026-01-01T10:00:00-03:00',
     updatedAt: '2026-01-01T10:00:00-03:00',
+    ...overrides,
+  };
+}
+
+export function scheduledItem(overrides: Partial<ScheduledItem> = {}): ScheduledItem {
+  return {
+    id: 'e0000000-0000-4000-8000-000000000001',
+    taskId: 'a1a1a1a1-0000-4000-8000-000000000001',
+    date: '2026-11-17',
+    startTime: '09:00',
+    endTime: '10:00',
+    sortOrder: null,
+    createdAt: '2026-11-16T10:00:00-03:00',
+    updatedAt: '2026-11-16T10:00:00-03:00',
+    ...overrides,
+  };
+}
+
+export function calendarEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
+  return {
+    id: 'f0000000-0000-4000-8000-000000000001',
+    title: 'Daily',
+    date: '2026-11-17',
+    startTime: '09:00',
+    endTime: '09:30',
+    createdAt: '2026-11-16T10:00:00-03:00',
+    updatedAt: '2026-11-16T10:00:00-03:00',
     ...overrides,
   };
 }

@@ -1,0 +1,58 @@
+.week {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 28px repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto auto auto;
+  column-gap: 6px;
+  min-width: 0;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--papel-elevado);
+}
+
+.hours,
+.day {
+  display: grid;
+  grid-row: span 3;
+  grid-template-rows: subgrid;
+  min-width: 0;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 44px;
+}
+
+.number {
+  color: var(--tinta);
+  font: var(--type-numeral);
+  letter-spacing: var(--type-numeral-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.today {
+  color: var(--terracota);
+}
+
+.weekday {
+  color: var(--tinta-muted);
+  font: var(--type-sobretitulo);
+  letter-spacing: var(--type-sobretitulo-tracking);
+  text-transform: uppercase;
+}
+
+.labels {
+  position: relative;
+  grid-row: 3;
+}
+
+.label {
+  position: absolute;
+  right: 0;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}

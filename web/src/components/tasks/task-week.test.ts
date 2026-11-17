@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { currentWeekStart, isoWeekNumber, stepWeek, weekText, weekRange } from './task-week';
+import {
+  currentWeekStart,
+  isoWeekNumber,
+  stepWeek,
+  weekDates,
+  weekRange,
+  weekStartOf,
+  weekText,
+} from './task-week';
 
 describe('isoWeekNumber', () => {
   it.each([
@@ -51,5 +59,28 @@ describe('weekRange', () => {
   it('shows the days of the week, with the month once when it does not change', () => {
     expect(weekRange('2026-11-16')).toBe('16 a 22 nov');
     expect(weekRange('2026-11-30')).toBe('30 nov a 6 dez');
+  });
+});
+
+describe('weekStartOf', () => {
+  it('is the Monday of the week that holds the date', () => {
+    expect(weekStartOf('2026-11-16')).toBe('2026-11-16');
+    expect(weekStartOf('2026-11-22')).toBe('2026-11-16');
+    expect(weekStartOf('2026-11-23')).toBe('2026-11-23');
+    expect(weekStartOf('2027-01-01')).toBe('2026-12-28');
+  });
+});
+
+describe('weekDates', () => {
+  it('lists the seven days from Monday, across a month end', () => {
+    expect(weekDates('2026-10-26')).toEqual([
+      '2026-10-26',
+      '2026-10-27',
+      '2026-10-28',
+      '2026-10-29',
+      '2026-10-30',
+      '2026-10-31',
+      '2026-11-01',
+    ]);
   });
 });

@@ -114,3 +114,12 @@
   width: 14px;
   height: 14px;
 }
+
+.item:disabled {
+  color: var(--tinta-muted);
+  cursor: not-allowed;
+}
+
+.item:disabled:hover {
+  background: transparent;
+}

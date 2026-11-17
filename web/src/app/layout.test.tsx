@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import RootLayout, { metadata } from './layout';
 
+vi.mock('next/navigation', () => import('@/test/next-navigation'));
+
 // next/font is compiled by the Next.js SWC plugin, which does not run under Vitest.
 vi.mock('next/font/google', () => {
   const font = (variable: string) => () => ({ variable: `${variable}-class` });
@@ -23,7 +25,11 @@ describe('RootLayout', () => {
     );
 
     expect(html).toMatch(/^<html lang="pt-BR" class="display-class body-class ui-class">/);
-    expect(html).toMatch(/<body><p>content<\/p><div role="status"[^>]*><\/div><\/body>/);
+    expect(html).toMatch(
+      /<body><header[^>]*>.*<\/header><p>content<\/p><div role="status"[^>]*><\/div><\/body>/,
+    );
+    expect(html).toContain('>Quadro<');
+    expect(html).toContain('>Semana<');
   });
 
   it('defines the app title and description', () => {

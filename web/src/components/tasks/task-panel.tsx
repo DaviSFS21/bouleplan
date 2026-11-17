@@ -24,6 +24,7 @@ import { useToast } from '@/components/toast/toast';
 import { BlockerList } from './blocker-list';
 import { DescriptionField } from './description-field';
 import { PriorityField } from './priority-field';
+import { ReservedTime } from './reserved-time';
 import { deadlineLabel } from './task-deadline';
 import { formatEffort, parseEffort } from './task-effort';
 import { STATUSES, statusTitle } from './task-filter';
@@ -380,6 +381,10 @@ export function TaskPanel({
           }}
           onSave={(text) => save('description', { description: text === '' ? null : text })}
         />
+      </section>
+      <section className={styles.section}>
+        <h2 className={styles.eyebrow}>Tempo dedicado</h2>
+        <ReservedTime key={task.id} task={task} />
       </section>
     </SidePanel>
   );

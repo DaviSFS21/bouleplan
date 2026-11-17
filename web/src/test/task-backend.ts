@@ -100,6 +100,8 @@ export function serveTaskApi(world: World): TaskBackend {
         status: body.status ?? 'to_do',
         isBlocked: false,
         plannedWeekStart: null,
+        reservedMinutes: 0,
+        reservedByDeadlineMinutes: 0,
         blocks: [],
         blockedBy: [],
         createdAt: `2026-02-${String(10 + created).padStart(2, '0')}T10:00:00-03:00`,

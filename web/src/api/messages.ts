@@ -164,3 +164,48 @@ export function blockerMessage(error: unknown, action: 'add' | 'remove'): string
     action === 'add' ? ADD_BLOCKER_FALLBACK_MESSAGE : REMOVE_BLOCKER_FALLBACK_MESSAGE;
   return error instanceof ApiError ? (BLOCKER_MESSAGES[error.code] ?? fallback) : fallback;
 }
+
+export type PlannerAction =
+  | 'add-to-list'
+  | 'reserve'
+  | 'move'
+  | 'resize'
+  | 'remove'
+  | 'create-event'
+  | 'update-event'
+  | 'remove-event';
+
+export const OVERLAP_MESSAGE = 'Já há tempo reservado nesse horário.';
+export const DUPLICATE_ITEM_MESSAGE = 'Essa tarefa já está na lista desse dia.';
+export const BLANK_EVENT_TITLE_MESSAGE = 'Dê um título ao compromisso.';
+export const BLOCKED_DROP_MESSAGE = 'não cabe aqui · já há tempo reservado';
+
+const PLANNER_FALLBACK_MESSAGES: Readonly<Record<PlannerAction, string>> = {
+  'add-to-list': 'Não foi possível pôr na lista do dia. Tente de novo.',
+  reserve: 'Não foi possível reservar o tempo. Tente de novo.',
+  move: 'Não foi possível mover. Tente de novo.',
+  resize: 'Não foi possível ajustar a duração. Tente de novo.',
+  remove: 'Não foi possível tirar da agenda. Tente de novo.',
+  'create-event': 'Não foi possível criar o compromisso. Tente de novo.',
+  'update-event': 'Não foi possível salvar o compromisso. Tente de novo.',
+  'remove-event': 'Não foi possível excluir o compromisso. Tente de novo.',
+};
+
+const PLANNER_MESSAGES: Readonly<Record<string, string>> = {
+  'scheduled-item.overlap': OVERLAP_MESSAGE,
+  'scheduled-item.duplicate': DUPLICATE_ITEM_MESSAGE,
+  'scheduled-item.task-done': 'Tarefas feitas não vão para a semana.',
+  'scheduled-item.time.invalid': 'Use horários de 15 em 15 minutos, dentro do mesmo dia.',
+  'calendar-event.title.blank': BLANK_EVENT_TITLE_MESSAGE,
+  'calendar-event.title.too-long': 'Use no máximo 300 caracteres.',
+  'calendar-event.title.invalid-characters': 'O título tem caracteres inválidos.',
+  'calendar-event.time.invalid': 'Use horários de 15 em 15 minutos, dentro do mesmo dia.',
+  'http.404': 'Esse item não existe mais.',
+};
+
+export function plannerMessage(error: unknown, action: PlannerAction): string {
+  const fallback = PLANNER_FALLBACK_MESSAGES[action];
+  return error instanceof ApiError ? (PLANNER_MESSAGES[error.code] ?? fallback) : fallback;
+}
+
+export const LOAD_PLANNER_FAILED_MESSAGE = 'Não foi possível carregar a semana.';

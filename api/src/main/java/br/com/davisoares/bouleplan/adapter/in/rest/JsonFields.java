@@ -4,13 +4,20 @@ import br.com.davisoares.bouleplan.application.port.in.UpdateInitiativeCommand.C
 import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
 /** Typed readers of JSON body fields; a value of the wrong type is a malformed request. */
+@SuppressWarnings("PMD.GodClass") // one small reader per JSON type, with nothing shared
 final class JsonFields {
+
+  private static final DateTimeFormatter CLOCK =
+      DateTimeFormatter.ofPattern("HH:mm").withResolverStyle(ResolverStyle.STRICT);
 
   private JsonFields() {}
 
@@ -24,6 +31,31 @@ final class JsonFields {
     } catch (DateTimeParseException e) {
       throw new MalformedRequestException(e);
     }
+  }
+
+  /**
+   * A {@code HH:mm} field that is absent, {@code null} or a valid time; anything else is malformed.
+   */
+  static Change<LocalTime> time(JsonNode root, String field) {
+    Change<String> text = JsonBodies.text(root, field);
+    try {
+      return text.present()
+          ? Change.of(text.value() == null ? null : LocalTime.parse(text.value(), CLOCK))
+          : Change.absent();
+    } catch (DateTimeParseException e) {
+      throw new MalformedRequestException(e);
+    }
+  }
+
+  /**
+   * An integer field that is absent, {@code null} or a JSON integer; anything else is malformed.
+   */
+  static Change<Integer> integer(JsonNode root, String field) {
+    JsonNode node = root.get(field);
+    if (node != null && !node.isNull() && !(node.isIntegralNumber() && node.canConvertToInt())) {
+      throw new MalformedRequestException();
+    }
+    return node == null ? Change.absent() : Change.of(node.isNull() ? null : node.intValue());
   }
 
   /** A JSON number field that is absent, {@code null} or numeric; anything else is malformed. */
@@ -70,5 +102,13 @@ final class JsonFields {
       throw new MalformedRequestException();
     }
     return change;
+  }
+
+  /** The value of a field that must be sent and cannot be {@code null}. */
+  static <T> T mandatory(Change<T> change) {
+    if (!change.present() || change.value() == null) {
+      throw new MalformedRequestException();
+    }
+    return change.value();
   }
 }

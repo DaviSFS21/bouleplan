@@ -62,3 +62,24 @@ describe('runScoped invalidation', () => {
     expect(stale('a')).toBe(true);
   });
 });
+
+describe('runScoped invalidation by prefix', () => {
+  it('refreshes every key under the prefix when exact is off', async () => {
+    const client = new QueryClient();
+    client.setQueryData(['week', '1'], 1);
+    client.setQueryData(['week', '2'], 1);
+    client.setQueryData(['other'], 1);
+
+    await runScoped(
+      client,
+      { scope: 'prefix', invalidate: ['week'], exact: false },
+      undefined,
+      () => Promise.resolve('done'),
+      () => undefined,
+    );
+
+    expect(client.getQueryState(['week', '1'])?.isInvalidated).toBe(true);
+    expect(client.getQueryState(['week', '2'])?.isInvalidated).toBe(true);
+    expect(client.getQueryState(['other'])?.isInvalidated).toBe(false);
+  });
+});

@@ -40,6 +40,16 @@ export function currentWeekStart(now: Date): string {
   return toIso(addDays(today, -weekday(today)));
 }
 
+export function weekStartOf(iso: string): string {
+  const date = fromIso(iso);
+  return toIso(addDays(date, -weekday(date)));
+}
+
+export function weekDates(weekStart: string): string[] {
+  const first = fromIso(weekStart);
+  return Array.from({ length: WEEK_DAYS }, (_, offset) => toIso(addDays(first, offset)));
+}
+
 export function stepWeek(weekStart: string, weeks: number): string | null {
   const moved = addDays(fromIso(weekStart), weeks * WEEK_DAYS);
   const year = moved.getUTCFullYear();

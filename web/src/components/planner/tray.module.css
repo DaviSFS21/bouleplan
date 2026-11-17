@@ -1,0 +1,160 @@
+.tray {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 240px;
+}
+
+.heading {
+  margin: 0;
+  color: var(--tinta-muted);
+  font: var(--type-sobretitulo);
+  letter-spacing: var(--type-sobretitulo-tracking);
+  text-transform: uppercase;
+}
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--borda);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pill[aria-pressed='true'] {
+  border-color: var(--tinta-muted);
+  background: var(--papel-elevado);
+  color: var(--tinta);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ini, var(--neutro));
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 10px 12px 10px 15px;
+  border-radius: var(--radius-md);
+  background: var(--papel);
+  box-shadow:
+    var(--sombra-repouso),
+    inset 3px 0 0 var(--ini, var(--neutro));
+  cursor: grab;
+  touch-action: manipulation;
+}
+
+.item:hover {
+  box-shadow:
+    var(--sombra-destaque),
+    inset 3px 0 0 var(--ini, var(--neutro));
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.open,
+.open:hover {
+  box-shadow:
+    var(--sombra-destaque),
+    0 0 0 2px var(--tinta),
+    inset 3px 0 0 var(--ini, var(--neutro));
+}
+
+.full {
+  opacity: 0.55;
+}
+
+.source {
+  opacity: 0.4;
+}
+
+.overlay {
+  cursor: grabbing;
+  box-shadow:
+    var(--sombra-flutuante),
+    inset 3px 0 0 var(--ini, var(--neutro));
+}
+
+.title {
+  margin: 0;
+  padding-right: var(--space-6);
+  font: var(--type-titulo-tarefa);
+  font-size: 15px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta {
+  margin: 0;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.alert {
+  color: var(--terracota-escuro);
+  font-weight: 500;
+}
+
+.menu {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  opacity: 0;
+}
+
+.item:hover .menu,
+.item:focus-within .menu,
+.menu:has([aria-expanded='true']) {
+  opacity: 1;
+}
+
+.empty {
+  margin: 0;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+}
