@@ -1053,7 +1053,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No active phase with this id in an active initiative of the user */
+            /** @description No active task with this id in an active phase and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1129,7 +1129,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description No active phase with this id in an active initiative of the user */
+            /** @description No active task with this id in an active phase and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;

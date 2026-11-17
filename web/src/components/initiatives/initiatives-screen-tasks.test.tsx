@@ -1,8 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse, delay } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
+import { server } from '@/test/server';
 import { serveTaskApi } from '@/test/task-backend';
 import { card, piso, reforma, titles, world } from '@/test/task-world';
 import { InitiativesScreen } from './initiatives-screen';
@@ -109,5 +111,79 @@ describe('hiding tasks with their phase or initiative', () => {
 
     expect(await screen.findByRole('article', { name: 'Plantar alface' })).toBeVisible();
     expect(card('Plantar alface')).toBeVisible();
+  });
+});
+
+describe('before the refetch answers', () => {
+  async function openReforma() {
+    const backend = serveTaskApi(world);
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('article', { name: 'Comprar tinta' });
+    await within(index()).findByRole('button', { name: 'Fase 2 · Piso' });
+    return backend;
+  }
+
+  async function archivePiso(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(within(index()).getByRole('button', { name: `Ações da fase ${piso.name}` }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+  }
+
+  it('hides the tasks of an archived phase while the task list is slow', async () => {
+    const user = userEvent.setup();
+    await openReforma();
+    let open: () => void = () => undefined;
+    server.use(
+      http.get('*/api/tasks', async () => {
+        await new Promise<void>((resolve) => {
+          open = resolve;
+        });
+        return HttpResponse.json(world.tasks.filter(({ phaseId }) => phaseId !== piso.id));
+      }),
+    );
+
+    await archivePiso(user);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('article', { name: 'Comprar tinta' })).not.toBeInTheDocument();
+    });
+    open();
+  });
+
+  it('keeps them hidden when the refetch fails, and brings them back on undo', async () => {
+    const user = userEvent.setup();
+    await openReforma();
+    server.use(http.get('*/api/tasks', () => new HttpResponse(null, { status: 503 })));
+
+    await archivePiso(user);
+    await screen.findByRole('button', { name: 'Desfazer' });
+
+    expect(screen.queryByRole('article', { name: 'Comprar tinta' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+
+    expect(await screen.findByRole('article', { name: 'Comprar tinta' })).toBeVisible();
+  });
+
+  it('hides the tasks of an archived initiative at once', async () => {
+    const user = userEvent.setup();
+    serveTaskApi(world);
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByRole('article', { name: 'Plantar alface' });
+    server.use(
+      http.get('*/api/tasks', async () => {
+        await delay(400);
+        return HttpResponse.json(world.tasks);
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ações de Horta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+
+    await waitFor(
+      () => {
+        expect(screen.queryByRole('article', { name: 'Plantar alface' })).not.toBeInTheDocument();
+      },
+      { timeout: 300 },
+    );
   });
 });

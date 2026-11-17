@@ -176,9 +176,9 @@ export function TaskCard({ task, path, color, now, actions }: Readonly<TaskCardP
   return (
     <li className={styles.item}>
       <article
-        {...attributes}
         {...listeners}
-        role={undefined}
+        tabIndex={attributes.tabIndex}
+        aria-describedby={attributes['aria-describedby']}
         aria-label={task.title}
         aria-roledescription="tarefa arrastável"
         ref={(element) => {

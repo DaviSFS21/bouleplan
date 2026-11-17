@@ -240,6 +240,67 @@ describe('useUpdateTask', () => {
   });
 });
 
+describe('queued changes of one task', () => {
+  it('keep their optimistic state when an earlier answer lands, without a refetch in between', async () => {
+    const opened: (() => void)[] = [];
+    let answered = 0;
+    let lists = 0;
+    let stored = paint;
+    server.use(
+      http.get('*/api/tasks', () => {
+        lists += 1;
+        return HttpResponse.json([stored]);
+      }),
+      http.patch('*/api/tasks/:id', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        await new Promise<void>((resolve) => opened.push(resolve));
+        answered += 1;
+        stored = { ...stored, ...body };
+        return HttpResponse.json({
+          ...paint,
+          ...body,
+          updatedAt: `2026-03-0${String(answered)}T10:00:00-03:00`,
+        });
+      }),
+    );
+    const { result } = renderHook(useAllHooks, { wrapper });
+    await waitFor(() => {
+      expect(result.current.list.data).toEqual([paint]);
+    });
+
+    let both: Promise<unknown> = Promise.resolve();
+    act(() => {
+      both = Promise.all([
+        result.current.update.mutateAsync({ task: paint, changes: { priority: 'P1' } }),
+        result.current.update.mutateAsync({ task: paint, changes: { isBlocked: true } }),
+      ]);
+    });
+    await waitFor(() => {
+      expect(result.current.list.data?.[0]).toMatchObject({ priority: 'P1', isBlocked: true });
+    });
+
+    await waitFor(() => {
+      expect(opened).toHaveLength(1);
+    });
+    opened[0]?.();
+    await waitFor(() => {
+      expect(opened).toHaveLength(2);
+    });
+
+    expect(result.current.list.data?.[0]).toMatchObject({ priority: 'P1', isBlocked: true });
+    expect(lists).toBe(1);
+
+    opened[1]?.();
+    await act(async () => {
+      await both;
+    });
+    await waitFor(() => {
+      expect(lists).toBe(2);
+    });
+    expect(result.current.list.data?.[0]).toMatchObject({ priority: 'P1', isBlocked: true });
+  });
+});
+
 describe('useArchiveTask and useDeleteTask', () => {
   it('removes the task at once and keeps it removed on success', async () => {
     const items = [paint, sand];

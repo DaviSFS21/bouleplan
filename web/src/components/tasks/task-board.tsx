@@ -36,6 +36,7 @@ import { useToast } from '@/components/toast/toast';
 import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
+import { useClock } from './use-clock';
 import { TaskCardPreview, type TaskActions } from './task-card';
 import { TaskColumn } from './task-column';
 import {
@@ -120,15 +121,18 @@ export function TaskBoard({
     const target = request.taskId
       ? column?.querySelector<HTMLElement>(`[data-task-id="${request.taskId}"]`)
       : column?.querySelector<HTMLElement>('[data-quick-create]');
-    if (target) target.focus();
+    // A slow answer must not take focus from wherever the person went meanwhile.
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (target && lost) target.focus();
     if (target || request.taskId === null) pendingFocus.current = null;
   }, [focusTick, tasks]);
 
-  const visible = useMemo(
-    () => visibleTasks(tasks ?? [], initiative, phase),
-    [tasks, initiative, phase],
-  );
-  const clock = now ?? new Date();
+  const visible = useMemo(() => {
+    const live = new Set(initiatives.map(({ id }) => id));
+    const listed = (tasks ?? []).filter((task) => live.has(task.initiativeId));
+    return visibleTasks(listed, initiative, phase);
+  }, [tasks, initiatives, initiative, phase]);
+  const clock = useClock(now);
   const colors = new Map(initiatives.map(({ id, color }) => [id, color]));
   const names = new Map(initiatives.map(({ id, name }) => [id, name]));
   const chosen = initiatives.find(({ id }) => id === rememberedId) ?? initiatives[0] ?? null;
@@ -281,7 +285,7 @@ export function TaskBoard({
             status,
             phaseId: phase?.id,
           });
-          if (!initiative) rememberInitiativeId(target.id);
+          if (!initiative) chooseInitiative(target.id);
         }}
       >
         {initiative ? null : (

@@ -6,10 +6,17 @@ export interface ScopedHandlers<TVariables> {
   onError?: (error: Error, variables: TVariables) => void;
 }
 
+// True when another mutation of the scope waits behind the one that is finishing.
+export function hasQueued(queryClient: QueryClient, scope: string): boolean {
+  return (
+    queryClient.isMutating({ predicate: (mutation) => mutation.options.scope?.id === scope }) > 1
+  );
+}
+
 // A mutation scope runs mutations with the same id one after another.
 export function runScoped<TVariables, TData>(
   queryClient: QueryClient,
-  target: { scope: string; invalidate: QueryKey },
+  target: { scope: string; invalidate: QueryKey; awaitRefetch?: boolean },
   variables: TVariables,
   mutationFn: (variables: TVariables) => Promise<TData>,
   onSuccess: (data: TData) => void,
@@ -29,7 +36,10 @@ export function runScoped<TVariables, TData>(
       scope: { id: target.scope },
       onSuccess: async (data) => {
         onSuccess(data);
-        await queryClient.invalidateQueries({ queryKey: target.invalidate, exact: true });
+        // A refetch now would erase the optimistic state of the changes still queued.
+        if (hasQueued(queryClient, target.scope)) return;
+        const refetch = queryClient.invalidateQueries({ queryKey: target.invalidate, exact: true });
+        if (target.awaitRefetch !== false) await refetch;
       },
     });
   return mutation.execute(variables);

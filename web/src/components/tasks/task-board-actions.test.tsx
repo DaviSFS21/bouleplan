@@ -1,9 +1,11 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse, delay } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InitiativesScreen } from '@/components/initiatives/initiatives-screen';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
+import { server } from '@/test/server';
 import { serveTaskApi } from '@/test/task-backend';
 import { card, column, reforma, titles, world } from '@/test/task-world';
 
@@ -350,5 +352,26 @@ describe('focus after removing the only card', () => {
         within(column('Em andamento')).getByRole('button', { name: '+ Nova tarefa' }),
       ).toHaveFocus();
     });
+  });
+});
+
+describe('a slow answer', () => {
+  it('does not take focus from a field the person moved on to', async () => {
+    const { user } = await renderBoard();
+    server.use(
+      http.post('*/api/tasks/:id/archive', async () => {
+        await delay(250);
+        return HttpResponse.json(world.tasks[0]);
+      }),
+    );
+
+    await choose(user, 'Comprar tinta', 'menuitem', 'Arquivar');
+    await user.click(within(column('Feito')).getByRole('button', { name: '+ Nova tarefa' }));
+    const field = within(column('Feito')).getByRole('textbox', { name: 'Título da nova tarefa' });
+    await user.type(field, 'em curso');
+    await screen.findByText('Tarefa arquivada');
+
+    expect(field).toHaveFocus();
+    expect(field).toHaveValue('em curso');
   });
 });

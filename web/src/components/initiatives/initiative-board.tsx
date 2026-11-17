@@ -68,6 +68,7 @@ export function InitiativeBoard({
         <h1 className={styles.title}>{title}</h1>
       </header>
       <TaskBoard
+        key={`${initiative?.id ?? 'all'}:${phase?.id ?? ''}`}
         tasks={tasks}
         failed={tasksFailed}
         onRetry={onRetryTasks}

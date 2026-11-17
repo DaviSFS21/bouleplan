@@ -8,7 +8,7 @@ import {
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
 import { runScoped as runScopedMutation } from './scoped-mutation';
-import { refetchTasks } from './tasks';
+import { hideTasksOfPhase, refetchTasks, showTasksOfPhase } from './tasks';
 import type { Phase } from './types';
 
 export function phasesKey(initiativeId: string) {
@@ -172,6 +172,7 @@ export function useArchivePhase() {
           (id) => unwrap(api.POST('/phases/{id}/archive', { params: { path: { id } } })),
           (archived) => {
             setList(queryClient, phase.initiativeId, (list) => removeFromList(list, archived.id));
+            hideTasksOfPhase(queryClient, phase.id);
             refetchTasks(queryClient);
           },
         ),
@@ -192,6 +193,7 @@ export function useUnarchivePhase() {
           (id) => unwrap(api.POST('/phases/{id}/unarchive', { params: { path: { id } } })),
           (restored) => {
             setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
+            showTasksOfPhase(queryClient, phase.id);
             refetchTasks(queryClient);
           },
         ),
@@ -215,6 +217,7 @@ export function useDeletePhase() {
           },
           (deleted) => {
             setList(queryClient, phase.initiativeId, (list) => removeFromList(list, deleted));
+            hideTasksOfPhase(queryClient, phase.id);
             refetchTasks(queryClient);
           },
         ),
@@ -235,6 +238,7 @@ export function useRestorePhase() {
           (id) => unwrap(api.POST('/phases/{id}/restore', { params: { path: { id } } })),
           (restored) => {
             setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
+            showTasksOfPhase(queryClient, phase.id);
             refetchTasks(queryClient);
           },
         ),

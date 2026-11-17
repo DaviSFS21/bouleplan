@@ -132,3 +132,18 @@ test('creates a task from "Todas as tarefas" choosing the initiative', async ({ 
       .locator('option:checked'),
   ).toHaveText('Horta');
 });
+
+test('moves a card to "Em andamento" with the keyboard', async ({ page }) => {
+  await createInitiative(page, 'Reforma');
+  await createTask(page, 'A fazer', 'Rejuntar');
+
+  await card(page, 'Rejuntar').focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Space');
+
+  await expect(
+    column(page, 'Em andamento').getByRole('article', { name: 'Rejuntar', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText('Tarefa movida para Em andamento', { exact: true })).toBeVisible();
+});

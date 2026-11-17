@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InitiativesScreen } from '@/components/initiatives/initiatives-screen';
@@ -198,5 +198,53 @@ describe('keyboard drag and drop', () => {
 
     expect(screen.queryByText(/Você pegou a tarefa/)).not.toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Título da tarefa' })).toHaveValue(' ');
+  });
+});
+
+describe('pointer drag and drop', () => {
+  function drag(title: string, toX: number) {
+    const source = card(title);
+    fireEvent.pointerDown(source, { isPrimary: true, button: 0, clientX: 40, clientY: 80 });
+    fireEvent.pointerMove(document, { isPrimary: true, clientX: 40 + 10, clientY: 80 });
+    fireEvent.pointerMove(document, { isPrimary: true, clientX: toX, clientY: 90 });
+  }
+
+  it('drops on another column to change the state', async () => {
+    const { backend } = await renderBoard();
+
+    drag('Comprar tinta', 700);
+    await screen.findByText(/sobre a coluna Feito/);
+    fireEvent.pointerUp(document, { isPrimary: true, clientX: 700, clientY: 90 });
+
+    await waitFor(() => {
+      expect(titles('Feito')).toEqual(['Comprar tinta']);
+    });
+    expect(backend.bodies).toEqual([{ status: 'done' }]);
+  });
+
+  it('does not start a drag for a small movement, which stays a click', async () => {
+    await renderBoard();
+
+    fireEvent.pointerDown(card('Comprar tinta'), {
+      isPrimary: true,
+      button: 0,
+      clientX: 40,
+      clientY: 80,
+    });
+    fireEvent.pointerMove(document, { isPrimary: true, clientX: 43, clientY: 80 });
+    fireEvent.pointerUp(document, { isPrimary: true, clientX: 43, clientY: 80 });
+
+    expect(screen.queryByText(/está sobre a coluna/)).not.toBeInTheDocument();
+  });
+
+  it('cancels when released outside every column', async () => {
+    const { backend } = await renderBoard();
+
+    drag('Comprar tinta', 1500);
+    await screen.findByText(/fora das colunas/);
+    fireEvent.pointerUp(document, { isPrimary: true, clientX: 1500, clientY: 90 });
+
+    await screen.findByText(/solta fora das colunas/);
+    expect(backend.bodies).toEqual([]);
   });
 });

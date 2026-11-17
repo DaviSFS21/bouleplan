@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionMenu, type ActionMenuEntry } from './action-menu';
@@ -284,5 +284,80 @@ describe('ActionMenu groups', () => {
     await user.click(screen.getByRole('menuitemradio', { name: 'P1' }));
 
     expect(onPriority).toHaveBeenCalledWith('P1');
+  });
+});
+
+describe('ActionMenu in a portal', () => {
+  function boxes(triggerTop: number) {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.getAttribute('role') === 'menu') return new DOMRect(0, 0, 208, 200);
+      if (this.getAttribute('aria-haspopup') === 'menu')
+        return new DOMRect(400, triggerTop, 28, 28);
+      return new DOMRect(0, 0, 0, 0);
+    });
+  }
+
+  it('renders the menu under the body, fixed and anchored to the trigger', async () => {
+    boxes(100);
+    const { user, trigger } = setup();
+
+    await user.click(trigger);
+
+    const menu = screen.getByRole('menu');
+    expect(menu.parentElement).toBe(document.body);
+    expect(trigger.parentElement?.contains(menu)).toBe(false);
+    expect(menu).toHaveStyle({ top: '132px', left: '220px' });
+    vi.restoreAllMocks();
+  });
+
+  it('flips above the trigger when the room below is short', async () => {
+    boxes(window.innerHeight - 40);
+    const { user, trigger } = setup();
+
+    await user.click(trigger);
+
+    expect(screen.getByRole('menu')).toHaveStyle({
+      top: `${String(window.innerHeight - 40 - 4 - 200)}px`,
+    });
+    vi.restoreAllMocks();
+  });
+
+  it('follows the trigger on scroll', async () => {
+    boxes(100);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    boxes(300);
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ top: '332px' });
+    vi.restoreAllMocks();
+  });
+
+  it('stays open for a pointer inside it and closes for one outside', async () => {
+    const { user, trigger } = setup();
+    await user.click(trigger);
+
+    await user.pointer({ keys: '[MouseLeft>]', target: screen.getByRole('menu') });
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Fora' }));
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('stops following the page after it closes', async () => {
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const { user, trigger } = setup();
+    await user.click(trigger);
+
+    await user.keyboard('{Escape}');
+
+    expect(remove).toHaveBeenCalledWith('scroll', expect.any(Function), true);
+    expect(remove).toHaveBeenCalledWith('resize', expect.any(Function));
+    remove.mockRestore();
   });
 });

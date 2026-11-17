@@ -199,6 +199,7 @@ describe('quick create', () => {
   it('creates in the filtered phase', async () => {
     const user = userEvent.setup();
     const backend = await renderBoard(`/?iniciativa=${reforma.id}&fase=${piso.id}`);
+    await screen.findByRole('heading', { level: 1, name: 'Piso' });
 
     await user.click(within(column('Feito')).getByRole('button', { name: '+ Nova tarefa' }));
     await user.type(
@@ -331,5 +332,75 @@ describe('quick create', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'A fazer · 0' })).toBeVisible();
     });
+  });
+});
+
+describe('changing the selection', () => {
+  async function startDraft(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(within(column('A fazer')).getByRole('button', { name: '+ Nova tarefa' }));
+    await user.type(
+      within(column('A fazer')).getByRole('textbox', { name: 'Título da nova tarefa' }),
+      'rascunho',
+    );
+  }
+
+  const noDraft = () => {
+    expect(
+      screen.queryByRole('textbox', { name: 'Título da nova tarefa' }),
+    ).not.toBeInTheDocument();
+  };
+
+  it('drops a draft typed for one initiative when another is selected', async () => {
+    const user = userEvent.setup();
+    const backend = await renderBoard(`/?iniciativa=${reforma.id}`);
+    await startDraft(user);
+
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Iniciativas' })).getByRole('button', {
+        name: /^Horta/,
+      }),
+    );
+
+    noDraft();
+    expect(backend.bodies).toEqual([]);
+  });
+
+  it('drops a draft typed for one phase when another is selected', async () => {
+    const user = userEvent.setup();
+    await renderBoard(`/?iniciativa=${reforma.id}&fase=${piso.id}`);
+    await screen.findByRole('heading', { level: 1, name: 'Piso' });
+    await startDraft(user);
+
+    await user.click(screen.getByRole('button', { name: 'Fase 1 · Demolição' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Demolição' });
+    noDraft();
+  });
+
+  it('drops a draft when going to "Todas as tarefas"', async () => {
+    const user = userEvent.setup();
+    await renderBoard(`/?iniciativa=${reforma.id}`);
+    await startDraft(user);
+
+    await user.click(screen.getByRole('button', { name: 'Todas as tarefas' }));
+
+    noDraft();
+  });
+
+  it('drops the error message of the previous selection', async () => {
+    const user = userEvent.setup();
+    const backend = await renderBoard(`/?iniciativa=${reforma.id}`);
+    backend.failing.add('PATCH');
+    await user.click(screen.getByRole('button', { name: 'Ações da tarefa Lixar parede' }));
+    await user.click(screen.getByRole('menuitemradio', { name: 'P1' }));
+    expect(
+      await screen.findByText('Não foi possível mudar a prioridade. Tente de novo.'),
+    ).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Todas as tarefas' }));
+
+    expect(
+      screen.queryByText('Não foi possível mudar a prioridade. Tente de novo.'),
+    ).not.toBeInTheDocument();
   });
 });

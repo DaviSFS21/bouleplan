@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
-import { runScoped as runScopedMutation } from './scoped-mutation';
+import { hasQueued, runScoped as runScopedMutation } from './scoped-mutation';
 import type { CreateTaskBody, Task, TaskChanges } from './types';
 
 export const tasksKey = ['tasks'] as const;
@@ -34,12 +34,15 @@ function setList(
   queryClient.setQueryData<Task[]>(tasksKey, change);
 }
 
-function findTask(queryClient: QueryClient, id: string) {
-  return queryClient.getQueryData<Task[]>(tasksKey)?.find((item) => item.id === id);
+function cancelRefetches(queryClient: QueryClient) {
+  // An answer to an older read must not overwrite the optimistic state.
+  return queryClient.getQueryData(tasksKey)
+    ? queryClient.cancelQueries({ queryKey: tasksKey })
+    : Promise.resolve();
 }
 
-function replaceInList(list: Task[] | undefined, updated: Task) {
-  return list?.map((item) => (item.id === updated.id ? updated : item));
+function findTask(queryClient: QueryClient, id: string) {
+  return queryClient.getQueryData<Task[]>(tasksKey)?.find((item) => item.id === id);
 }
 
 function addToList(list: Task[] | undefined, added: Task) {
@@ -68,7 +71,7 @@ function runScoped<TVariables, TData>(
 ): Promise<TData> {
   return runScopedMutation(
     queryClient,
-    { scope, invalidate: tasksKey },
+    { scope, invalidate: tasksKey, awaitRefetch: false },
     variables,
     mutationFn,
     onSuccess,
@@ -76,7 +79,7 @@ function runScoped<TVariables, TData>(
       onMutate: optimistic?.apply,
       onError: (_error, input) => {
         optimistic?.rollback(input);
-        refetchTasks(queryClient);
+        if (!hasQueued(queryClient, scope)) refetchTasks(queryClient);
       },
     },
   );
@@ -132,10 +135,19 @@ export function useUpdateTask() {
               }),
             ),
           (updated) => {
-            setList(queryClient, (list) => replaceInList(list, updated));
+            // Only this change's fields: later queued changes are already on screen.
+            setList(queryClient, (list) =>
+              list?.map((item) => {
+                if (item.id !== updated.id) return item;
+                const merged = { ...item, updatedAt: updated.updatedAt };
+                for (const key of keys) Object.assign(merged, { [key]: updated[key] });
+                return merged;
+              }),
+            );
           },
           {
             apply: (body) => {
+              void cancelRefetches(queryClient);
               setList(queryClient, (list) =>
                 list?.map((item) => (item.id === task.id ? { ...item, ...body } : item)),
               );
@@ -177,6 +189,7 @@ function useRemoveTask(action: (id: string) => Promise<Task | string>) {
           },
           {
             apply: () => {
+              void cancelRefetches(queryClient);
               removed = findTask(queryClient, task.id) ?? removed;
               setList(queryClient, (list) => removeFromList(list, task.id));
             },
@@ -232,4 +245,24 @@ export function useUnarchiveTask() {
 
 export function useRestoreTask() {
   return useBringBackTask('/tasks/{id}/restore');
+}
+
+const hiddenByPhase = new WeakMap<QueryClient, Map<string, Task[]>>();
+
+// A phase that is archived or deleted takes its tasks off the board before the refetch answers.
+export function hideTasksOfPhase(queryClient: QueryClient, phaseId: string) {
+  const hidden = hiddenByPhase.get(queryClient) ?? new Map<string, Task[]>();
+  hiddenByPhase.set(queryClient, hidden);
+  const current = queryClient.getQueryData<Task[]>(tasksKey) ?? [];
+  hidden.set(
+    phaseId,
+    current.filter((task) => task.phaseId === phaseId),
+  );
+  setList(queryClient, (list) => list?.filter((task) => task.phaseId !== phaseId));
+}
+
+export function showTasksOfPhase(queryClient: QueryClient, phaseId: string) {
+  const back = hiddenByPhase.get(queryClient)?.get(phaseId) ?? [];
+  hiddenByPhase.get(queryClient)?.delete(phaseId);
+  setList(queryClient, (list) => back.reduce<Task[] | undefined>(addToList, list));
 }
