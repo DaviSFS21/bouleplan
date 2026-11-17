@@ -15,6 +15,8 @@ import styles from './side-panel.module.css';
 interface SidePanelProps {
   label: string;
   eyebrow: ReactNode;
+  // "path" shows the eyebrow as plain meta text, for breadcrumbs with links.
+  eyebrowStyle?: 'label' | 'path';
   actions?: ReactNode;
   footer?: ReactNode;
   opener?: RefObject<HTMLElement | null>;
@@ -26,6 +28,7 @@ interface SidePanelProps {
 export function SidePanel({
   label,
   eyebrow,
+  eyebrowStyle = 'label',
   actions,
   footer,
   opener,
@@ -74,7 +77,7 @@ export function SidePanel({
       onKeyDown={handleKeyDown}
     >
       <header className={styles.header}>
-        <span className={styles.eyebrow}>{eyebrow}</span>
+        <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
         <div className={styles.actions}>
           {actions}
           <button type="button" className={styles.close} aria-label="Fechar" onClick={onClose}>

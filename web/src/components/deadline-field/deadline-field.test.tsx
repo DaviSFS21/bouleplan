@@ -195,3 +195,36 @@ describe('DeadlineField', () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith(null);
   });
 });
+
+describe('DeadlineField with a display override', () => {
+  it('shows the given wording with the alert style and no "vencido" badge', () => {
+    render(
+      <DeadlineField
+        value="2026-12-09"
+        onChange={vi.fn()}
+        today={TODAY}
+        display={{ text: 'venceu ontem', alert: true }}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Prazo: venceu ontem' });
+    expect(button).toHaveTextContent('venceu ontem');
+    expect(button).not.toHaveTextContent('vencido');
+    expect(button.className).toContain('overdue');
+  });
+
+  it('does not alert when the display says so, even if the date is past', () => {
+    render(
+      <DeadlineField
+        value="2026-12-01"
+        onChange={vi.fn()}
+        today={TODAY}
+        display={{ text: 'venceu qua, 1 dez', alert: false }}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Prazo: venceu qua, 1 dez' }).className,
+    ).not.toContain('overdue');
+  });
+});

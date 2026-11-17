@@ -66,6 +66,8 @@ export function task(overrides: Partial<Task> = {}): Task {
     status: 'to_do',
     isBlocked: false,
     plannedWeekStart: null,
+    blocks: [],
+    blockedBy: [],
     createdAt: '2026-01-01T10:00:00-03:00',
     updatedAt: '2026-01-01T10:00:00-03:00',
     ...overrides,

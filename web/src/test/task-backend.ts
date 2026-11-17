@@ -15,11 +15,13 @@ export interface TaskBackend {
   tasks: Task[];
   calls: string[];
   bodies: unknown[];
-  // Method names (PATCH, POST, DELETE, UNDO for unarchive and restore) answered with a 500 while listed.
+  // Method names (PATCH, POST, DELETE, UNDO for unarchive and restore, DELETE-BLOCK) answered with a 500 while listed.
   failing: Set<string>;
   hiddenPhases: Set<string>;
   hiddenInitiatives: Set<string>;
   hiddenTasks: Set<string>;
+  // Problem code answered with a 422 to the next blocker PUT, once.
+  blockerProblem: string | null;
 }
 
 export function serveTaskApi(world: World): TaskBackend {
@@ -33,6 +35,7 @@ export function serveTaskApi(world: World): TaskBackend {
     hiddenPhases: new Set(),
     hiddenInitiatives: new Set(),
     hiddenTasks: new Set(),
+    blockerProblem: null,
   };
   let created = 0;
   const find = (id: unknown) => backend.tasks.find((task) => task.id === id);
@@ -44,6 +47,15 @@ export function serveTaskApi(world: World): TaskBackend {
   const show = (set: Set<string>, id: unknown, kind: string) => {
     backend.calls.push(`${kind} ${String(id)}`);
     set.delete(String(id));
+  };
+  const relate = (blockingId: string, blockedId: string, on: boolean) => {
+    const toggle = (ids: string[], id: string) =>
+      on ? (ids.includes(id) ? ids : [...ids, id]) : ids.filter((other) => other !== id);
+    backend.tasks = backend.tasks.map((item) => {
+      if (item.id === blockingId) return { ...item, blocks: toggle(item.blocks, blockedId) };
+      if (item.id === blockedId) return { ...item, blockedBy: toggle(item.blockedBy, blockingId) };
+      return item;
+    });
   };
   const phaseActive = (task: Task) =>
     task.phaseId === null || !backend.hiddenPhases.has(task.phaseId);
@@ -88,6 +100,8 @@ export function serveTaskApi(world: World): TaskBackend {
         status: body.status ?? 'to_do',
         isBlocked: false,
         plannedWeekStart: null,
+        blocks: [],
+        blockedBy: [],
         createdAt: `2026-02-${String(10 + created).padStart(2, '0')}T10:00:00-03:00`,
         updatedAt: `2026-02-${String(10 + created).padStart(2, '0')}T10:00:00-03:00`,
       } as Task;
@@ -102,6 +116,22 @@ export function serveTaskApi(world: World): TaskBackend {
       const updated = { ...backend.tasks[index], ...body } as Task;
       backend.tasks[index] = updated;
       return HttpResponse.json(updated);
+    }),
+    http.put('*/api/tasks/:blockingId/blocks/:blockedId', ({ params }) => {
+      backend.calls.push(`block ${String(params.blockingId)} ${String(params.blockedId)}`);
+      if (backend.blockerProblem) {
+        const code = backend.blockerProblem;
+        backend.blockerProblem = null;
+        return problemResponse(code, 422);
+      }
+      relate(String(params.blockingId), String(params.blockedId), true);
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.delete('*/api/tasks/:blockingId/blocks/:blockedId', ({ params }) => {
+      backend.calls.push(`unblock ${String(params.blockingId)} ${String(params.blockedId)}`);
+      if (failed('DELETE-BLOCK')) return problemResponse('internal', 500);
+      relate(String(params.blockingId), String(params.blockedId), false);
+      return new HttpResponse(null, { status: 204 });
     }),
     http.post('*/api/tasks/:id/archive', ({ params }) => {
       if (failed('POST')) return problemResponse('internal', 500);

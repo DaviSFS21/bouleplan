@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import type { Initiative, Phase, Task } from '@/api/types';
-import { TaskBoard } from '@/components/tasks/task-board';
+import { TaskBoard, type TaskPanelControl } from '@/components/tasks/task-board';
 import styles from './initiative-board.module.css';
 
 interface InitiativeBoardProps {
@@ -13,6 +13,7 @@ interface InitiativeBoardProps {
   tasks: readonly Task[] | undefined;
   tasksFailed: boolean;
   onRetryTasks: () => void;
+  taskPanel: TaskPanelControl;
   now?: Date;
 }
 
@@ -26,6 +27,7 @@ export function InitiativeBoard({
   tasks,
   tasksFailed,
   onRetryTasks,
+  taskPanel,
   now,
 }: Readonly<InitiativeBoardProps>) {
   let title: ReactNode = 'Todas as tarefas';
@@ -75,6 +77,7 @@ export function InitiativeBoard({
         initiatives={initiatives}
         initiative={initiative}
         phase={phase}
+        taskPanel={taskPanel}
         now={now}
       />
     </div>

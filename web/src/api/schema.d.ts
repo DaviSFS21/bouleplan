@@ -211,6 +211,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{blockingId}/blocks/{blockedId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Makes a task block another; a no-op if the link exists */
+        put: operations["addTaskBlocker"];
+        post?: never;
+        /** Ends the blocking of a task by another; a no-op if there is no link */
+        delete: operations["removeTaskBlocker"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks/{id}": {
         parameters: {
             query?: never;
@@ -372,6 +390,10 @@ export interface components {
             isBlocked: boolean;
             /** Format: date */
             plannedWeekStart: string | null;
+            /** @description Visible tasks this one blocks, in task list order */
+            blocks: string[];
+            /** @description Visible tasks that block this one, in task list order */
+            blockedBy: string[];
             createdAt: components["schemas"]["OffsetDateTime"];
             updatedAt: components["schemas"]["OffsetDateTime"];
         };
@@ -400,6 +422,16 @@ export interface components {
             /** @enum {string} */
             status?: "to_do" | "in_progress" | "done";
             isBlocked?: boolean;
+            /**
+             * Format: uuid
+             * @description An active named phase of the same initiative; null is the implicit phase
+             */
+            phaseId?: string | null;
+            /**
+             * Format: date
+             * @description A Monday
+             */
+            plannedWeekStart?: string | null;
         };
     };
     responses: never;
@@ -1000,6 +1032,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Task"][];
+                };
+            };
+        };
+    };
+    addTaskBlocker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                blockedId: components["schemas"]["UUID"];
+                blockingId: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link exists */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Either task is not an active task in an active phase and initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description task.blocker.self for the same task twice, task.blocker.cycle if the blocked task already blocks the blocking one, directly or through other tasks, hidden or not */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    removeTaskBlocker: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                blockedId: components["schemas"]["UUID"];
+                blockingId: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link does not exist */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Either task is not an active task in an active phase and initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };

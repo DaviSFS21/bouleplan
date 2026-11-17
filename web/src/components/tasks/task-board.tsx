@@ -37,10 +37,13 @@ import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
 import { useClock } from './use-clock';
-import { TaskCardPreview, type TaskActions } from './task-card';
+import { TaskCardPreview } from './task-card';
+import type { TaskActions } from './task-menu';
 import { TaskColumn } from './task-column';
+import { TaskPanel } from './task-panel';
 import {
   DRAG_ACTIVATION_DISTANCE,
+  KEYBOARD_CODES,
   announcements,
   columnCollision,
   columnKeyboardCoordinates,
@@ -50,6 +53,16 @@ import {
 import { STATUSES, statusTitle, tasksIn, visibleTasks } from './task-filter';
 import styles from './task-board.module.css';
 
+export interface TaskPanelControl {
+  openId: string | null;
+  open: (id: string) => void;
+  // With an id, closes only while that task is the open one.
+  close: (id?: string) => void;
+  // Opens it again only when nothing else was opened meanwhile.
+  reopen: (id: string) => void;
+  selectPath: (initiativeId: string, phaseId: string | null) => void;
+}
+
 interface TaskBoardProps {
   // undefined while the tasks load
   tasks: readonly Task[] | undefined;
@@ -58,6 +71,7 @@ interface TaskBoardProps {
   initiatives: readonly Initiative[];
   initiative: Initiative | null;
   phase: Phase | null;
+  taskPanel: TaskPanelControl;
   now?: Date;
 }
 
@@ -73,6 +87,7 @@ export function TaskBoard({
   initiatives,
   initiative,
   phase,
+  taskPanel,
   now,
 }: Readonly<TaskBoardProps>) {
   const toast = useToast();
@@ -91,7 +106,10 @@ export function TaskBoard({
   const busy = useRef(new Set<string>());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
-    useSensor(KeyboardSensor, { coordinateGetter: columnKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: columnKeyboardCoordinates,
+      keyboardCodes: KEYBOARD_CODES,
+    }),
   );
 
   const showPath = initiative === null;
@@ -127,11 +145,15 @@ export function TaskBoard({
     if (target || request.taskId === null) pendingFocus.current = null;
   }, [focusTick, tasks]);
 
-  const visible = useMemo(() => {
+  const listed = useMemo(() => {
     const live = new Set(initiatives.map(({ id }) => id));
-    const listed = (tasks ?? []).filter((task) => live.has(task.initiativeId));
-    return visibleTasks(listed, initiative, phase);
-  }, [tasks, initiatives, initiative, phase]);
+    return (tasks ?? []).filter((task) => live.has(task.initiativeId));
+  }, [tasks, initiatives]);
+  const visible = useMemo(
+    () => visibleTasks(listed, initiative, phase),
+    [listed, initiative, phase],
+  );
+  const openTask = taskPanel.openId ? listed.find(({ id }) => id === taskPanel.openId) : undefined;
   const clock = useClock(now);
   const colors = new Map(initiatives.map(({ id, color }) => [id, color]));
   const names = new Map(initiatives.map(({ id, name }) => [id, name]));
@@ -190,6 +212,7 @@ export function TaskBoard({
   ) {
     if (busy.current.has(task.id)) return;
     busy.current.add(task.id);
+    const wasOpen = taskPanel.openId === task.id;
     const column = tasksIn(visible, task.status);
     const position = column.findIndex(({ id }) => id === task.id);
     const neighbour = column[position + 1] ?? column[position - 1];
@@ -202,6 +225,7 @@ export function TaskBoard({
     } finally {
       busy.current.delete(task.id);
     }
+    if (wasOpen) taskPanel.close(task.id);
     requestFocus(neighbour?.id ?? null, task.status);
     toast.show({
       message: messages.done,
@@ -209,6 +233,7 @@ export function TaskBoard({
         undo(task).then(
           () => {
             requestFocus(task.id, task.status);
+            if (wasOpen) taskPanel.reopen(task.id);
           },
           () => {
             toast.show({ message: UNDO_FAILED_MESSAGE });
@@ -219,6 +244,12 @@ export function TaskBoard({
   }
 
   const actions: TaskActions = {
+    onOpen: (task) => {
+      taskPanel.open(task.id);
+    },
+    onClose: () => {
+      taskPanel.close();
+    },
     onRename: (task, title) => {
       if (title === '') {
         setError(BLANK_TASK_TITLE_MESSAGE);
@@ -365,6 +396,7 @@ export function TaskBoard({
                 colorOf={(task) => colors.get(task.initiativeId) ?? ''}
                 now={clock}
                 actions={actions}
+                openTaskId={openTask?.id ?? null}
                 slotIndex={lands ? landingIndex(column, dragging.task, compareTasks) : null}
                 quickCreate={quickCreate(status)}
               />
@@ -382,6 +414,20 @@ export function TaskBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
+      {openTask ? (
+        <TaskPanel
+          task={openTask}
+          tasks={listed}
+          initiativeNames={names}
+          actions={actions}
+          onOpenTask={taskPanel.open}
+          onSelectPath={taskPanel.selectPath}
+          fallbackFocus={() =>
+            root.current?.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`) ?? null
+          }
+          now={now}
+        />
+      ) : null}
     </div>
   );
 }

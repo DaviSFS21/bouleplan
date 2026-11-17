@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from 'react';
 import { Icon } from '@/components/icon/icon';
 import { placeMenu } from './place-menu';
@@ -38,9 +39,11 @@ export type ActionMenuEntry = ActionMenuItem | ActionMenuGroup | { separator: tr
 interface ActionMenuProps {
   label: string;
   items: readonly ActionMenuEntry[];
+  // Replaces the "⋯" icon button with a button of the caller's own look.
+  trigger?: { className: string; children: ReactNode };
 }
 
-export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
+export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMenuProps>) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -140,7 +143,7 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
       <button
         ref={trigger}
         type="button"
-        className={styles.trigger}
+        className={custom?.className ?? styles.trigger}
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -149,7 +152,7 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
           setOpen((current) => !current);
         }}
       >
-        <Icon icon={Ellipsis} />
+        {custom?.children ?? <Icon icon={Ellipsis} />}
       </button>
       {open
         ? createPortal(
@@ -213,13 +216,16 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
                     role="menuitem"
                     tabIndex={-1}
                     className={styles.item}
+                    aria-keyshortcuts={entry.shortcut}
                     onClick={() => {
                       select(entry);
                     }}
                   >
                     {entry.label}
                     {entry.shortcut ? (
-                      <span className={styles.shortcut}>{entry.shortcut}</span>
+                      <span className={styles.shortcut} aria-hidden="true">
+                        {entry.shortcut}
+                      </span>
                     ) : null}
                   </button>
                 ),

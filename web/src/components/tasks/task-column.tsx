@@ -3,7 +3,8 @@
 import { useDroppable } from '@dnd-kit/core';
 import type { ReactNode } from 'react';
 import type { Task, TaskStatus } from '@/api/types';
-import { TaskCard, type TaskActions } from './task-card';
+import { TaskCard } from './task-card';
+import type { TaskActions } from './task-menu';
 import { statusTitle } from './task-filter';
 import styles from './task-column.module.css';
 
@@ -14,6 +15,7 @@ interface TaskColumnProps {
   colorOf: (task: Task) => string;
   now: Date;
   actions: TaskActions;
+  openTaskId: string | null;
   // Where the dragged card would land, when it comes from another column.
   slotIndex: number | null;
   quickCreate: ReactNode;
@@ -26,6 +28,7 @@ export function TaskColumn({
   colorOf,
   now,
   actions,
+  openTaskId,
   slotIndex,
   quickCreate,
 }: Readonly<TaskColumnProps>) {
@@ -39,6 +42,7 @@ export function TaskColumn({
       color={colorOf(task)}
       now={now}
       actions={actions}
+      isOpen={task.id === openTaskId}
     />
   ));
   if (slotIndex !== null) {

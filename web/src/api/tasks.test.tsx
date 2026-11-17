@@ -17,9 +17,11 @@ import { ApiError } from './problem';
 import {
   compareTasks,
   tasksKey,
+  useAddBlocker,
   useArchiveTask,
   useCreateTask,
   useDeleteTask,
+  useRemoveBlocker,
   useRestoreTask,
   useTasks,
   useUnarchiveTask,
@@ -48,6 +50,8 @@ function useAllHooks() {
     unarchive: useUnarchiveTask(),
     remove: useDeleteTask(),
     restore: useRestoreTask(),
+    addBlocker: useAddBlocker(),
+    removeBlocker: useRemoveBlocker(),
   };
 }
 
@@ -450,5 +454,135 @@ describe('hiding tasks with their phase or initiative', () => {
         expect(loads).toBe(position + 2);
       });
     }
+  });
+});
+
+describe('blockers', () => {
+  const blocked = task({ id: 'b', title: 'Pintar' });
+  const blocking = task({ id: 'a', title: 'Lixar', blocks: ['b'] });
+
+  it('puts the relation on both tasks before the answer and refreshes the list', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const calls: string[] = [];
+    let lists = 0;
+    server.use(
+      http.get('*/api/tasks', () => {
+        lists += 1;
+        return HttpResponse.json([task({ id: 'a' }), task({ id: 'b' })]);
+      }),
+      http.put('*/api/tasks/:blockingId/blocks/:blockedId', async ({ params }) => {
+        await gate;
+        calls.push(`PUT ${String(params.blockingId)} ${String(params.blockedId)}`);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { result } = renderHook(useAllHooks, { wrapper });
+    await waitFor(() => {
+      expect(result.current.list.data).toHaveLength(2);
+    });
+
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = result.current.addBlocker.mutateAsync({ blockingId: 'a', blockedId: 'b' });
+    });
+    await waitFor(() => {
+      expect(result.current.list.data?.find(({ id }) => id === 'a')?.blocks).toEqual(['b']);
+    });
+    expect(result.current.list.data?.find(({ id }) => id === 'b')?.blockedBy).toEqual(['a']);
+
+    release();
+    await act(async () => {
+      await pending;
+    });
+    expect(calls).toEqual(['PUT a b']);
+    await waitFor(() => {
+      expect(lists).toBe(2);
+    });
+  });
+
+  it('takes the relation off both tasks with DELETE', async () => {
+    const calls: string[] = [];
+    server.use(
+      http.delete('*/api/tasks/:blockingId/blocks/:blockedId', ({ params }) => {
+        calls.push(`DELETE ${String(params.blockingId)} ${String(params.blockedId)}`);
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { result } = await loaded([blocking, { ...blocked, blockedBy: ['a'] }]);
+
+    await act(async () => {
+      await result.current.removeBlocker.mutateAsync({ blockingId: 'a', blockedId: 'b' });
+    });
+
+    expect(calls).toEqual(['DELETE a b']);
+    expect(result.current.list.data?.[0]?.blocks).toEqual([]);
+    expect(result.current.list.data?.[1]?.blockedBy).toEqual([]);
+  });
+
+  it('rolls the relation back and rejects with the problem code', async () => {
+    server.use(
+      http.put('*/api/tasks/:blockingId/blocks/:blockedId', () =>
+        problemResponse('task.blocker.cycle', 422),
+      ),
+    );
+    const { result } = await loaded([task({ id: 'a' }), task({ id: 'b' })]);
+
+    await act(async () => {
+      await expect(
+        result.current.addBlocker.mutateAsync({ blockingId: 'a', blockedId: 'b' }),
+      ).rejects.toMatchObject({ code: 'task.blocker.cycle' });
+    });
+
+    expect(result.current.list.data?.[0]?.blocks).toEqual([]);
+    expect(result.current.list.data?.[1]?.blockedBy).toEqual([]);
+  });
+
+  it('does not repeat a relation that is already on screen', async () => {
+    server.use(
+      http.put(
+        '*/api/tasks/:blockingId/blocks/:blockedId',
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    );
+    const { result } = await loaded([blocking, { ...blocked, blockedBy: ['a'] }]);
+
+    await act(async () => {
+      await result.current.addBlocker.mutateAsync({ blockingId: 'a', blockedId: 'b' });
+    });
+
+    expect(result.current.list.data?.[0]?.blocks).toEqual(['b']);
+    expect(result.current.list.data?.[1]?.blockedBy).toEqual(['a']);
+  });
+});
+
+describe('useUpdateTask with the panel fields', () => {
+  it('sends the phase and the planned week and keeps the server answer for them', async () => {
+    const bodies: unknown[] = [];
+    const items = [paint];
+    server.use(
+      http.patch('*/api/tasks/:id', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        bodies.push(body);
+        items[0] = { ...paint, ...body, phaseId: 'new-implicit' };
+        return HttpResponse.json(items[0]);
+      }),
+    );
+    const { result } = await loaded(items);
+
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        task: paint,
+        changes: { phaseId: null, plannedWeekStart: '2026-11-16' },
+      });
+    });
+
+    expect(bodies).toEqual([{ phaseId: null, plannedWeekStart: '2026-11-16' }]);
+    expect(result.current.list.data?.[0]).toMatchObject({
+      phaseId: 'new-implicit',
+      plannedWeekStart: '2026-11-16',
+    });
   });
 });
