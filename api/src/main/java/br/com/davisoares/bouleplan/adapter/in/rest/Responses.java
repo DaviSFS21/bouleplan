@@ -10,5 +10,8 @@ final class Responses {
 
   static final String NO_PHASE = "No active phase with this id in an active initiative of the user";
 
+  static final String NO_TASK =
+      "No active task with this id in an active phase and initiative of the user";
+
   private Responses() {}
 }

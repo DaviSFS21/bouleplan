@@ -22,9 +22,9 @@ import org.hibernate.annotations.UuidGenerator;
 public class Initiative extends PanacheEntityBase {
 
   public static final int MAX_NAME_LENGTH = EntityText.MAX_NAME_LENGTH;
-  public static final int MAX_DESCRIPTION_LENGTH = 10_000;
-  public static final int MIN_DEADLINE_YEAR = 1;
-  public static final int MAX_DEADLINE_YEAR = 9999;
+  public static final int MAX_DESCRIPTION_LENGTH = EntityText.MAX_DESCRIPTION_LENGTH;
+  public static final int MIN_DEADLINE_YEAR = EntityText.MIN_DEADLINE_YEAR;
+  public static final int MAX_DEADLINE_YEAR = EntityText.MAX_DEADLINE_YEAR;
 
   @Id @GeneratedValue @UuidGenerator private UUID id;
 
@@ -80,25 +80,8 @@ public class Initiative extends PanacheEntityBase {
   }
 
   private static String validDescription(String description) {
-    String trimmed =
-        description == null
-            ? ""
-            : EntityText.stripInvisible(description.replace("\r\n", "\n").replace('\r', '\n'));
-    if (trimmed.codePoints().anyMatch(Initiative::isInvalidDescriptionCodePoint)) {
-      throw new InvalidInitiativeException(
-          "initiative.description.invalid-characters",
-          "Initiative description must not contain control or invalid characters");
-    }
-    if (trimmed.length() > MAX_DESCRIPTION_LENGTH) {
-      throw new InvalidInitiativeException(
-          "initiative.description.too-long",
-          "Initiative description must have at most " + MAX_DESCRIPTION_LENGTH + " characters");
-    }
-    return trimmed.isEmpty() ? null : trimmed;
-  }
-
-  private static boolean isInvalidDescriptionCodePoint(int codePoint) {
-    return codePoint != '\n' && codePoint != '\t' && EntityText.isInvalidCodePoint(codePoint);
+    return EntityText.validDescription(
+        description, "Initiative", "initiative.description", InvalidInitiativeException::new);
   }
 
   /** Renames with the same rules as creation. */
@@ -113,8 +96,7 @@ public class Initiative extends PanacheEntityBase {
 
   /** Sets or clears ({@code null}) the overall deadline. */
   public void scheduleDeadline(LocalDate deadline) {
-    if (deadline != null
-        && (deadline.getYear() < MIN_DEADLINE_YEAR || deadline.getYear() > MAX_DEADLINE_YEAR)) {
+    if (deadline != null && !EntityText.hasValidYear(deadline)) {
       throw new InvalidInitiativeException(
           "initiative.deadline.invalid",
           "Deadline year must be between " + MIN_DEADLINE_YEAR + " and " + MAX_DEADLINE_YEAR);

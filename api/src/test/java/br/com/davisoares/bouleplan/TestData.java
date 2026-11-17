@@ -2,6 +2,7 @@ package br.com.davisoares.bouleplan;
 
 import br.com.davisoares.bouleplan.domain.Initiative;
 import br.com.davisoares.bouleplan.domain.Phase;
+import br.com.davisoares.bouleplan.domain.Task;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
@@ -11,11 +12,12 @@ public final class TestData {
 
   private TestData() {}
 
-  /** Deletes every phase, then every initiative, in a committed transaction. */
+  /** Deletes every task, phase and then initiative, in a committed transaction. */
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
     QuarkusTransaction.requiringNew()
         .run(() -> {
+          Task.deleteAll();
           Phase.deleteAll();
           Initiative.deleteAll();
         });
@@ -100,6 +102,45 @@ public final class TestData {
           entityManager
               .createNativeQuery("update initiative set archived_at = null where id = ?1")
               .setParameter(1, id)
+              .executeUpdate();
+        });
+  }
+
+  /** Counts the implicit phases of an initiative. */
+  public static long countImplicitPhases(EntityManager entityManager, String initiativeId) {
+    return QuarkusTransaction.requiringNew()
+        .call(() ->
+            (Long)
+                entityManager
+                    .createQuery(
+                        "select count(p) from Phase p"
+                            + " where p.initiativeId = ?1 and p.implicit = true")
+                    .setParameter(1, UUID.fromString(initiativeId))
+                    .getSingleResult());
+  }
+
+  /** Inserts an active initiative, phase and task, all of another user; returns the task id. */
+  public static String insertForeignTask(EntityManager entityManager) {
+    String phaseId = insertForeignPhase(entityManager);
+    UUID taskId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("insert into task (id, phase_id, title) values (?1, ?2, 'Theirs')")
+              .setParameter(1, taskId)
+              .setParameter(2, UUID.fromString(phaseId))
+              .executeUpdate();
+        });
+    return taskId.toString();
+  }
+
+  /** Stamps {@code deleted_at} of a phase straight in the database. */
+  public static void markPhaseDeleted(EntityManager entityManager, String id) {
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("update phase set deleted_at = now() where id = ?1")
+              .setParameter(1, UUID.fromString(id))
               .executeUpdate();
         });
   }

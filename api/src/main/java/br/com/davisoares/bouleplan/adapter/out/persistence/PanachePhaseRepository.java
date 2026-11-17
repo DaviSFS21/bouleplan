@@ -56,4 +56,18 @@ public class PanachePhaseRepository implements PhaseRepository, PanacheRepositor
         .withLock(LockModeType.PESSIMISTIC_WRITE)
         .firstResultOptional();
   }
+
+  @Override
+  public Optional<Phase> findByIdAndInitiativeForUpdate(UUID id, UUID initiativeId) {
+    return find("id = ?1 and initiativeId = ?2", id, initiativeId)
+        .withLock(LockModeType.PESSIMISTIC_WRITE)
+        .firstResultOptional();
+  }
+
+  @Override
+  public Optional<Phase> findImplicitByInitiativeForUpdate(UUID initiativeId) {
+    return find("initiativeId = ?1 and implicit = true", initiativeId)
+        .withLock(LockModeType.PESSIMISTIC_WRITE)
+        .firstResultOptional();
+  }
 }
