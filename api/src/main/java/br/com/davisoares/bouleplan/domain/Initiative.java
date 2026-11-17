@@ -65,10 +65,10 @@ public class Initiative extends PanacheEntityBase {
       throw new InvalidInitiativeException(
           "initiative.name.blank", "Initiative name must not be blank");
     }
-    if (trimmed.chars().anyMatch(Character::isISOControl)) {
+    if (trimmed.codePoints().anyMatch(Initiative::isInvalidCodePoint)) {
       throw new InvalidInitiativeException(
           "initiative.name.invalid-characters",
-          "Initiative name must not contain control characters");
+          "Initiative name must not contain control or invalid characters");
     }
     if (trimmed.length() > MAX_NAME_LENGTH) {
       throw new InvalidInitiativeException(
@@ -83,14 +83,19 @@ public class Initiative extends PanacheEntityBase {
     return initiative;
   }
 
+  private static boolean isInvalidCodePoint(int codePoint) {
+    return Character.isISOControl(codePoint) || Character.getType(codePoint) == Character.SURROGATE;
+  }
+
   private static boolean isInvisible(char c) {
     return Character.isWhitespace(c)
         || Character.isSpaceChar(c)
-        || c == '\u200B'
-        || c == '\u200C'
-        || c == '\u200D'
-        || c == '\u2060'
-        || c == '\uFEFF';
+        || Character.getType(c) == Character.FORMAT
+        || c == 0x2800
+        || c == 0x3164
+        || c == 0x115F
+        || c == 0x1160
+        || c == 0xFFA0;
   }
 
   private static String stripInvisible(String value) {
