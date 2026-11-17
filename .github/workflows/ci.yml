@@ -105,6 +105,104 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  e2e:
+    name: E2E · initiatives against the real API and database
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Throwaway values for the CI-only database.
+      POSTGRES_DB: bouleplan
+      POSTGRES_USER: bouleplan
+      POSTGRES_PASSWORD: e2e-password
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bouleplan -d bouleplan"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Build the API
+        working-directory: api
+        run: ./gradlew quarkusBuild -x test
+
+      - name: Start the API
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/${{ env.POSTGRES_DB }}
+          DB_USERNAME: ${{ env.POSTGRES_USER }}
+          DB_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        run: |
+          nohup java -jar api/build/quarkus-app/quarkus-run.jar > api.log 2>&1 &
+          curl --silent --fail --retry 60 --retry-delay 2 --retry-all-errors \
+            http://localhost:8080/q/health/ready
+
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: web/.node-version
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies (frozen lockfile)
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Production build
+        working-directory: web
+        run: pnpm build
+
+      - name: Start the web app
+        working-directory: web
+        env:
+          API_URL: http://localhost:8080
+        run: |
+          nohup pnpm start > ../web.log 2>&1 &
+          curl --silent --fail --output /dev/null --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:3000
+
+      - name: Install Chromium
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        working-directory: web
+        env:
+          E2E_DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
+        run: pnpm e2e
+
+      - name: E2E reports and logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-reports
+          path: |
+            web/playwright-report/
+            web/test-results/
+            api.log
+            web.log
+          retention-days: 7
+
   sonar:
     name: Sonar · quality gate
     needs: [api, web]

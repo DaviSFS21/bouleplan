@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
@@ -8,6 +8,7 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   test: {
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     coverage: {

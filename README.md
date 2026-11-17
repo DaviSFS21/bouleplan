@@ -49,13 +49,35 @@ cd web && pnpm install && pnpm dev
 
 Each project's README lists its lint, test and build commands.
 
+## End-to-end tests
+
+Playwright tests in [`web/e2e/`](web/e2e) drive the real UI against the real API and PostgreSQL. They start no servers and **delete every initiative before each test**, so point them only at a disposable database.
+
+1. Start the database, the API and the frontend as in [Running locally](#running-locally).
+2. Install the browser once: `cd web && pnpm exec playwright install chromium`.
+3. Run the tests:
+
+```bash
+cd web
+E2E_DATABASE_URL=postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:<DB_PORT>/<DB_NAME> pnpm e2e
+```
+
+| Variable           | Default                 | What it does                                                      |
+| ------------------ | ----------------------- | ----------------------------------------------------------------- |
+| `E2E_DATABASE_URL` | none (required)         | Database the tests reset; use the values from your `.env`         |
+| `E2E_BASE_URL`     | `http://localhost:3000` | Where the frontend is served                                      |
+| `PW_CHROMIUM_PATH` | Playwright's own        | Chromium executable to use instead of the one Playwright installs |
+
+CI runs the same tests in the `e2e` job, against the production build of both projects.
+
 ## Quality and CI
 
 Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci.yml) workflow:
 
 1. **API**: Checkstyle and PMD (any violation fails the build), tests against a real PostgreSQL, and the build.
 2. **Web**: Prettier, ESLint (zero warnings), type checking, tests with coverage, and the production build.
-3. **Sonar**: merges coverage from both sides and runs SonarQube Cloud. The job fails if the quality gate fails.
+3. **E2E**: Playwright tests against the built API, the built frontend and a PostgreSQL service.
+4. **Sonar**: merges coverage from both sides and runs SonarQube Cloud. The job fails if the quality gate fails.
 
 ### One-time SonarQube Cloud setup
 
