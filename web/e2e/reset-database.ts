@@ -7,7 +7,7 @@ export async function resetDatabase(): Promise<void> {
   const client = new Client({ connectionString });
   await client.connect();
   try {
-    await client.query('delete from initiative');
+    await client.query('truncate initiative cascade');
   } finally {
     await client.end();
   }
