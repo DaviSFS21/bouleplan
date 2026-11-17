@@ -22,7 +22,7 @@ final class ScheduledItemParser {
     JsonNode root = JsonBodies.readObject(mapper, body, CREATE_FIELDS);
     return new CreateScheduledItemCommand(
         JsonFields.mandatory(JsonFields.uuid(root, "taskId")),
-        JsonFields.date(root, DATE).value(),
+        JsonFields.mandatory(JsonFields.date(root, DATE)),
         JsonFields.time(root, START_TIME).value(),
         JsonFields.time(root, END_TIME).value());
   }

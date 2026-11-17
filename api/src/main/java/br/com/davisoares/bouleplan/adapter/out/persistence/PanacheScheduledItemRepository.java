@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** Panache and native SQL implementation of {@link ScheduledItemRepository}. */
+@SuppressWarnings("PMD.TooManyMethods") // one method per port query
 @ApplicationScoped
 public class PanacheScheduledItemRepository
     implements ScheduledItemRepository, PanacheRepositoryBase<ScheduledItem, UUID> {
@@ -35,6 +36,13 @@ public class PanacheScheduledItemRepository
           + " where i.user_id = :user and i.archived_at is null and i.deleted_at is null"
           + " and p.archived_at is null and p.deleted_at is null"
           + " and t.archived_at is null and t.deleted_at is null";
+
+  private static final String USER = "user";
+  private static final String DATE = "date";
+
+  private static final String OWN_TASK_IDS =
+      "select t.id from task t join phase p on p.id = t.phase_id"
+          + " join initiative i on i.id = p.initiative_id where i.user_id = :user";
 
   private static final String MINUTES = "extract(epoch from (si.end_time - si.start_time)) / 60";
 
@@ -77,8 +85,8 @@ public class PanacheScheduledItemRepository
                     + VISIBLE_SQL
                     + " and si.date = :date and si.start_time is not null and si.id <> :except"
                     + " and si.start_time < :end and si.end_time > :start)")
-            .setParameter("user", userId)
-            .setParameter("date", date)
+            .setParameter(USER, userId)
+            .setParameter(DATE, date)
             .setParameter("except", exceptId)
             .setParameter("start", start)
             .setParameter("end", end)
@@ -97,10 +105,47 @@ public class PanacheScheduledItemRepository
                         + " join phase p on p.id = t.phase_id"
                         + " join initiative i on i.id = p.initiative_id"
                         + " where i.user_id = :user and si.date = :date")
-                .setParameter("user", userId)
-                .setParameter("date", date)
+                .setParameter(USER, userId)
+                .setParameter(DATE, date)
                 .getSingleResult())
         .intValue();
+  }
+
+  @Override
+  public boolean hasSortOrder(UUID userId, LocalDate date, int sortOrder, UUID exceptId) {
+    return (Boolean)
+        entityManager
+            .createNativeQuery(
+                "select exists (select 1 from scheduled_item si where si.date = :date"
+                    + " and si.sort_order = :order and si.id <> :except"
+                    + " and si.task_id in ("
+                    + OWN_TASK_IDS
+                    + "))")
+            .setParameter(USER, userId)
+            .setParameter(DATE, date)
+            .setParameter("order", sortOrder)
+            .setParameter("except", exceptId)
+            .getSingleResult();
+  }
+
+  // Hidden entries shift too, so that bringing them back keeps the order they had relatively.
+  @Override
+  public void shiftSortOrders(
+      UUID userId, LocalDate date, int low, int high, int delta, UUID exceptId) {
+    entityManager
+        .createNativeQuery(
+            "update scheduled_item set sort_order = sort_order + :delta, updated_at = now()"
+                + " where date = :date and sort_order between :low and :high and id <> :except"
+                + " and task_id in ("
+                + OWN_TASK_IDS
+                + ")")
+        .setParameter(USER, userId)
+        .setParameter(DATE, date)
+        .setParameter("low", low)
+        .setParameter("high", high)
+        .setParameter("delta", delta)
+        .setParameter("except", exceptId)
+        .executeUpdate();
   }
 
   @Override

@@ -129,7 +129,33 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
     }
     ScheduledItem.requireDayListEntry(date, order);
     requireNoDuplicate(item.getTaskId(), date, item.getId());
+    if (command.sortOrder().present() && command.sortOrder().value() != null) {
+      makeRoom(item, date, order, sameList);
+    }
     item.placeInDayList(date, order);
+  }
+
+  // A reorder inside the day moves the entries between the two places by one, so that moving back
+  // restores the list; an entry coming from elsewhere pushes the entries from its order upwards.
+  private void makeRoom(ScheduledItem item, LocalDate date, int order, boolean sameList) {
+    UUID user = currentUser.id();
+    if (!items.hasSortOrder(user, date, order, item.getId())) {
+      return;
+    }
+    if (sameList) {
+      shiftBetween(item, date, order);
+    } else {
+      items.shiftSortOrders(user, date, order, Integer.MAX_VALUE, 1, item.getId());
+    }
+  }
+
+  private void shiftBetween(ScheduledItem item, LocalDate date, int order) {
+    int old = item.getSortOrder();
+    if (order < old) {
+      items.shiftSortOrders(currentUser.id(), date, order, old - 1, 1, item.getId());
+    } else {
+      items.shiftSortOrders(currentUser.id(), date, old + 1, order, -1, item.getId());
+    }
   }
 
   private void moveAsBlock(

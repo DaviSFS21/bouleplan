@@ -100,8 +100,8 @@ class ScheduledItemCreateResourceTest {
                 .formatted(taskId)),
         400,
         PlannerApi.ITEM_TIME);
-    InitiativeAssertions.assertProblem(
-        PlannerApi.postItem("{\"taskId\": \"%s\"}".formatted(taskId)), 400, PlannerApi.ITEM_TIME);
+    InitiativeAssertions.assertMalformed(
+        PlannerApi.postItem("{\"taskId\": \"%s\"}".formatted(taskId)));
     PlannerApi.planner(PlannerApi.MONDAY).body("items.size()", equalTo(0));
   }
 

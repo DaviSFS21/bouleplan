@@ -98,8 +98,11 @@ cannot overlap on a date (`[start, end)`, so touching blocks are fine): 409 `sch
 Only blocks of visible tasks count. A day-list entry has an order and no times, a block has both
 times and no order. `PATCH` merges the sent fields into the item and the result decides its kind:
 both times `null` is a day-list entry, both set is a block, one set is `scheduled-item.time.invalid`.
-A day-list entry keeps its `sortOrder` on the same day, and is appended when it changes day, comes
-from a block, or sends `sortOrder: null`; a number sets the order as given (no renumbering). A block
+The no-overlap rule applies to planner writes (create, move, resize, entry to block), not to
+restores: bringing a hidden task back restores its blocks as they were, even over newer ones, and a
+later write into the shared time is refused while the other block is visible. A day-list entry
+keeps its `sortOrder` on the same day, and is appended when it changes day, comes
+from a block, or sends `sortOrder: null`; a number sets the order, and if another entry of the user has it, entries move by one: a reorder in the same day shifts those between the old and the new place (so moving back restores the list), an entry coming from elsewhere pushes those from that order upwards. A block
 cannot have a `sortOrder`. Items of a task that is archived, deleted, or in an archived or deleted
 phase or initiative are hidden, answer 404 and come back with it; an item of a task that is `done`
 cannot be created or changed (422), but can be deleted.

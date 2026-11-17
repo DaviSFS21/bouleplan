@@ -14,6 +14,7 @@ import java.util.UUID;
  * Persistence port for scheduled items. Items of hidden tasks (a task, phase or initiative that is
  * archived or deleted) are hidden: the queries that say "visible" leave them out.
  */
+@SuppressWarnings("PMD.TooManyMethods") // one method per query of the planner
 public interface ScheduledItemRepository {
 
   /** Stands for "no item" where a query excludes one. */
@@ -37,6 +38,15 @@ public interface ScheduledItemRepository {
 
   /** One more than the highest day-list order of the user on the date, 0 if there is none. */
   int nextSortOrder(UUID userId, LocalDate date);
+
+  /** Whether a day-list entry of the user other than {@code exceptId} has this order that day. */
+  boolean hasSortOrder(UUID userId, LocalDate date, int sortOrder, UUID exceptId);
+
+  /**
+   * Adds {@code delta} to the order of the user's day-list entries on the date whose order is from
+   * {@code low} to {@code high}, both inclusive, except one item.
+   */
+  void shiftSortOrders(UUID userId, LocalDate date, int low, int high, int delta, UUID exceptId);
 
   /** The visible items of the user from {@code from} to {@code to}, both inclusive, sorted. */
   List<ScheduledItem> findVisibleBetween(UUID userId, LocalDate from, LocalDate to);

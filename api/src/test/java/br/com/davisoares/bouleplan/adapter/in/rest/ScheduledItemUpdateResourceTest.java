@@ -215,4 +215,37 @@ class ScheduledItemUpdateResourceTest {
     }
     PlannerApi.taskItems(taskId).body("[0].date", equalTo(PlannerApi.TUESDAY));
   }
+
+  @Test
+  @DisplayName("PATCH onto a taken order shifts the entries from there, and the undo restores")
+  void reorderOntoTakenOrder() {
+    String a = PlannerApi.createDayListId(taskId, PlannerApi.TUESDAY);
+    String b = PlannerApi.createDayListId(otherTaskId, PlannerApi.TUESDAY);
+    String c =
+        PlannerApi.createDayListId(
+            TaskApi.createId(TaskApi.initiativeId("Work"), "Third"), PlannerApi.TUESDAY);
+
+    PlannerApi.patchItem(c, "{\"sortOrder\": 0}").statusCode(200).body(SORT_ORDER, equalTo(0));
+    PlannerApi.planner(PlannerApi.MONDAY)
+        .body("items.id", org.hamcrest.Matchers.contains(c, a, b))
+        .body("items.sortOrder", org.hamcrest.Matchers.contains(0, 1, 2));
+
+    PlannerApi.patchItem(c, "{\"sortOrder\": 2}").statusCode(200).body(SORT_ORDER, equalTo(2));
+    PlannerApi.planner(PlannerApi.MONDAY)
+        .body("items.id", org.hamcrest.Matchers.contains(a, b, c))
+        .body("items.sortOrder", org.hamcrest.Matchers.contains(0, 1, 2));
+  }
+
+  @Test
+  @DisplayName("an entry moved to a day onto a taken order pushes the entries there up")
+  void moveToTakenOrderOnAnotherDay() {
+    String there = PlannerApi.createDayListId(otherTaskId, PlannerApi.WEDNESDAY);
+    String id = PlannerApi.createDayListId(taskId, PlannerApi.TUESDAY);
+
+    PlannerApi.patchItem(id, "{\"date\": \"2026-11-18\", \"sortOrder\": 0}").statusCode(200);
+
+    PlannerApi.planner(PlannerApi.MONDAY)
+        .body("items.id", org.hamcrest.Matchers.contains(id, there))
+        .body("items.sortOrder", org.hamcrest.Matchers.contains(0, 1));
+  }
 }
