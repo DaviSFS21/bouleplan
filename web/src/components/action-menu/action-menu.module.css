@@ -1,0 +1,80 @@
+.root {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tinta-muted);
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+  background: var(--papel-elevado);
+  color: var(--tinta);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-width: 208px;
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  background: var(--papel-flutuante);
+  box-shadow: var(--sombra-flutuante);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tinta);
+  font: normal 400 14px/20px var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--papel-elevado);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: -2px;
+}
+
+.shortcut {
+  margin-left: auto;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1) 6px;
+  background: var(--borda);
+}
