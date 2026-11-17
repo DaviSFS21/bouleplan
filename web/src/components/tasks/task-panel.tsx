@@ -94,11 +94,12 @@ export function TaskPanel({
     setTitleFocus(0);
   }
 
-  async function save(field: TaskField, changes: TaskChanges) {
+  async function save(field: TaskField, changes: TaskChanges): Promise<boolean> {
     const id = task.id;
     setErrors((current) => ({ ...current, [field]: undefined }));
     try {
       await update.mutateAsync({ task, changes });
+      return true;
     } catch (failure) {
       const message = updateTaskMessage(failure, field);
       if (isCurrent(id)) {
@@ -110,6 +111,7 @@ export function TaskPanel({
       } else {
         toast.show({ message });
       }
+      return false;
     }
   }
 
@@ -376,9 +378,7 @@ export function TaskPanel({
           onRevert={() => {
             setErrors((current) => ({ ...current, description: undefined }));
           }}
-          onSave={(text) => {
-            void save('description', { description: text === '' ? null : text });
-          }}
+          onSave={(text) => save('description', { description: text === '' ? null : text })}
         />
       </section>
     </SidePanel>

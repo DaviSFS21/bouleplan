@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 function setup(value = 'Texto salvo', error?: string) {
-  const onSave = vi.fn();
+  const onSave = vi.fn(() => Promise.resolve(true));
   const user = userEvent.setup({ delay: null });
   const view = render(<DescriptionField value={value} onSave={onSave} error={error} />);
   return { onSave, user, view, field: screen.getByRole('textbox', { name: 'Descrição' }) };
@@ -65,7 +65,7 @@ describe('DescriptionField autosave', () => {
 
   it('reverts unsaved text on Esc, cancels the timer and keeps Esc from the panel', async () => {
     const onKey = vi.fn();
-    const onSave = vi.fn();
+    const onSave = vi.fn(() => Promise.resolve(true));
     const user = userEvent.setup({ delay: null });
     render(
       <div onKeyDown={onKey}>
@@ -103,7 +103,7 @@ describe('DescriptionField autosave', () => {
   });
 
   it('does not send the same text twice, but tries again after an error', () => {
-    const onSave = vi.fn();
+    const onSave = vi.fn(() => Promise.resolve(true));
     const { rerender } = render(<DescriptionField value="a" onSave={onSave} />);
     const field = screen.getByRole('textbox', { name: 'Descrição' });
 
@@ -130,7 +130,7 @@ describe('DescriptionField autosave', () => {
   });
 
   it('follows a newer saved text while clean, so a blur without typing saves nothing', async () => {
-    const onSave = vi.fn();
+    const onSave = vi.fn(() => Promise.resolve(true));
     const user = userEvent.setup({ delay: null });
     const view = render(<DescriptionField value="velho" onSave={onSave} />);
 
@@ -143,19 +143,66 @@ describe('DescriptionField autosave', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('keeps typed text when the saved text changes, and becomes clean once it matches', async () => {
-    const onSave = vi.fn();
+  it('keeps typed text when the saved text changes before it is saved', async () => {
+    const user = userEvent.setup({ delay: null });
+    const view = render(<DescriptionField value="a" onSave={vi.fn(() => Promise.resolve(true))} />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(field, 'b');
+    view.rerender(<DescriptionField value="outro" onSave={vi.fn(() => Promise.resolve(true))} />);
+
+    expect(field).toHaveValue('ab');
+  });
+
+  it('keeps the text through an optimistic match and a rollback, then retries on blur', async () => {
+    let settle: (confirmed: boolean) => void = () => undefined;
+    const onSave = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          settle = resolve;
+        }),
+    );
     const user = userEvent.setup({ delay: null });
     const view = render(<DescriptionField value="a" onSave={onSave} />);
     const field = screen.getByRole('textbox', { name: 'Descrição' });
 
     await user.type(field, 'b');
-    view.rerender(<DescriptionField value="outro" onSave={onSave} />);
-    expect(field).toHaveValue('ab');
+    await user.tab();
     view.rerender(<DescriptionField value="ab" onSave={onSave} />);
-    view.rerender(<DescriptionField value="c" onSave={onSave} />);
+    await act(async () => {
+      settle(false);
+      await Promise.resolve();
+    });
+    view.rerender(<DescriptionField value="a" onSave={onSave} error="Falhou" />);
 
-    expect(field).toHaveValue('c');
+    expect(field).toHaveValue('ab');
+    await user.click(field);
+    await user.tab();
+    expect(onSave).toHaveBeenCalledTimes(2);
+  });
+
+  it('becomes clean after a confirmed save and then follows newer text from elsewhere', async () => {
+    let settle: (confirmed: boolean) => void = () => undefined;
+    const onSave = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const user = userEvent.setup({ delay: null });
+    const view = render(<DescriptionField value="a" onSave={onSave} />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(field, 'b');
+    await user.tab();
+    view.rerender(<DescriptionField value="ab" onSave={onSave} />);
+    await act(async () => {
+      settle(true);
+      await Promise.resolve();
+    });
+    view.rerender(<DescriptionField value="mais novo" onSave={onSave} />);
+
+    expect(field).toHaveValue('mais novo');
   });
 
   it('leaves Esc to the panel when there is nothing to revert, and while composing', async () => {
@@ -163,7 +210,7 @@ describe('DescriptionField autosave', () => {
     const user = userEvent.setup({ delay: null });
     render(
       <div onKeyDown={onKey}>
-        <DescriptionField value="salvo" onSave={vi.fn()} />
+        <DescriptionField value="salvo" onSave={vi.fn(() => Promise.resolve(true))} />
       </div>,
     );
     const field = screen.getByRole('textbox', { name: 'Descrição' });
@@ -180,7 +227,14 @@ describe('DescriptionField autosave', () => {
   it('asks to clear the error when Esc reverts', async () => {
     const onRevert = vi.fn();
     const user = userEvent.setup({ delay: null });
-    render(<DescriptionField value="salvo" onSave={vi.fn()} onRevert={onRevert} error="Falhou" />);
+    render(
+      <DescriptionField
+        value="salvo"
+        onSave={vi.fn(() => Promise.resolve(true))}
+        onRevert={onRevert}
+        error="Falhou"
+      />,
+    );
     const field = screen.getByRole('textbox', { name: 'Descrição' });
 
     await user.type(field, ' x');

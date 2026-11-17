@@ -19,7 +19,8 @@ const MAX_LENGTH = 10_000;
 
 interface DescriptionFieldProps {
   value: string;
-  onSave: (text: string) => void;
+  // Resolves true once the server confirmed the text; a false answer keeps the field dirty.
+  onSave: (text: string) => Promise<boolean>;
   onRevert?: () => void;
   error?: string | null;
 }
@@ -43,11 +44,11 @@ export function DescriptionField({
     latest.current = { draft, dirty, value, onSave, error };
   });
 
-  // While the field is clean it follows the saved text; typed text is never overwritten.
+  // While the field is clean it follows the saved text. A save that is sent but not confirmed
+  // keeps it dirty, because the optimistic value matches the draft and a rollback must not wipe it.
   if (value !== syncedValue) {
     setSyncedValue(value);
     if (!dirty) setDraft(value);
-    else if (draft.trim() === value) setDirty(false);
   }
 
   useLayoutEffect(() => {
@@ -71,7 +72,9 @@ export function DescriptionField({
     // The blur and the unmount that follows it must not send the same text twice.
     if (sent.current?.from === saved && sent.current.text === next) return;
     sent.current = { from: saved, text: next };
-    save(next);
+    void save(next).then((confirmed) => {
+      if (confirmed && latest.current.draft.trim() === next) setDirty(false);
+    });
   }, []);
 
   // Closing the panel or switching task must not lose text still waiting for the idle save,

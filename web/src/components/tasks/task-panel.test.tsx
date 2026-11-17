@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http } from 'msw';
+import { delay, http } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InitiativesScreen } from '@/components/initiatives/initiatives-screen';
 import { problemResponse } from '@/test/fixtures';
@@ -957,6 +957,35 @@ describe('the panel header', () => {
       `?iniciativa=${reforma.id}&fase=${piso.id}`,
     );
     expect(inPanel().getByRole('link', { name: 'Reforma' })).toBeVisible();
+  });
+});
+
+describe('a slow failing description save', () => {
+  it('keeps the typed text and tries again on the next blur', async () => {
+    const { backend, user } = await openTask(sand);
+    let attempts = 0;
+    server.use(
+      http.patch('*/api/tasks/:id', async () => {
+        attempts += 1;
+        await delay(150);
+        return problemResponse('internal', 500);
+      }),
+    );
+    const field = inPanel().getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(field, 'texto longo');
+    await user.tab();
+    expect(
+      await inPanel().findByText('Não foi possível salvar a descrição. Tente de novo.'),
+    ).toBeVisible();
+
+    expect(field).toHaveValue('texto longo');
+    await user.click(field);
+    await user.tab();
+    await waitFor(() => {
+      expect(attempts).toBe(2);
+    });
+    expect(patches(backend)).toEqual([]);
   });
 });
 
