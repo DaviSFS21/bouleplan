@@ -142,7 +142,7 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <ToastContext value={api}>
       {children}
-      <div role="status" className={styles.region}>
+      <div role="status" aria-label="Avisos" className={styles.region}>
         {current ? (
           <UndoToast
             key={current.id}

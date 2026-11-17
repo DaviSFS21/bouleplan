@@ -21,6 +21,11 @@ function card(page: Page, title: string) {
   return page.getByRole('article', { name: title, exact: true });
 }
 
+// The keys only count once dnd-kit has measured the columns, which its announcements reflect.
+function announcement(page: Page) {
+  return page.locator('[id^="DndLiveRegion"]');
+}
+
 async function createTask(page: Page, columnName: string, title: string) {
   await column(page, columnName)
     .getByRole('button', { name: '+ Nova tarefa', exact: true })
@@ -139,7 +144,9 @@ test('moves a card to "Em andamento" with the keyboard', async ({ page }) => {
 
   await card(page, 'Rejuntar').focus();
   await page.keyboard.press('Space');
+  await expect(announcement(page)).toContainText('Rejuntar está sobre a coluna A fazer');
   await page.keyboard.press('ArrowRight');
+  await expect(announcement(page)).toContainText('está sobre a coluna Em andamento');
   await page.keyboard.press('Space');
 
   await expect(

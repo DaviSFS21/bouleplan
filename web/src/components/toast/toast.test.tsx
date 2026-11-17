@@ -42,7 +42,9 @@ describe('Toast', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Iniciativa arquivada');
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
+      'Iniciativa arquivada',
+    );
     expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument();
   });
 
@@ -148,7 +150,7 @@ describe('Toast', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent(
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
       'Iniciativa arquivada (Ctrl+Z para desfazer)',
     );
   });
@@ -220,7 +222,9 @@ describe('Toast as a plain notice', () => {
     });
     document.dispatchEvent(event);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Não foi possível desfazer.');
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
+      'Não foi possível desfazer.',
+    );
     expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Ctrl\+Z/)).not.toBeInTheDocument();
     expect(event.defaultPrevented).toBe(false);
