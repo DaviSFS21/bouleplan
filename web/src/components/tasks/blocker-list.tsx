@@ -208,9 +208,8 @@ export function BlockerList({
                   aria-selected={position === current}
                   className={styles.option}
                   onMouseDown={(event) => {
+                    // Choosing on mousedown keeps focus in the input, which owns the keyboard.
                     event.preventDefault();
-                  }}
-                  onClick={() => {
                     choose(task);
                   }}
                 >
