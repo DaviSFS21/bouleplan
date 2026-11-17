@@ -14,6 +14,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Objects;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -170,7 +171,7 @@ public class Task extends PanacheEntityBase {
 
   /** Plans the task for the week starting on this Monday, or clears it with {@code null}. */
   public void planWeek(LocalDate weekStart) {
-    if (weekStart != null
+    if (Objects.nonNull(weekStart)
         && (weekStart.getDayOfWeek() != DayOfWeek.MONDAY || !EntityText.hasValidYear(weekStart))) {
       throw new InvalidTaskException(
           "task.planned-week.invalid",
