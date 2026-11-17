@@ -19,5 +19,58 @@ services:
       timeout: 3s
       retries: 10
 
+  # `docker compose --profile dev up` also runs the API and the web app with live reload.
+  api:
+    profiles: [dev]
+    image: eclipse-temurin:21-jdk
+    working_dir: /workspace/api
+    command:
+      - ./gradlew
+      - --no-daemon
+      - quarkusDev
+      # Dev mode listens on localhost only unless told otherwise.
+      - -Dquarkus.http.host=0.0.0.0
+      - -Dquarkus.console.enabled=false
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME:?set DB_NAME in .env}
+      DB_USERNAME: ${DB_USERNAME:?set DB_USERNAME in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - ./api:/workspace/api
+      # Build output stays in volumes, so the container never writes root-owned files into api/.
+      - api-build:/workspace/api/build
+      - api-gradle:/workspace/api/.gradle
+      - gradle-home:/root/.gradle
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    profiles: [dev]
+    build:
+      context: docker
+      dockerfile: web-dev.Dockerfile
+    environment:
+      API_URL: http://api:8080
+    volumes:
+      - ./web:/workspace/web
+      - web-node-modules:/workspace/web/node_modules
+      - web-next:/workspace/web/.next
+      - web-home:/home/dev
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      - api
+
 volumes:
   db-data:
+  api-build:
+  api-gradle:
+  gradle-home:
+  web-node-modules:
+  web-next:
+  web-home:

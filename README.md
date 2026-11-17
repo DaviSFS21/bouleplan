@@ -10,14 +10,14 @@ The name comes from the Boulé, the council of ancient Athens that prepared the 
 | --- | --- | --- |
 | [`api/`](api/README.md) | REST backend | Java 21, Quarkus (imperative, Panache), Gradle (Kotlin DSL), Flyway |
 | [`web/`](web/README.md) | Frontend | Next.js (App Router), React, TypeScript, pnpm, Vitest |
-| `compose.yaml` | PostgreSQL for local development | Docker Compose |
+| `compose.yaml` | PostgreSQL for local development; with `--profile dev`, the API and the web app too | Docker Compose |
+| `docker/` | Development image of the web app | Docker |
 | `.github/workflows/` | CI | GitHub Actions + SonarQube Cloud |
 
 ## Prerequisites
 
 - Docker (with Docker Compose)
-- JDK 21
-- Node.js 22 and pnpm 10
+- JDK 21, and Node.js 22 with pnpm 10, unless you run everything in Docker (see below)
 
 ## Running locally
 
@@ -48,6 +48,22 @@ cd web && pnpm install && pnpm dev
 ```
 
 Each project's README lists its lint, test and build commands.
+
+### Everything in Docker
+
+To run the database, the API and the frontend without installing a JDK, Node.js or pnpm, use the `dev` profile. Create `.env` as above, then:
+
+```bash
+docker compose --profile dev up
+```
+
+- The frontend is at http://localhost:3000 and the API at http://localhost:8080. Change `WEB_PORT` or `API_PORT` in `.env` if those ports are taken.
+- `api/` and `web/` are mounted into the containers, so edits reload live: the API recompiles on the next request and the frontend hot-reloads.
+- The first start takes a few minutes while Gradle and pnpm download dependencies. They are kept in Docker volumes, so later starts are quick.
+- The web container runs as the owner of `web/`, so the files it writes there belong to you. On Linux, run `pnpm install` on the host once before the first start, so `web/node_modules` is not created by Docker.
+- PostgreSQL applies `DB_PASSWORD` only when its volume is first created. To change the password later, remove the volume with `docker compose down -v`, which deletes the local data.
+
+Plain `docker compose up -d` still starts only the database.
 
 ## End-to-end tests
 
