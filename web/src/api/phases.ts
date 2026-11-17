@@ -1,7 +1,14 @@
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
 import { runScoped as runScopedMutation } from './scoped-mutation';
+import { refetchTasks } from './tasks';
 import type { Phase } from './types';
 
 export function phasesKey(initiativeId: string) {
@@ -17,6 +24,21 @@ export function usePhases(initiativeId: string | null) {
     queryKey: phasesKey(initiativeId ?? ''),
     queryFn: () => listPhases(initiativeId ?? ''),
     enabled: initiativeId !== null,
+  });
+}
+
+function pickData(results: UseQueryResult<Phase[]>[]) {
+  return results.map((result) => result.data);
+}
+
+// One entry per id, undefined while that initiative's phases load.
+export function useManyPhases(initiativeIds: readonly string[]) {
+  return useQueries({
+    queries: initiativeIds.map((id) => ({
+      queryKey: phasesKey(id),
+      queryFn: () => listPhases(id),
+    })),
+    combine: pickData,
   });
 }
 
@@ -150,6 +172,7 @@ export function useArchivePhase() {
           (id) => unwrap(api.POST('/phases/{id}/archive', { params: { path: { id } } })),
           (archived) => {
             setList(queryClient, phase.initiativeId, (list) => removeFromList(list, archived.id));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -169,6 +192,7 @@ export function useUnarchivePhase() {
           (id) => unwrap(api.POST('/phases/{id}/unarchive', { params: { path: { id } } })),
           (restored) => {
             setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -191,6 +215,7 @@ export function useDeletePhase() {
           },
           (deleted) => {
             setList(queryClient, phase.initiativeId, (list) => removeFromList(list, deleted));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -210,6 +235,7 @@ export function useRestorePhase() {
           (id) => unwrap(api.POST('/phases/{id}/restore', { params: { path: { id } } })),
           (restored) => {
             setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
+            refetchTasks(queryClient);
           },
         ),
     }),

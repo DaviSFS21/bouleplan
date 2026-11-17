@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
-import type { Initiative, Phase } from '@/api/types';
+import type { Initiative, Phase, Task } from '@/api/types';
+import { TaskBoard } from '@/components/tasks/task-board';
 import styles from './initiative-board.module.css';
 
 interface InitiativeBoardProps {
@@ -8,6 +9,11 @@ interface InitiativeBoardProps {
   detailsOpen: boolean;
   onOpenDetails: () => void;
   openerRef: RefObject<HTMLButtonElement | null>;
+  initiatives: readonly Initiative[];
+  tasks: readonly Task[] | undefined;
+  tasksFailed: boolean;
+  onRetryTasks: () => void;
+  now?: Date;
 }
 
 export function InitiativeBoard({
@@ -16,6 +22,11 @@ export function InitiativeBoard({
   detailsOpen,
   onOpenDetails,
   openerRef,
+  initiatives,
+  tasks,
+  tasksFailed,
+  onRetryTasks,
+  now,
 }: Readonly<InitiativeBoardProps>) {
   let title: ReactNode = 'Todas as tarefas';
   if (phase) {
@@ -56,7 +67,15 @@ export function InitiativeBoard({
         ) : null}
         <h1 className={styles.title}>{title}</h1>
       </header>
-      <p className={styles.empty}>Nenhuma tarefa ainda.</p>
+      <TaskBoard
+        tasks={tasks}
+        failed={tasksFailed}
+        onRetry={onRetryTasks}
+        initiatives={initiatives}
+        initiative={initiative}
+        phase={phase}
+        now={now}
+      />
     </div>
   );
 }

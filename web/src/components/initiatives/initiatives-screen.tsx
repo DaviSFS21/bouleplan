@@ -31,6 +31,7 @@ import {
   useUnarchivePhase,
   useUpdatePhase,
 } from '@/api/phases';
+import { useTasks } from '@/api/tasks';
 import type { Phase } from '@/api/types';
 import { useToast } from '@/components/toast/toast';
 import { Loading } from '@/components/loading/loading';
@@ -62,6 +63,7 @@ export function InitiativesScreen() {
   const queryClient = useQueryClient();
   const requestedId = searchParams.get(SELECTION_PARAM);
   const selectedInitiativeId = data?.some(({ id }) => id === requestedId) ? requestedId : null;
+  const tasksQuery = useTasks();
   const phasesQuery = usePhases(selectedInitiativeId);
   const createPhase = useCreatePhase();
   const updatePhase = useUpdatePhase();
@@ -374,12 +376,19 @@ export function InitiativesScreen() {
         }}
         actionError={actionError?.search === searchParams.toString() ? actionError.message : null}
         focusRequest={focusRequest}
+        tasks={tasksQuery.data}
       />
       <InitiativeBoard
         initiative={selected}
         phase={filteredPhase}
         detailsOpen={detailsOpen}
         openerRef={opener}
+        initiatives={data}
+        tasks={tasksQuery.data}
+        tasksFailed={tasksQuery.isError}
+        onRetryTasks={() => {
+          void tasksQuery.refetch();
+        }}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
         }}
@@ -388,6 +397,7 @@ export function InitiativesScreen() {
         <InitiativePanel
           initiative={selected}
           phases={phases}
+          tasks={tasksQuery.data}
           selectedPhaseId={filteredPhase?.id ?? null}
           onSelectPhase={selectPhase}
           onCreatePhase={(name) => createPhaseIn(selected.id, name)}

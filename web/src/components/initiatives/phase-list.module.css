@@ -79,3 +79,18 @@
   padding: 2px var(--space-2);
   font: 500 13px/18px var(--font-ui);
 }
+
+.count {
+  position: absolute;
+  top: 6px;
+  right: var(--space-3);
+  font: var(--type-meta);
+  color: var(--tinta-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.row:hover .count,
+.row:focus-within .count {
+  opacity: 0;
+}

@@ -190,3 +190,99 @@ describe('ActionMenu', () => {
     expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
   });
 });
+
+describe('ActionMenu groups', () => {
+  function setupGroups() {
+    const onPriority = vi.fn<(priority: string) => void>();
+    const onMove = vi.fn<(status: string) => void>();
+    const user = userEvent.setup();
+    render(
+      <ActionMenu
+        label="Ações da tarefa"
+        items={[
+          {
+            group: 'Prioridade',
+            items: [
+              {
+                label: 'P1',
+                checked: false,
+                onSelect: () => {
+                  onPriority('P1');
+                },
+                chipClassName: 'chip',
+              },
+              {
+                label: 'P2',
+                checked: true,
+                onSelect: () => {
+                  onPriority('P2');
+                },
+                chipClassName: 'chip',
+              },
+            ],
+          },
+          { separator: true },
+          {
+            group: 'Mover para',
+            items: [
+              {
+                label: 'A fazer',
+                checked: true,
+                onSelect: () => {
+                  onMove('to_do');
+                },
+              },
+              {
+                label: 'Feito',
+                checked: false,
+                onSelect: () => {
+                  onMove('done');
+                },
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+    return {
+      user,
+      onPriority,
+      onMove,
+      trigger: screen.getByRole('button', { name: 'Ações da tarefa' }),
+    };
+  }
+
+  it('lists labelled radio groups with their checked state', async () => {
+    const { user, trigger } = setupGroups();
+
+    await user.click(trigger);
+
+    expect(screen.getByRole('group', { name: 'Prioridade' })).toBeVisible();
+    expect(screen.getByRole('menuitemradio', { name: 'P2' })).toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'P1' })).not.toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'A fazer' })).toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'Feito' })).not.toBeChecked();
+  });
+
+  it('walks radios with the arrow keys and selects one, closing and refocusing the trigger', async () => {
+    const { user, trigger, onMove } = setupGroups();
+    await user.click(trigger);
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
+    expect(screen.getByRole('menuitemradio', { name: 'Feito' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    expect(onMove).toHaveBeenCalledWith('done');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('selects a chip with a click', async () => {
+    const { user, trigger, onPriority } = setupGroups();
+    await user.click(trigger);
+
+    await user.click(screen.getByRole('menuitemradio', { name: 'P1' }));
+
+    expect(onPriority).toHaveBeenCalledWith('P1');
+  });
+});

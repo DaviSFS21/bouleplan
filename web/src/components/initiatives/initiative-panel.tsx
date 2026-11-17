@@ -10,13 +10,15 @@ import {
   updateInitiativeMessage,
   type InitiativeField,
 } from '@/api/messages';
-import type { Initiative, Phase } from '@/api/types';
+import type { Initiative, Phase, Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { ColorPicker, colorName, type ColorToken } from '@/components/color-picker/color-picker';
 import { DeadlineField, localToday } from '@/components/deadline-field/deadline-field';
 import { InlineText } from '@/components/inline-text/inline-text';
 import { SidePanel } from '@/components/side-panel/side-panel';
 import { formatDate, formatElapsed } from './initiative-dates';
+import { ProgressBar } from '@/components/progress/progress-bar';
+import { NO_PROGRESS, progressByInitiative, progressByPhase } from '@/components/tasks/task-filter';
 import { phaseLabel } from './phase-label';
 import { QuickCreateField } from './quick-create-field';
 import styles from './initiative-panel.module.css';
@@ -35,6 +37,8 @@ export interface PanelRequest {
 interface InitiativePanelProps {
   initiative: Initiative;
   phases: readonly Phase[] | undefined;
+  // undefined while the tasks load
+  tasks: readonly Task[] | undefined;
   selectedPhaseId: string | null;
   onSelectPhase: (id: string | null) => void;
   onCreatePhase: (name: string) => Promise<void>;
@@ -53,6 +57,7 @@ interface InitiativePanelProps {
 export function InitiativePanel({
   initiative,
   phases,
+  tasks,
   selectedPhaseId,
   onSelectPhase,
   onCreatePhase,
@@ -78,6 +83,7 @@ export function InitiativePanel({
   const palette = useRef<HTMLDivElement>(null);
   const live = useRef({ mounted: true, id: initiative.id });
   const clock = now ?? new Date();
+  const phaseProgress = progressByPhase(tasks);
   const color = pendingColor ?? initiative.color;
 
   if (boundId !== initiative.id) {
@@ -241,7 +247,14 @@ export function InitiativePanel({
           </p>
         ) : null}
         <span className={styles.label}>Progresso</span>
-        <span className={styles.meta}>sem tarefas ainda</span>
+        {tasks ? (
+          <span className={styles.progress}>
+            <ProgressBar
+              label={`Progresso de ${initiative.name}`}
+              {...(progressByInitiative(tasks).get(initiative.id) ?? NO_PROGRESS)}
+            />
+          </span>
+        ) : null}
       </div>
       <section className={styles.section}>
         <h2 className={styles.eyebrow}>Descrição</h2>
@@ -263,20 +276,29 @@ export function InitiativePanel({
         <h2 className={styles.eyebrow}>Fases</h2>
         {phases ? (
           <ul className={styles.phases}>
-            {phases.map((phase, position) => (
-              <li key={phase.id}>
-                <button
-                  type="button"
-                  className={styles.phase}
-                  aria-pressed={selectedPhaseId === phase.id}
-                  onClick={() => {
-                    onSelectPhase(selectedPhaseId === phase.id ? null : phase.id);
-                  }}
-                >
-                  {phaseLabel(position, phase.name)}
-                </button>
-              </li>
-            ))}
+            {phases.map((phase, position) => {
+              const count = phaseProgress.get(phase.id);
+              return (
+                <li key={phase.id} className={styles.phaseRow}>
+                  <button
+                    type="button"
+                    className={styles.phase}
+                    aria-pressed={selectedPhaseId === phase.id}
+                    aria-describedby={count ? `panel-phase-count-${phase.id}` : undefined}
+                    onClick={() => {
+                      onSelectPhase(selectedPhaseId === phase.id ? null : phase.id);
+                    }}
+                  >
+                    {phaseLabel(position, phase.name)}
+                  </button>
+                  {count ? (
+                    <span id={`panel-phase-count-${phase.id}`} className={styles.phaseCount}>
+                      {`${String(count.done)}/${String(count.total)}`}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         ) : null}
         {phases?.length === 0 ? <p className={styles.meta}>Nenhuma fase ainda.</p> : null}

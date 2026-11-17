@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { BLANK_NAME_MESSAGE, createInitiativeMessage } from '@/api/messages';
-import type { Initiative, Phase } from '@/api/types';
+import type { Initiative, Phase, Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
+import { ProgressBar } from '@/components/progress/progress-bar';
+import {
+  NO_PROGRESS,
+  type Progress,
+  progressByInitiative,
+  progressByPhase,
+} from '@/components/tasks/task-filter';
 import { PhaseList } from './phase-list';
 import { QuickCreateField } from './quick-create-field';
 import styles from './initiative-index.module.css';
@@ -39,6 +46,8 @@ type InitiativeIndexProps = Readonly<{
   onDelete: (id: string) => void;
   onNewPhase: (id: string) => void;
   phaseIndex: PhaseIndexProps;
+  // undefined while the tasks load
+  tasks: readonly Task[] | undefined;
   actionError: string | null;
   focusRequest: FocusRequest | null;
 }>;
@@ -55,9 +64,12 @@ export function InitiativeIndex({
   onDelete,
   onNewPhase,
   phaseIndex,
+  tasks,
   actionError,
   focusRequest,
 }: InitiativeIndexProps) {
+  const initiativeProgress = progressByInitiative(tasks);
+  const phaseProgress = progressByPhase(tasks);
   const nav = useRef<HTMLElement>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
 
@@ -125,7 +137,12 @@ export function InitiativeIndex({
                     />
                     {initiative.name}
                   </span>
-                  <span className={styles.meta}>sem tarefas ainda</span>
+                  {tasks ? (
+                    <ProgressBar
+                      label={`Progresso de ${initiative.name}`}
+                      {...(initiativeProgress.get(initiative.id) ?? NO_PROGRESS)}
+                    />
+                  ) : null}
                 </span>
               </button>
               <div className={styles.actions}>
@@ -173,7 +190,9 @@ export function InitiativeIndex({
                 />
               </div>
             </div>
-            {selectedId === initiative.id ? <PhaseSection {...phaseIndex} /> : null}
+            {selectedId === initiative.id ? (
+              <PhaseSection {...phaseIndex} progress={tasks ? phaseProgress : undefined} />
+            ) : null}
           </li>
         ))}
       </ul>
@@ -192,7 +211,11 @@ export function InitiativeIndex({
   );
 }
 
-function PhaseSection({ phases, failed, ...rest }: Readonly<PhaseIndexProps>) {
+function PhaseSection({
+  phases,
+  failed,
+  ...rest
+}: Readonly<PhaseIndexProps & { progress: ReadonlyMap<string, Progress> | undefined }>) {
   if (failed) {
     return <p className={styles.emptyNote}>Não foi possível carregar as fases.</p>;
   }

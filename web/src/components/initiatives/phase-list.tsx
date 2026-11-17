@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { BLANK_PHASE_NAME_MESSAGE, createPhaseMessage } from '@/api/messages';
 import type { Phase } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
+import type { Progress } from '@/components/tasks/task-filter';
 import { InlineText } from '@/components/inline-text/inline-text';
 import { phaseLabel } from './phase-label';
 import styles from './phase-list.module.css';
@@ -21,6 +22,8 @@ type PhaseListProps = Readonly<{
   onDelete: (phase: Phase) => void;
   newPhaseSignal: number;
   onNewPhaseHandled: () => void;
+  // undefined while the tasks load
+  progress: ReadonlyMap<string, Progress> | undefined;
 }>;
 
 export function PhaseList({
@@ -33,7 +36,9 @@ export function PhaseList({
   onDelete,
   newPhaseSignal,
   onNewPhaseHandled,
+  progress,
 }: PhaseListProps) {
+  const countId = useId();
   const root = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -60,79 +65,88 @@ export function PhaseList({
   return (
     <div ref={root} className={styles.phases}>
       <ul className={styles.list}>
-        {phases.map((phase, position) => (
-          <li key={phase.id} className={styles.row}>
-            {editingId === phase.id ? (
-              <div
-                className={styles.editing}
-                onKeyDownCapture={(event) => {
-                  const ends =
-                    event.key === 'Escape' ||
-                    (event.key === 'Enter' && !event.nativeEvent.isComposing);
-                  if (ends) returnFocus.current = true;
-                }}
-                onKeyUpCapture={() => {
-                  returnFocus.current = false;
-                }}
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget)) endEdit(phase.id);
-                }}
-              >
-                <span>{`Fase ${String(position + 1)} ·`}</span>
-                <InlineText
-                  label="Nome da fase"
-                  value={phase.name}
-                  maxLength={NAME_MAX_LENGTH}
-                  focusSignal={1}
-                  trim
-                  onCommit={(name) => {
-                    onRename(phase, name);
+        {phases.map((phase, position) => {
+          const count = progress?.get(phase.id);
+          return (
+            <li key={phase.id} className={styles.row}>
+              {editingId === phase.id ? (
+                <div
+                  className={styles.editing}
+                  onKeyDownCapture={(event) => {
+                    const ends =
+                      event.key === 'Escape' ||
+                      (event.key === 'Enter' && !event.nativeEvent.isComposing);
+                    if (ends) returnFocus.current = true;
                   }}
-                />
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className={styles.phase}
-                  data-phase-id={phase.id}
-                  aria-pressed={selectedId === phase.id}
-                  onClick={() => {
-                    onSelect(selectedId === phase.id ? null : phase.id);
+                  onKeyUpCapture={() => {
+                    returnFocus.current = false;
+                  }}
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) endEdit(phase.id);
                   }}
                 >
-                  {phaseLabel(position, phase.name)}
-                </button>
-                <div className={styles.actions}>
-                  <ActionMenu
-                    label={`Ações da fase ${phase.name}`}
-                    items={[
-                      {
-                        label: 'Editar nome',
-                        onSelect: () => {
-                          setEditingId(phase.id);
-                        },
-                      },
-                      { separator: true },
-                      {
-                        label: 'Arquivar',
-                        onSelect: () => {
-                          onArchive(phase);
-                        },
-                      },
-                      {
-                        label: 'Excluir',
-                        onSelect: () => {
-                          onDelete(phase);
-                        },
-                      },
-                    ]}
+                  <span>{`Fase ${String(position + 1)} ·`}</span>
+                  <InlineText
+                    label="Nome da fase"
+                    value={phase.name}
+                    maxLength={NAME_MAX_LENGTH}
+                    focusSignal={1}
+                    trim
+                    onCommit={(name) => {
+                      onRename(phase, name);
+                    }}
                   />
                 </div>
-              </>
-            )}
-          </li>
-        ))}
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className={styles.phase}
+                    data-phase-id={phase.id}
+                    aria-pressed={selectedId === phase.id}
+                    aria-describedby={count ? `${countId}-${phase.id}` : undefined}
+                    onClick={() => {
+                      onSelect(selectedId === phase.id ? null : phase.id);
+                    }}
+                  >
+                    {phaseLabel(position, phase.name)}
+                  </button>
+                  {count ? (
+                    <span id={`${countId}-${phase.id}`} className={styles.count}>
+                      {`${String(count.done)}/${String(count.total)}`}
+                    </span>
+                  ) : null}
+                  <div className={styles.actions}>
+                    <ActionMenu
+                      label={`Ações da fase ${phase.name}`}
+                      items={[
+                        {
+                          label: 'Editar nome',
+                          onSelect: () => {
+                            setEditingId(phase.id);
+                          },
+                        },
+                        { separator: true },
+                        {
+                          label: 'Arquivar',
+                          onSelect: () => {
+                            onArchive(phase);
+                          },
+                        },
+                        {
+                          label: 'Excluir',
+                          onSelect: () => {
+                            onDelete(phase);
+                          },
+                        },
+                      ]}
+                    />
+                  </div>
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
       <QuickCreateField
         triggerLabel="+ Nova fase"

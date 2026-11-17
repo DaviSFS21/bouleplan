@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Initiative } from '@/api/types';
-import { initiative, problemResponse } from '@/test/fixtures';
+import { initiative, phase, problemResponse, task } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
@@ -43,6 +43,7 @@ function serve(initial: Initiative[]): Backend {
   };
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(backend.items)),
+    http.get('*/api/tasks', () => HttpResponse.json([])),
     http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
     http.patch('*/api/initiatives/:id', async ({ request, params }) => {
       const body = (await request.json()) as Record<string, unknown>;
@@ -448,10 +449,36 @@ describe('editing in the panel', () => {
     expect(description).toHaveValue('Muito longa');
   });
 
-  it('shows the progress placeholder', async () => {
+  it('shows that there are no tasks yet', async () => {
     const { panel } = await renderOpen();
 
-    expect(within(panel).getByText('sem tarefas ainda')).toBeVisible();
+    expect(await within(panel).findByText('sem tarefas ainda')).toBeVisible();
+  });
+
+  it('shows the real progress and the count of each phase', async () => {
+    serve([reforma, horta]);
+    const piso = phase({ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', name: 'Piso' });
+    server.use(
+      http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([piso])),
+      http.get('*/api/tasks', () =>
+        HttpResponse.json([
+          task({ id: 'a', status: 'done' }),
+          task({ id: 'b', phaseId: piso.id }),
+          task({ id: 'c', initiativeId: horta.id, status: 'done' }),
+        ]),
+      ),
+    );
+    navigateTo(detailsUrl(reforma.id));
+    renderWithQuery(<InitiativesScreen />);
+    const panel = await screen.findByRole('complementary', { name: 'Iniciativa' });
+
+    expect(await within(panel).findByText('1 de 2 feitas')).toBeVisible();
+    expect(
+      within(panel).getByRole('progressbar', { name: 'Progresso de Reforma' }),
+    ).toHaveAttribute('aria-valuenow', '1');
+    expect(
+      await within(panel).findByRole('button', { name: 'Fase 1 · Piso' }),
+    ).toHaveAccessibleDescription('0/1');
   });
 });
 
@@ -560,6 +587,7 @@ describe('InitiativePanel footer', () => {
       <InitiativePanel
         initiative={{ ...reforma, updatedAt: '2026-11-17T11:58:00-03:00' }}
         phases={[]}
+        tasks={[]}
         selectedPhaseId={null}
         onSelectPhase={vi.fn()}
         onCreatePhase={vi.fn()}

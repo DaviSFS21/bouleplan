@@ -1,6 +1,6 @@
 'use client';
 
-import { Ellipsis } from 'lucide-react';
+import { Check, Ellipsis } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -17,7 +17,20 @@ export interface ActionMenuItem {
   shortcut?: string;
 }
 
-export type ActionMenuEntry = ActionMenuItem | { separator: true };
+export interface ActionMenuRadio {
+  label: string;
+  checked: boolean;
+  onSelect: () => void;
+  // Styles the option as a chip, as the priority badges are.
+  chipClassName?: string;
+}
+
+export interface ActionMenuGroup {
+  group: string;
+  items: readonly ActionMenuRadio[];
+}
+
+export type ActionMenuEntry = ActionMenuItem | ActionMenuGroup | { separator: true };
 
 interface ActionMenuProps {
   label: string;
@@ -32,7 +45,10 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
   const menuId = useId();
 
   function menuItems() {
-    return Array.from(menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    return Array.from(
+      menu.current?.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]') ??
+        [],
+    );
   }
 
   useEffect(() => {
@@ -87,7 +103,7 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
     }
   }
 
-  function select(item: ActionMenuItem) {
+  function select(item: { onSelect: () => void }) {
     setOpen(false);
     trigger.current?.focus();
     item.onSelect();
@@ -118,6 +134,44 @@ export function ActionMenu({ label, items }: Readonly<ActionMenuProps>) {
                 role="separator"
                 className={styles.separator}
               />
+            ) : 'group' in entry ? (
+              <div key={`group-${entry.group}`} role="group" aria-label={entry.group}>
+                <div className={styles.section} aria-hidden="true">
+                  {entry.group}
+                </div>
+                <div
+                  className={
+                    entry.items.some((radio) => radio.chipClassName) ? styles.chips : undefined
+                  }
+                >
+                  {entry.items.map((radio) => (
+                    <button
+                      key={radio.label}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={radio.checked}
+                      tabIndex={-1}
+                      className={
+                        radio.chipClassName
+                          ? [radio.chipClassName, styles.chip].join(' ')
+                          : [styles.item, styles.radio].join(' ')
+                      }
+                      onClick={() => {
+                        select(radio);
+                      }}
+                    >
+                      {radio.chipClassName ? null : (
+                        <span className={styles.check}>
+                          {radio.checked ? (
+                            <Icon icon={Check} size={14} aria-hidden="true" />
+                          ) : null}
+                        </span>
+                      )}
+                      {radio.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               <button
                 key={entry.label}

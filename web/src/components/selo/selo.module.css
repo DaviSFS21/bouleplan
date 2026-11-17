@@ -1,0 +1,40 @@
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: var(--type-selo);
+  letter-spacing: var(--type-selo-tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.p1 {
+  background: var(--terracota);
+  color: var(--sobre-terracota);
+}
+
+.p2 {
+  background: var(--papel-elevado);
+  color: var(--terracota-escuro);
+  box-shadow: inset 0 0 0 1px var(--terracota);
+}
+
+.p3 {
+  background: var(--papel-elevado);
+  color: var(--tinta-muted);
+}
+
+.bloqueada {
+  background:
+    repeating-linear-gradient(45deg, var(--bloqueio-hachura) 0 2px, transparent 2px 5px),
+    var(--papel-elevado);
+  color: var(--tinta);
+}
+
+.bloqueada svg {
+  width: 11px;
+  height: 11px;
+}
