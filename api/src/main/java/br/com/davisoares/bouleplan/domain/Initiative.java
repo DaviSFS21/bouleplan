@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -112,7 +113,7 @@ public class Initiative extends PanacheEntityBase {
 
   /** Stamps {@code archivedAt}, which frees the color and hides it from active lists. */
   public void archive() {
-    archivedAt = OffsetDateTime.now();
+    archivedAt = OffsetDateTime.now(ZoneOffset.UTC);
   }
 
   public boolean isActive() {
