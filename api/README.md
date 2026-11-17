@@ -44,8 +44,36 @@ hexagonal architecture on the production classes:
    `org.jboss.resteasy`). JPA and Panache are allowed, because entities carry the business rules.
 6. No dependency cycles between the top-level slices `domain`, `application` and `adapter`.
 
-Rules currently opt in to `allowEmptyShould(true)` because the packages have no classes yet; see
-the comment in `ArchitectureTest` for why this is per rule and not global.
+## REST API
+
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/initiatives` | 200, active initiatives in creation order |
+| `POST` | `/initiatives` | 201 with `Location: /initiatives/{id}`; body `{"name": "..."}` |
+| `GET` | `/initiatives/{id}` | 200 if the initiative is active and the current user's, else 404 |
+
+Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail` and `code`.
+Clients show their own (pt-BR) text chosen by `code`, never `detail`.
+
+| `type` | Status | `code` |
+| --- | --- | --- |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters` |
+| `/problems/malformed-request` | 400 | `http.400` |
+| `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
+| `/problems/internal` | 500 | `internal` (message logged, never returned) |
+
+Concurrent creates are serialized per user: the use case locks the user's `app_user` row
+(`select ... for update`) before choosing a color.
+
+## API contract
+
+The OpenAPI schema is committed at `contract/openapi.json` (repository root) and is the source for
+the frontend client. The build generates it with `quarkus-smallrye-openapi`.
+
+```bash
+./gradlew checkContract    # fails if contract/openapi.json differs from the code (part of check)
+./gradlew updateContract   # rewrites contract/openapi.json; commit the result
+```
 
 ## Dependency versions
 

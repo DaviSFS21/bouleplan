@@ -1,0 +1,35 @@
+.screen {
+  display: flex;
+  min-height: 100vh;
+}
+
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-8);
+  text-align: center;
+}
+
+.message {
+  margin: 0;
+  font: var(--type-texto);
+  color: var(--tinta-muted);
+}
+
+.retry {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--tinta-muted);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--tinta);
+  font: var(--type-botao);
+  cursor: pointer;
+}
+
+.retry:hover {
+  background: var(--papel-elevado);
+}

@@ -3,8 +3,10 @@
 Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.md` and the README of the project you are changing.
 
 ## Way of working
-- Work in steps and stop for review at the end of each one; explain the reasoning behind decisions. When there is more than one reasonable path, present the options with pros and cons before choosing.
-- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request.
+- **Autonomous mode** (since 2026-11-17): the owner does not review code step by step. Work slice by slice to the end of the roadmap: plan, implement (parallel agents), verify (all CI checks plus end-to-end tests), independent review, fix, pull request, green CI. Decide product questions from Notion and the design system and record each decision in the pull request description. Stop only for real blockers (credentials, GitHub settings, a decision that contradicts Notion).
+- Agents per slice: implementers (backend and frontend, in parallel, Sonnet), a verifier that only tests (Sonnet: every CI check plus Playwright end-to-end), and an independent reviewer that sees only the diff and the slice spec (Fable). Blocking findings go back to the implementer, at most two rounds.
+- Roadmap: initiatives; initiative panel; phases; task kanban; task panel and blockers; weekly planner (with a proposed design for the deadline-without-reserved-time alert); mobile and accessibility; Introspecto; production containers. Integrations and AI are out of scope.
+- Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request. Open the pull request as a **draft** as soon as the step starts, keep its sub-step checklist up to date, and mark it ready for review only when the step is done.
 - **Vertical slices**: one feature end to end (domain → API → screen) at a time.
 - **TDD**: write the test before the code.
 
@@ -17,7 +19,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 ## Backend (`api/`)
 - Java 21, imperative Quarkus (never reactive), Panache, PostgreSQL, Flyway (Flyway owns the schema; Hibernate never generates tables).
 - Relaxed hexagonal architecture: the JPA/Panache entity carries the business rules (no duplicated domain class, no mapper); the separation lives in the ports (`application.port.in`/`out`) and adapters (`adapter.in.rest`, `adapter.out.persistence`). `domain` never depends on `adapter`.
-- Strict Checkstyle (Google Java Style) and PMD: any violation fails the build. Never disable a rule without a justification in the config file itself.
+- Strict Checkstyle (Google Java Style) and PMD: any violation fails the build. Never disable a rule without a justification in the config file itself; a suppression scoped to one class needs a one-line reason next to it.
 - The architecture is enforced by ArchUnit (`ArchitectureTest`). Never weaken a rule to make code pass; fix the dependency instead.
 - Format with `./gradlew spotlessApply` (google-java-format); `check` fails on unformatted code.
 - All versions live in `api/gradle/libs.versions.toml` (Dependabot reads it). Never hard-code a version in `build.gradle.kts`.
@@ -29,8 +31,10 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - The UI follows the Bouléplan Design System: always use its tokens, never hard-coded colors or sizes.
 
 ## Data model (MVP)
-ERD tables: `user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
+Eight tables: `app_user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`, `introspection`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
 - Every task points to a `phase`; an initiative without named phases gets an implicit phase (`is_implicit = true`), which the UI hides.
 - `is_blocked` is the task's own situation, independent of `status` (`to_do`, `in_progress`, `done`) and of `task_blocker`.
 - Archive and delete are reversible (`archived_at`, `deleted_at`); only the item acted on gets the timestamp.
 - `initiative.color` stores the token name, never the hex value.
+- `app_user` (not `user`, a PostgreSQL reserved word). No authentication yet: a migration seeds one local user that owns all data.
+- `introspection.answers` is `jsonb`: an ordered list of `{key, prompt, answer}`, keeping the question text with each answer.

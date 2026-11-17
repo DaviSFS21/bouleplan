@@ -1,0 +1,34 @@
+.board {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+  padding: var(--space-8);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+}
+
+.overline {
+  margin: 0;
+  font: var(--type-sobretitulo);
+  letter-spacing: var(--type-sobretitulo-tracking);
+  text-transform: uppercase;
+  color: var(--tinta-muted);
+}
+
+.title {
+  margin: 0;
+  font: var(--type-titulo-secao);
+  letter-spacing: var(--type-titulo-secao-tracking);
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  margin: 0;
+  font: var(--type-texto);
+  color: var(--tinta-muted);
+}

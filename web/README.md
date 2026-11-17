@@ -21,6 +21,28 @@ pnpm dev
 
 Opens at <http://localhost:3000>.
 
+## Configuration
+
+| Variable  | Default                 | What it does                                                                                                     |
+| --------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `API_URL` | `http://localhost:8080` | Backend base URL. `/api/:path*` is proxied to `${API_URL}/:path*`, so the browser only talks to the same origin. |
+
+## Design system
+
+- Source of truth: `design-system/tokens.json` (Bouléplan Design System). Never edit `src/styles/tokens.css` by hand.
+- `pnpm tokens` regenerates `src/styles/tokens.css` (committed); a test fails when it is stale.
+- Tokens keep the design-system names as CSS custom properties: `--papel`, `--tinta`, `--space-4`, `--radius-md`, `--sombra-repouso`, `--type-titulo-pagina`... Use them in CSS Modules; never hard-code colors or sizes.
+- Themes: `papel` (light) and `grafite` (dark). The system preference applies by default; `<html data-theme="papel|grafite">` forces one.
+- Fonts come from `next/font/google` (Fraunces, Spectral, Work Sans) as `--font-display`, `--font-body` and `--font-ui`.
+- Icons: use the `Icon` component (`@/components/icon/icon`), which fixes the Lucide stroke at 1.5 and sizes at 14, 16, 18 or 20.
+- Server state: TanStack Query, provided by `Providers` in the root layout.
+
+## API client
+
+- `src/api/schema.d.ts` is generated from `../contract/openapi.json`; never edit it by hand. `pnpm api:types` regenerates it (committed); a test fails when it is stale.
+- `src/api/client.ts` is a typed `openapi-fetch` client on `/api`. Problem responses (`application/problem+json`) become an `ApiError` carrying `detail`.
+- Tests mock HTTP with `msw` (`src/test/server.ts`, started in `vitest.setup.ts`); unmocked requests fail the test.
+
 ## Checks
 
 | Command              | What it does                                                   |
@@ -29,6 +51,8 @@ Opens at <http://localhost:3000>.
 | `pnpm typecheck`     | Generates Next.js types (`next typegen`), then `tsc --noEmit`  |
 | `pnpm format`        | Formats the project with Prettier                              |
 | `pnpm format:check`  | Checks formatting (used in CI)                                 |
+| `pnpm tokens`        | Regenerates `src/styles/tokens.css` from the design tokens     |
+| `pnpm api:types`     | Regenerates `src/api/schema.d.ts` from the OpenAPI contract    |
 | `pnpm test`          | Runs the Vitest suite                                          |
 | `pnpm test:watch`    | Runs tests in watch mode                                       |
 | `pnpm test:coverage` | Runs tests with coverage (`coverage/lcov.info`, read by Sonar) |

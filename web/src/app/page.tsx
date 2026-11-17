@@ -1,8 +1,13 @@
+import { Suspense } from 'react';
+import {
+  InitiativesFallback,
+  InitiativesScreen,
+} from '@/components/initiatives/initiatives-screen';
+
 export default function Home() {
   return (
-    <main>
-      <h1>Bouléplan</h1>
-      <p>Gerenciador pessoal de iniciativas e tarefas.</p>
-    </main>
+    <Suspense fallback={<InitiativesFallback />}>
+      <InitiativesScreen />
+    </Suspense>
   );
 }
