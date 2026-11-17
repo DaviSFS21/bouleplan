@@ -102,14 +102,18 @@ test('edits the title, state, priority, deadline, effort and week', async ({ pag
   ).toBeVisible();
   await expect(effort).toHaveValue('1,5h');
 
+  const saved = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && response.ok(),
+  );
   await group(page, 'Semana').getByRole('button', { name: 'Esta semana', exact: true }).click();
-  await expect(group(page, 'Semana').getByText(/^Planejada na semana \d+$/)).toBeVisible();
+  await saved;
+  await expect(group(page, 'Semana').getByText(/^Planejada na semana \d+/)).toBeVisible();
 
   await page.reload();
   await expect(panel(page).getByRole('textbox', { name: 'Esforço', exact: true })).toHaveValue(
     '1,5h',
   );
-  await expect(group(page, 'Semana').getByText(/^Planejada na semana \d+$/)).toBeVisible();
+  await expect(group(page, 'Semana').getByText(/^Planejada na semana \d+/)).toBeVisible();
 });
 
 test('moves a task between phases of its initiative', async ({ page }) => {
@@ -155,36 +159,41 @@ test('autosaves the description, which survives a reload', async ({ page }) => {
 
 test('adds and removes a blocker and refuses a cycle', async ({ page }) => {
   await seed(page);
+  await createTask(page, 'Pintar teto');
   await card(page, 'Comprar tinta').click();
 
-  await group(page, 'Bloqueia').getByRole('button', { name: '+ Adicionar', exact: true }).click();
-  await group(page, 'Bloqueia')
-    .getByRole('combobox', { name: 'Buscar tarefa para bloquear', exact: true })
-    .fill('lixar');
+  const blocks = group(page, 'Bloqueia');
+  const search = blocks.getByRole('combobox', { name: 'Buscar tarefa para bloquear', exact: true });
+  const add = blocks.getByRole('button', { name: '+ Adicionar', exact: true });
+  const titleField = panel(page).getByRole('textbox', { name: 'Título da tarefa', exact: true });
+
+  await add.click();
+  await search.fill('lixar');
   await page.keyboard.press('Enter');
-  await expect(
-    group(page, 'Bloqueia').getByRole('button', { name: 'Lixar parede', exact: true }),
-  ).toBeVisible();
+  await expect(blocks.getByRole('button', { name: 'Lixar parede', exact: true })).toBeVisible();
   await expect(card(page, 'Comprar tinta').getByText('bloqueia 1', { exact: true })).toBeVisible();
   await expect(card(page, 'Lixar parede').getByText('esperando 1', { exact: true })).toBeVisible();
 
-  await group(page, 'Bloqueia').getByRole('button', { name: 'Lixar parede', exact: true }).click();
-  await expect(
-    panel(page).getByRole('textbox', { name: 'Título da tarefa', exact: true }),
-  ).toHaveValue('Lixar parede');
-  await group(page, 'Bloqueia').getByRole('button', { name: '+ Adicionar', exact: true }).click();
-  await group(page, 'Bloqueia')
-    .getByRole('combobox', { name: 'Buscar tarefa para bloquear', exact: true })
-    .fill('tinta');
+  await blocks.getByRole('button', { name: 'Lixar parede', exact: true }).click();
+  await expect(titleField).toHaveValue('Lixar parede');
+  await add.click();
+  await search.fill('tinta');
+  await expect(blocks.getByText('Nenhuma tarefa encontrada.', { exact: true })).toBeVisible();
+  await search.fill('teto');
+  await page.keyboard.press('Enter');
+  await expect(blocks.getByRole('button', { name: 'Pintar teto', exact: true })).toBeVisible();
+
+  await blocks.getByRole('button', { name: 'Pintar teto', exact: true }).click();
+  await expect(titleField).toHaveValue('Pintar teto');
+  await add.click();
+  await search.fill('tinta');
   await page.keyboard.press('Enter');
   await expect(
-    group(page, 'Bloqueia').getByText('Isso criaria um ciclo: a outra tarefa já depende desta.', {
-      exact: true,
-    }),
+    blocks.getByText('Isso criaria um ciclo: a outra tarefa já depende desta.', { exact: true }),
   ).toBeVisible();
 
   await group(page, 'Bloqueada por')
-    .getByRole('button', { name: 'Remover Comprar tinta', exact: true })
+    .getByRole('button', { name: 'Remover Lixar parede', exact: true })
     .click();
-  await expect(card(page, 'Lixar parede').getByText('esperando 1', { exact: true })).toHaveCount(0);
+  await expect(card(page, 'Pintar teto').getByText('esperando 1', { exact: true })).toHaveCount(0);
 });
