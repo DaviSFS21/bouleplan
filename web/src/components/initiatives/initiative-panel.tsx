@@ -109,13 +109,13 @@ export function InitiativePanel({
         onSaveFailed(SAVE_FAILED_MESSAGES[field]);
       }
     } finally {
-      if (field === 'color') setPendingColor(null);
+      if (field === 'color' && live.current.id === id) setPendingColor(null);
     }
   }
 
-  function closePalette() {
+  function closePalette(returnFocus: boolean) {
     setPaletteOpen(false);
-    colorButton.current?.focus();
+    if (returnFocus) colorButton.current?.focus();
   }
 
   function editName() {
@@ -171,6 +171,9 @@ export function InitiativePanel({
           type="button"
           className={styles.value}
           aria-expanded={paletteOpen}
+          onMouseDown={(event) => {
+            event.preventDefault();
+          }}
           onClick={() => {
             setPaletteOpen((open) => !open);
           }}
@@ -188,12 +191,14 @@ export function InitiativePanel({
               label="Cor da iniciativa"
               value={color}
               onChange={(chosen) => {
-                closePalette();
+                closePalette(true);
                 if (chosen === initiative.color) return;
                 setPendingColor(chosen);
                 void save('color', { color: chosen });
               }}
-              onCancel={closePalette}
+              onCancel={(reason) => {
+                closePalette(reason === 'escape');
+              }}
             />
           </div>
         ) : null}
@@ -229,9 +234,10 @@ export function InitiativePanel({
           value={initiative.description ?? ''}
           maxLength={DESCRIPTION_MAX_LENGTH}
           placeholder="Adicionar descrição"
+          trim
           error={errors.description}
           onCommit={(text) => {
-            void save('description', { description: text.trim() === '' ? null : text });
+            void save('description', { description: text === '' ? null : text });
           }}
         />
       </section>

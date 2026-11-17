@@ -870,3 +870,68 @@ describe('optimistic color and trimmed names', () => {
     expect(title).toHaveValue('Reforma');
   });
 });
+
+describe('description trimming and per-initiative pending color', () => {
+  it('maps whitespace-only to null and does not patch for trailing whitespace only', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen([{ ...reforma, description: 'Piso' }, horta]);
+    const description = within(panel).getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(description, '   ');
+    await user.tab();
+    expect(backend.patches).toEqual([]);
+    expect(description).toHaveValue('Piso');
+
+    await user.clear(description);
+    await user.type(description, '   ');
+    await user.tab();
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: null }]);
+    });
+  });
+
+  it('sends the trimmed description', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen();
+
+    await user.type(within(panel).getByRole('textbox', { name: 'Descrição' }), '  Piso novo  ');
+    await user.tab();
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: 'Piso novo' }]);
+    });
+  });
+
+  it('keeps another initiative optimistic color when an earlier save settles', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    const gates = new Map([
+      [reforma.id, deferred()],
+      [horta.id, deferred()],
+    ]);
+    server.use(
+      http.patch('*/api/initiatives/:id', async ({ request, params }) => {
+        await gates.get(String(params.id))?.promise;
+        const body = (await request.json()) as Record<string, unknown>;
+        const base = params.id === reforma.id ? reforma : horta;
+        return HttpResponse.json({ ...base, ...body });
+      }),
+    );
+    await user.click(within(panel).getByRole('button', { name: 'Turquesa' }));
+    await user.click(within(panel).getByRole('radio', { name: 'Roxo' }));
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+    await user.click(within(panel).getByRole('button', { name: 'Verde' }));
+    await user.click(within(panel).getByRole('radio', { name: 'Rosa' }));
+    expect(within(panel).getByRole('button', { name: 'Rosa' })).toBeInTheDocument();
+
+    gates.get(reforma.id)?.release();
+    await waitFor(() => {
+      expect(within(index()).getByRole('button', { name: /^Reforma/ })).toBeInTheDocument();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(within(panel).getByRole('button', { name: 'Rosa' })).toBeInTheDocument();
+    gates.get(horta.id)?.release();
+  });
+});

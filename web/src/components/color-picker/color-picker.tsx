@@ -42,7 +42,7 @@ interface ColorPickerProps {
   label: string;
   value: ColorToken;
   onChange: (token: ColorToken) => void;
-  onCancel?: () => void;
+  onCancel?: (reason: 'escape' | 'blur') => void;
 }
 
 export function ColorPicker({ label, value, onChange, onCancel }: Readonly<ColorPickerProps>) {
@@ -59,7 +59,7 @@ export function ColorPicker({ label, value, onChange, onCancel }: Readonly<Color
     if (event.key === 'Escape') {
       event.stopPropagation();
       setSelected(value);
-      onCancel?.();
+      onCancel?.('escape');
       return;
     }
     const step = STEP_BY_KEY[event.key];
@@ -73,7 +73,16 @@ export function ColorPicker({ label, value, onChange, onCancel }: Readonly<Color
   }
 
   return (
-    <div role="radiogroup" aria-label={label} className={styles.colors}>
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className={styles.colors}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        setSelected(value);
+        onCancel?.('blur');
+      }}
+    >
       {COLOR_TOKENS.map((token) => (
         <button
           key={token}

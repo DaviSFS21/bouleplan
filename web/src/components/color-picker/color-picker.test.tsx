@@ -104,8 +104,41 @@ describe('ColorPicker', () => {
     await user.keyboard('{ArrowRight}{Escape}');
 
     expect(screen.getByRole('radio', { name: 'Azul' })).toBeChecked();
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onCancel).toHaveBeenCalledExactlyOnceWith('escape');
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('reverts the selection and cancels when focus leaves without a choice', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <>
+        <ColorPicker label="Cor" value="azul" onChange={onChange} onCancel={onCancel} />
+        <button type="button">Depois</button>
+      </>,
+    );
+    screen.getByRole('radio', { name: 'Azul' }).focus();
+
+    await user.keyboard('{ArrowRight}');
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Depois' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Azul' })).toBeChecked();
+    expect(onCancel).toHaveBeenCalledExactlyOnceWith('blur');
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('keeps the selection while focus moves between swatches', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<ColorPicker label="Cor" value="azul" onChange={vi.fn()} onCancel={onCancel} />);
+    screen.getByRole('radio', { name: 'Azul' }).focus();
+
+    await user.keyboard('{ArrowRight}{ArrowRight}');
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(screen.getByRole('radio', { name: 'Rosa' })).toBeChecked();
   });
 
   it('survives Escape without a cancel handler', async () => {

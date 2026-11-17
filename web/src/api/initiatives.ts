@@ -1,10 +1,4 @@
-import {
-  MutationObserver,
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
 import type { Initiative } from './types';
@@ -58,15 +52,18 @@ function runScoped<TVariables, TData>(
   mutationFn: (variables: TVariables) => Promise<TData>,
   onSuccess: (data: TData) => void,
 ): Promise<TData> {
-  const observer = new MutationObserver<TData, Error, TVariables>(queryClient, {
-    mutationFn,
-    scope: { id: `initiative-${id}` },
-    onSuccess: async (data) => {
-      onSuccess(data);
-      await queryClient.invalidateQueries({ queryKey: initiativesKey });
-    },
-  });
-  return observer.mutate(variables);
+  // No observer is attached, so the cache garbage-collects the mutation after gcTime.
+  const mutation = queryClient
+    .getMutationCache()
+    .build<TData, Error, TVariables, unknown>(queryClient, {
+      mutationFn,
+      scope: { id: `initiative-${id}` },
+      onSuccess: async (data) => {
+        onSuccess(data);
+        await queryClient.invalidateQueries({ queryKey: initiativesKey });
+      },
+    });
+  return mutation.execute(variables);
 }
 
 function setList(

@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -371,6 +371,32 @@ describe('serial writes per initiative', () => {
     release();
     await act(async () => {
       await first;
+    });
+  });
+});
+
+describe('mutation cache', () => {
+  it('removes a finished mutation once gcTime elapses', async () => {
+    server.use(
+      http.post('*/api/initiatives/:id/archive', ({ params }) =>
+        HttpResponse.json(initiative({ id: String(params.id) })),
+      ),
+      http.get('*/api/initiatives', () => HttpResponse.json([initiative()])),
+    );
+    const client = new QueryClient({ defaultOptions: { mutations: { gcTime: 50 } } });
+    const { result } = renderHook(() => useArchiveInitiative(), {
+      wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(initiative().id);
+    });
+    expect(client.getMutationCache().getAll()).toHaveLength(1);
+
+    await waitFor(() => {
+      expect(client.getMutationCache().getAll()).toHaveLength(0);
     });
   });
 });
