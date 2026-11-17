@@ -72,8 +72,17 @@ class InitiativeEditingTest {
   @DisplayName("describe rejects control characters other than newline and tab")
   void describeControlCharacters() {
     assertCode(() -> initiative.describe("a\u0000b"), "initiative.description.invalid-characters");
-    assertCode(() -> initiative.describe("a\rb"), "initiative.description.invalid-characters");
     assertCode(() -> initiative.describe("a\ud800b"), "initiative.description.invalid-characters");
+  }
+
+  @Test
+  @DisplayName("describe normalizes CRLF and lone CR to LF")
+  void describeNormalizesLineEndings() {
+    initiative.describe("a\r\nb");
+    assertThat(initiative.getDescription()).isEqualTo("a\nb");
+
+    initiative.describe("a\rb\r\n\rc");
+    assertThat(initiative.getDescription()).isEqualTo("a\nb\n\nc");
   }
 
   @Test

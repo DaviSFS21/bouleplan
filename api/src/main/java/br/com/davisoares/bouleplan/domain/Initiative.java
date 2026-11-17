@@ -92,7 +92,10 @@ public class Initiative extends PanacheEntityBase {
   }
 
   private static String validDescription(String description) {
-    String trimmed = description == null ? "" : stripInvisible(description);
+    String trimmed =
+        description == null
+            ? ""
+            : stripInvisible(description.replace("\r\n", "\n").replace('\r', '\n'));
     if (trimmed.codePoints().anyMatch(Initiative::isInvalidDescriptionCodePoint)) {
       throw new InvalidInitiativeException(
           "initiative.description.invalid-characters",
