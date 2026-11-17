@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   useArchiveInitiative,
   useCreateInitiative,
@@ -18,7 +18,7 @@ import {
 import { useToast } from '@/components/toast/toast';
 import { Loading } from '@/components/loading/loading';
 import { InitiativeBoard } from './initiative-board';
-import { InitiativeIndex } from './initiative-index';
+import { InitiativeIndex, type FocusRequest } from './initiative-index';
 import { InitiativePanel, type PanelIntent, type PanelRequest } from './initiative-panel';
 import styles from './initiatives-screen.module.css';
 
@@ -47,11 +47,25 @@ export function InitiativesScreen() {
   const unarchiveInitiative = useUnarchiveInitiative();
   const deleteInitiative = useDeleteInitiative();
   const restoreInitiative = useRestoreInitiative();
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [request, setRequest] = useState<PanelRequest>({ intent: null, id: 0 });
+  const [actionError, setActionError] = useState<{ message: string; search: string } | null>(null);
+  const [request, setRequest] = useState<PanelRequest | null>(null);
+  const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
+  const counter = useRef(0);
+
+  const clearRequest = useCallback(() => {
+    setRequest(null);
+  }, []);
+
+  function currentParams() {
+    return new URLSearchParams(window.location.search);
+  }
+
+  function reportError(message: string) {
+    setActionError({ message, search: currentParams().toString() });
+  }
 
   function navigate(change: (params: URLSearchParams) => void) {
-    const params = new URLSearchParams(window.location.search);
+    const params = currentParams();
     change(params);
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
@@ -69,7 +83,8 @@ export function InitiativesScreen() {
   }
 
   function openDetails(id: string, intent: PanelIntent = null) {
-    setRequest((current) => ({ intent, id: current.id + 1 }));
+    counter.current += 1;
+    setRequest(intent === null ? null : { intent, id: counter.current, target: id });
     navigate((params) => {
       params.set(SELECTION_PARAM, id);
       params.set(DETAILS_PARAM, '1');
@@ -88,26 +103,33 @@ export function InitiativesScreen() {
     undo: (id: string) => Promise<unknown>,
     messages: { done: string; failed: string },
   ) {
+    const list = data ?? [];
+    const position = list.findIndex((item) => item.id === id);
+    const neighbour = list[position + 1] ?? list[position - 1];
     setActionError(null);
     try {
       await action(id);
     } catch {
-      setActionError(messages.failed);
+      reportError(messages.failed);
       return;
     }
-    select(null);
+    const wasSelected = currentParams().get(SELECTION_PARAM) === id;
+    if (wasSelected) select(null);
+    counter.current += 1;
+    setFocusRequest({ id: neighbour?.id ?? null, nonce: counter.current });
     toast.show({
       message: messages.done,
       onUndo: () => {
         undo(id).then(
           () => {
+            if (!wasSelected) return;
             navigate((params) => {
               params.set(SELECTION_PARAM, id);
               params.delete(DETAILS_PARAM);
             });
           },
           () => {
-            setActionError(UNDO_FAILED_MESSAGE);
+            reportError(UNDO_FAILED_MESSAGE);
           },
         );
       },
@@ -181,7 +203,8 @@ export function InitiativesScreen() {
         onDelete={(id) => {
           void remove(id);
         }}
-        actionError={actionError}
+        actionError={actionError?.search === searchParams.toString() ? actionError.message : null}
+        focusRequest={focusRequest}
       />
       <InitiativeBoard
         initiative={selected}
@@ -192,9 +215,9 @@ export function InitiativesScreen() {
       />
       {selected && detailsOpen ? (
         <InitiativePanel
-          key={selected.id}
           initiative={selected}
           request={request}
+          onRequestHandled={clearRequest}
           onClose={closeDetails}
           onArchive={() => {
             void archive(selected.id);
@@ -202,6 +225,10 @@ export function InitiativesScreen() {
           onDelete={() => {
             void remove(selected.id);
           }}
+          onSaved={() => {
+            setActionError(null);
+          }}
+          onSaveFailed={reportError}
         />
       ) : null}
     </main>

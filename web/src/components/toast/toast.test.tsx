@@ -143,6 +143,59 @@ describe('Toast', () => {
     expect(screen.queryByText('Iniciativa arquivada')).not.toBeInTheDocument();
   });
 
+  it('mentions the keyboard shortcut for screen readers', () => {
+    setup({ message: 'Iniciativa arquivada', onUndo: vi.fn() });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Iniciativa arquivada (Ctrl+Z para desfazer)',
+    );
+  });
+
+  it.each([
+    ['ctrlKey', { ctrlKey: true }],
+    ['metaKey', { metaKey: true }],
+  ])('undoes with the %s + Z shortcut and closes', (_, modifier) => {
+    const onUndo = vi.fn();
+    setup({ message: 'Iniciativa arquivada', onUndo });
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+
+    fireEvent.keyDown(document.body, { key: 'z', ...modifier });
+
+    expect(onUndo).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Iniciativa arquivada')).not.toBeInTheDocument();
+  });
+
+  it('ignores the shortcut when focus is in a text field or the keys do not match', () => {
+    const onUndo = vi.fn();
+    setup({ message: 'Iniciativa arquivada', onUndo });
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+    const field = document.createElement('input');
+    document.body.append(field);
+
+    fireEvent.keyDown(field, { key: 'z', ctrlKey: true });
+    fireEvent.keyDown(document.body, { key: 'z' });
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(document.body, { key: 'a', ctrlKey: true });
+
+    expect(onUndo).not.toHaveBeenCalled();
+    field.remove();
+  });
+
+  it('stops listening once the toast is gone', () => {
+    const onUndo = vi.fn();
+    setup({ message: 'Iniciativa arquivada', onUndo });
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+
+    fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+
+    expect(onUndo).not.toHaveBeenCalled();
+  });
+
   it('throws outside a provider', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 

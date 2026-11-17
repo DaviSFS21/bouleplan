@@ -291,3 +291,86 @@ describe('archive, delete and their undo', () => {
     });
   });
 });
+
+describe('serial writes per initiative', () => {
+  function gatedServer(log: string[], gate: Promise<void>) {
+    server.use(
+      http.patch('*/api/initiatives/:id', async ({ request, params }) => {
+        const body = (await request.json()) as { name: string };
+        log.push(`start ${body.name}`);
+        if (body.name === 'A') await gate;
+        log.push(`end ${body.name}`);
+        return HttpResponse.json(initiative({ id: String(params.id), name: body.name }));
+      }),
+      http.post('*/api/initiatives/:id/archive', ({ params }) => {
+        log.push('start archive');
+        return HttpResponse.json(initiative({ id: String(params.id) }));
+      }),
+    );
+  }
+
+  it('sends two quick writes to one initiative in order, the second after the first settles', async () => {
+    const log: string[] = [];
+    let release!: () => void;
+    gatedServer(
+      log,
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { result } = await loaded([initiative()]);
+    const id = initiative().id;
+
+    let first!: Promise<unknown>;
+    let second!: Promise<unknown>;
+    let third!: Promise<unknown>;
+    act(() => {
+      first = result.current.update.mutateAsync({ id, changes: { name: 'A' } });
+      second = result.current.update.mutateAsync({ id, changes: { name: 'B' } });
+      third = result.current.archive.mutateAsync(id);
+    });
+    await waitFor(() => {
+      expect(log).toEqual(['start A']);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(log).toEqual(['start A']);
+
+    release();
+    await act(async () => {
+      await Promise.all([first, second, third]);
+    });
+
+    expect(log).toEqual(['start A', 'end A', 'start B', 'end B', 'start archive']);
+  });
+
+  it('does not hold back writes to a different initiative', async () => {
+    const log: string[] = [];
+    let release!: () => void;
+    gatedServer(
+      log,
+      new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    );
+    const { result } = await loaded([initiative(), initiative({ id: HORTA_ID, name: 'Horta' })]);
+
+    let first!: Promise<unknown>;
+    let other!: Promise<unknown>;
+    act(() => {
+      first = result.current.update.mutateAsync({
+        id: initiative().id,
+        changes: { name: 'A' },
+      });
+      other = result.current.update.mutateAsync({ id: HORTA_ID, changes: { name: 'B' } });
+    });
+    await act(async () => {
+      await other;
+    });
+
+    expect(log).toEqual(['start A', 'start B', 'end B']);
+    release();
+    await act(async () => {
+      await first;
+    });
+  });
+});

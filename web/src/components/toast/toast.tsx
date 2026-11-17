@@ -23,6 +23,16 @@ interface UndoToastProps extends ToastOptions {
   onDismiss: () => void;
 }
 
+function isTextField(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      target.isContentEditable)
+  );
+}
+
 export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProps>) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -46,6 +56,27 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
     };
   }, [paused]);
 
+  const undo = useRef(onUndo);
+
+  useEffect(() => {
+    undo.current = onUndo;
+  }, [onUndo]);
+
+  useEffect(() => {
+    function undoWithShortcut(event: KeyboardEvent) {
+      const isUndo =
+        (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
+      if (!isUndo || isTextField(event.target)) return;
+      event.preventDefault();
+      undo.current();
+      dismiss.current();
+    }
+    document.addEventListener('keydown', undoWithShortcut);
+    return () => {
+      document.removeEventListener('keydown', undoWithShortcut);
+    };
+  }, []);
+
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
   }
@@ -65,6 +96,7 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
       onBlur={handleBlur}
     >
       <span>{message}</span>
+      <span className={styles.hint}> (Ctrl+Z para desfazer)</span>
       <button
         type="button"
         className={styles.undo}

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { COLOR_TOKENS, ColorPicker, colorName, type ColorToken } from './color-picker';
+import { COLOR_TOKENS, ColorPicker, colorName } from './color-picker';
 
 const NAMES = ['Amarelo', 'Lima', 'Verde', 'Turquesa', 'Azul', 'Roxo', 'Rosa', 'Marrom'];
 
@@ -38,16 +38,16 @@ describe('ColorPicker', () => {
     expect(screen.getAllByRole('radio').filter((radio) => radio.tabIndex === 0)).toEqual(checked);
   });
 
-  it('selects on click', async () => {
+  it('chooses on click', async () => {
     const onChange = vi.fn();
     render(<ColorPicker label="Cor" value="azul" onChange={onChange} />);
 
     await userEvent.click(screen.getByRole('radio', { name: 'Rosa' }));
 
-    expect(onChange).toHaveBeenCalledWith('rosa');
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('rosa');
   });
 
-  it('selects with Enter and Space', async () => {
+  it('chooses the focused swatch with Enter and Space', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<ColorPicker label="Cor" value="azul" onChange={onChange} />);
@@ -61,11 +61,11 @@ describe('ColorPicker', () => {
   });
 
   it.each([
-    ['{ArrowRight}', 'roxo'],
-    ['{ArrowDown}', 'roxo'],
-    ['{ArrowLeft}', 'turquesa'],
-    ['{ArrowUp}', 'turquesa'],
-  ])('%s moves focus and selects', async (key, expected) => {
+    ['{ArrowRight}', 'Roxo'],
+    ['{ArrowDown}', 'Roxo'],
+    ['{ArrowLeft}', 'Turquesa'],
+    ['{ArrowUp}', 'Turquesa'],
+  ])('%s moves focus and the checked state without choosing', async (key, expected) => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<ColorPicker label="Cor" value="azul" onChange={onChange} />);
@@ -73,22 +73,57 @@ describe('ColorPicker', () => {
 
     await user.keyboard(key);
 
-    expect(onChange).toHaveBeenCalledWith(expected);
-    expect(screen.getByRole('radio', { name: colorName(expected as ColorToken) })).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
+    const radio = screen.getByRole('radio', { name: expected });
+    expect(radio).toHaveFocus();
+    expect(radio).toBeChecked();
+    expect(radio).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: 'Azul' })).not.toBeChecked();
   });
 
   it('wraps around at both ends', async () => {
     const user = userEvent.setup();
-    const onChange = vi.fn();
-    const { rerender } = render(<ColorPicker label="Cor" value="marrom" onChange={onChange} />);
+    const { rerender } = render(<ColorPicker label="Cor" value="marrom" onChange={vi.fn()} />);
     screen.getByRole('radio', { name: 'Marrom' }).focus();
     await user.keyboard('{ArrowRight}');
-    expect(onChange).toHaveBeenLastCalledWith('amarelo');
+    expect(screen.getByRole('radio', { name: 'Amarelo' })).toBeChecked();
 
-    rerender(<ColorPicker label="Cor" value="amarelo" onChange={onChange} />);
+    rerender(<ColorPicker label="Cor" value="amarelo" onChange={vi.fn()} />);
     screen.getByRole('radio', { name: 'Amarelo' }).focus();
     await user.keyboard('{ArrowLeft}');
-    expect(onChange).toHaveBeenLastCalledWith('marrom');
+    expect(screen.getByRole('radio', { name: 'Marrom' })).toBeChecked();
+  });
+
+  it('reverts the selection and cancels on Escape', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    const onChange = vi.fn();
+    render(<ColorPicker label="Cor" value="azul" onChange={onChange} onCancel={onCancel} />);
+    screen.getByRole('radio', { name: 'Azul' }).focus();
+
+    await user.keyboard('{ArrowRight}{Escape}');
+
+    expect(screen.getByRole('radio', { name: 'Azul' })).toBeChecked();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('survives Escape without a cancel handler', async () => {
+    const user = userEvent.setup();
+    render(<ColorPicker label="Cor" value="azul" onChange={vi.fn()} />);
+    screen.getByRole('radio', { name: 'Azul' }).focus();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.getByRole('radio', { name: 'Azul' })).toBeChecked();
+  });
+
+  it('follows a new value from outside', () => {
+    const { rerender } = render(<ColorPicker label="Cor" value="azul" onChange={vi.fn()} />);
+
+    rerender(<ColorPicker label="Cor" value="rosa" onChange={vi.fn()} />);
+
+    expect(screen.getByRole('radio', { name: 'Rosa' })).toBeChecked();
   });
 
   it('ignores other keys', async () => {
@@ -100,20 +135,5 @@ describe('ColorPicker', () => {
     await user.keyboard('a');
 
     expect(onChange).not.toHaveBeenCalled();
-  });
-});
-
-describe('ColorPicker onChoose', () => {
-  it('fires on click but not on arrow selection', async () => {
-    const user = userEvent.setup();
-    const onChoose = vi.fn();
-    render(<ColorPicker label="Cor" value="azul" onChange={vi.fn()} onChoose={onChoose} />);
-    screen.getByRole('radio', { name: 'Azul' }).focus();
-
-    await user.keyboard('{ArrowRight}');
-    expect(onChoose).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole('radio', { name: 'Rosa' }));
-    expect(onChoose).toHaveBeenCalledExactlyOnceWith('rosa');
   });
 });

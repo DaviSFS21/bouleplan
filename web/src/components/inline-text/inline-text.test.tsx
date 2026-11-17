@@ -184,3 +184,32 @@ describe('InlineText validation and focus', () => {
     expect(input).toHaveFocus();
   });
 });
+
+describe('InlineText trim', () => {
+  it('commits and shows the trimmed value', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    render(<InlineText label="Nome" value="Reforma" trim onCommit={onCommit} />);
+    const input = screen.getByRole('textbox', { name: 'Nome' });
+
+    await user.clear(input);
+    await user.type(input, '  Casa nova  ');
+    await user.tab();
+
+    expect(onCommit).toHaveBeenCalledExactlyOnceWith('Casa nova');
+    expect(input).toHaveValue('Casa nova');
+  });
+
+  it('does not commit when the trimmed value equals the saved one, and tidies the field', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    render(<InlineText label="Nome" value="Reforma" trim onCommit={onCommit} />);
+    const input = screen.getByRole('textbox', { name: 'Nome' });
+
+    await user.type(input, '   ');
+    await user.tab();
+
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(input).toHaveValue('Reforma');
+  });
+});

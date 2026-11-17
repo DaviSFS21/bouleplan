@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type CSSProperties, type KeyboardEvent } from 'react';
+import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import styles from './color-picker.module.css';
 
 export const COLOR_TOKENS = [
@@ -42,13 +42,26 @@ interface ColorPickerProps {
   label: string;
   value: ColorToken;
   onChange: (token: ColorToken) => void;
-  onChoose?: (token: ColorToken) => void;
+  onCancel?: () => void;
 }
 
-export function ColorPicker({ label, value, onChange, onChoose }: Readonly<ColorPickerProps>) {
+export function ColorPicker({ label, value, onChange, onCancel }: Readonly<ColorPickerProps>) {
+  const [selected, setSelected] = useState(value);
+  const [syncedValue, setSyncedValue] = useState(value);
   const swatches = useRef(new Map<ColorToken, HTMLButtonElement>());
 
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    setSelected(value);
+  }
+
   function handleKeyDown(event: KeyboardEvent, token: ColorToken) {
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      setSelected(value);
+      onCancel?.();
+      return;
+    }
     const step = STEP_BY_KEY[event.key];
     if (step === undefined) return;
     event.preventDefault();
@@ -56,7 +69,7 @@ export function ColorPicker({ label, value, onChange, onChoose }: Readonly<Color
     const next = COLOR_TOKENS[(index + step + COLOR_TOKENS.length) % COLOR_TOKENS.length];
     if (next === undefined) return;
     swatches.current.get(next)?.focus();
-    onChange(next);
+    setSelected(next);
   }
 
   return (
@@ -70,14 +83,14 @@ export function ColorPicker({ label, value, onChange, onChoose }: Readonly<Color
           }}
           type="button"
           role="radio"
-          aria-checked={token === value}
+          aria-checked={token === selected}
           aria-label={colorName(token)}
-          tabIndex={token === value ? 0 : -1}
+          tabIndex={token === selected ? 0 : -1}
           className={styles.swatch}
           style={{ '--swatch': `var(--ini-${token})` } as CSSProperties}
           onClick={() => {
+            setSelected(token);
             onChange(token);
-            onChoose?.(token);
           }}
           onKeyDown={(event) => {
             handleKeyDown(event, token);

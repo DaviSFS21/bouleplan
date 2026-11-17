@@ -150,19 +150,16 @@ describe('opening and closing the panel', () => {
     expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
   });
 
-  it('follows the selection to another initiative', async () => {
+  it('follows the selection to another initiative without moving focus into the panel', async () => {
     const user = userEvent.setup();
     const { panel } = await renderOpen();
 
     await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
 
     expect(window.location.search).toBe(detailsUrl(horta.id).slice(1));
-    expect(
-      within(screen.getByRole('complementary')).getByRole('textbox', {
-        name: 'Nome da iniciativa',
-      }),
-    ).toHaveValue('Horta');
-    expect(panel).not.toBeInTheDocument();
+    expect(screen.getByRole('complementary')).toBe(panel);
+    expect(within(panel).getByRole('textbox', { name: 'Nome da iniciativa' })).toHaveValue('Horta');
+    expect(within(index()).getByRole('button', { name: /^Horta/ })).toHaveFocus();
   });
 
   it('closes when going back to all tasks', async () => {
@@ -382,7 +379,7 @@ describe('editing in the panel', () => {
     await user.type(screen.getByLabelText('Prazo geral'), '2099-12-18{Enter}');
 
     expect(
-      await within(panel).findByRole('button', { name: 'Prazo geral: sex, 18 dez' }),
+      await within(panel).findByRole('button', { name: 'Prazo geral: sex, 18 dez 2099' }),
     ).toBeInTheDocument();
     expect(backend.patches).toEqual([{ overallDeadline: '2099-12-18' }]);
   });
@@ -560,16 +557,316 @@ describe('InitiativePanel footer', () => {
     renderWithQuery(
       <InitiativePanel
         initiative={{ ...reforma, updatedAt: '2026-11-17T11:58:00-03:00' }}
-        request={{ intent: null, id: 0 }}
+        request={null}
+        onRequestHandled={vi.fn()}
         now={new Date('2026-11-17T12:00:00-03:00')}
         onClose={vi.fn()}
         onArchive={vi.fn()}
         onDelete={vi.fn()}
+        onSaved={vi.fn()}
+        onSaveFailed={vi.fn()}
       />,
     );
 
     expect(
       screen.getByText('Criada em 12 out · alterada há 2 min · salva automaticamente'),
     ).toBeVisible();
+  });
+});
+
+function deferred() {
+  let release!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { promise, release };
+}
+
+describe('panel intents are bound to their initiative', () => {
+  it('does not replay "Cor…" on another initiative', async () => {
+    const user = userEvent.setup();
+    serve([reforma, horta]);
+    renderWithQuery(<InitiativesScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Cor…' }));
+    expect(await screen.findByRole('radiogroup')).toBeVisible();
+
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+
+    expect(window.location.search).toBe(detailsUrl(horta.id).slice(1));
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(within(index()).getByRole('button', { name: /^Horta/ })).toHaveFocus();
+  });
+
+  it('does not replay "Editar nome" on another initiative', async () => {
+    const user = userEvent.setup();
+    serve([reforma, horta]);
+    renderWithQuery(<InitiativesScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Editar nome' }));
+    expect(await screen.findByRole('textbox', { name: 'Nome da iniciativa' })).toHaveFocus();
+
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+
+    expect(screen.getByRole('textbox', { name: 'Nome da iniciativa' })).toHaveValue('Horta');
+    expect(screen.getByRole('textbox', { name: 'Nome da iniciativa' })).not.toHaveFocus();
+  });
+
+  it('does not replay the intent when the same details URL is visited again', async () => {
+    const user = userEvent.setup();
+    serve([reforma]);
+    renderWithQuery(<InitiativesScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Cor…' }));
+    await screen.findByRole('radiogroup');
+    await user.click(screen.getByRole('button', { name: 'Fechar' }));
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+
+    navigateTo(detailsUrl(reforma.id));
+
+    expect(await screen.findByRole('complementary')).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+  });
+});
+
+describe('archive and delete of a non-selected initiative', () => {
+  it.each([
+    ['Arquivar', 'Iniciativa arquivada', 'archive', 'unarchive'],
+    ['Excluir', 'Iniciativa excluída', 'delete', 'restore'],
+  ] as const)(
+    '%s keeps the board and selection, and undo leaves them alone',
+    async (action, message, call, undoCall) => {
+      const user = userEvent.setup();
+      const backend = serve([reforma, horta]);
+      navigateTo(`/?iniciativa=${reforma.id}`);
+      renderWithQuery(<InitiativesScreen />);
+      await user.click(await screen.findByRole('button', { name: 'Ações de Horta' }));
+
+      await user.click(screen.getByRole('menuitem', { name: action }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent(message);
+      expect(backend.calls).toEqual([`${call} ${horta.id}`]);
+      expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
+      expect(screen.getByRole('heading', { level: 1, name: 'Reforma' })).toBeVisible();
+      expect(within(index()).queryByRole('button', { name: /^Horta/ })).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+
+      await waitFor(() => {
+        expect(within(index()).getByRole('button', { name: /^Horta/ })).toBeInTheDocument();
+      });
+      expect(backend.calls).toEqual([`${call} ${horta.id}`, `${undoCall} ${horta.id}`]);
+      expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
+      expect(screen.getByRole('heading', { level: 1, name: 'Reforma' })).toBeVisible();
+    },
+  );
+
+  it('keeps an open panel for the selected initiative', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+
+    await user.click(screen.getByRole('button', { name: 'Ações de Horta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    await screen.findByRole('status');
+
+    expect(panel).toBeInTheDocument();
+    expect(window.location.search).toBe(detailsUrl(reforma.id).slice(1));
+  });
+});
+
+describe('focus after archive or delete', () => {
+  const casa = initiative({ id: '33333333-3333-4333-8333-333333333333', name: 'Casa' });
+
+  it.each([
+    ['the next item', 'Reforma', /^Horta/],
+    ['the previous item when it was the last', 'Casa', /^Horta/],
+  ])('moves to %s', async (_, archived, expected) => {
+    const user = userEvent.setup();
+    serve([reforma, horta, casa]);
+    renderWithQuery(<InitiativesScreen />);
+    await user.click(await screen.findByRole('button', { name: `Ações de ${archived}` }));
+
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+
+    await screen.findByRole('status');
+    expect(within(index()).getByRole('button', { name: expected })).toHaveFocus();
+  });
+
+  it('moves to "Todas as tarefas" when the list becomes empty', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen([reforma]);
+
+    await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
+
+    await screen.findByRole('status');
+    expect(within(index()).getByRole('button', { name: 'Todas as tarefas' })).toHaveFocus();
+  });
+
+  it('undoes with Ctrl+Z while the toast shows', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen();
+    await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    await screen.findByRole('status');
+
+    await user.keyboard('{Control>}z{/Control}');
+
+    await waitFor(() => {
+      expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
+    });
+    expect(backend.calls).toEqual([`archive ${reforma.id}`, `unarchive ${reforma.id}`]);
+  });
+});
+
+describe('autosave failures and the inline alert', () => {
+  it('surfaces a failed save after the panel closed', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    const gate = deferred();
+    server.use(
+      http.patch('*/api/initiatives/:id', async () => {
+        await gate.promise;
+        return problemResponse('internal', 500);
+      }),
+    );
+
+    await user.type(within(panel).getByRole('textbox', { name: 'Descrição' }), 'Texto');
+    await user.click(within(panel).getByRole('button', { name: 'Fechar' }));
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+    gate.release();
+
+    expect(await within(index()).findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar a descrição. Tente de novo.',
+    );
+  });
+
+  it('surfaces a failed save for the previous initiative after the selection moved', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    const gate = deferred();
+    server.use(
+      http.patch('*/api/initiatives/:id', async () => {
+        await gate.promise;
+        return problemResponse('internal', 500);
+      }),
+    );
+
+    await user.type(within(panel).getByRole('textbox', { name: 'Nome da iniciativa' }), ' X');
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+    gate.release();
+
+    expect(await within(index()).findByRole('alert')).toHaveTextContent(
+      'Não foi possível salvar o nome. Tente de novo.',
+    );
+    expect(within(panel).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('clears the alert on navigation', async () => {
+    const user = userEvent.setup();
+    serve([reforma, horta]);
+    server.use(
+      http.post('*/api/initiatives/:id/unarchive', () => problemResponse('http.404', 404)),
+    );
+    renderWithQuery(<InitiativesScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Ações de Reforma' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    await user.click(await screen.findByRole('button', { name: 'Desfazer' }));
+    await within(index()).findByRole('alert');
+
+    await user.click(within(index()).getByRole('button', { name: /^Horta/ }));
+
+    expect(within(index()).queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('clears the alert after the next successful save', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    server.use(http.post('*/api/initiatives/:id/archive', () => problemResponse('http.404', 404)));
+    await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+    await within(index()).findByRole('alert');
+
+    await user.type(within(panel).getByRole('textbox', { name: 'Descrição' }), 'ok');
+    await user.tab();
+
+    await waitFor(() => {
+      expect(within(index()).queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('optimistic color and trimmed names', () => {
+  it('shows the chosen color before the response arrives', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    const gate = deferred();
+    server.use(
+      http.patch('*/api/initiatives/:id', async ({ request, params }) => {
+        await gate.promise;
+        const body = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ...reforma, id: String(params.id), ...body });
+      }),
+    );
+    await user.click(within(panel).getByRole('button', { name: 'Turquesa' }));
+
+    await user.click(within(panel).getByRole('radio', { name: 'Roxo' }));
+
+    expect(within(panel).getByRole('button', { name: 'Roxo' })).toBeInTheDocument();
+    gate.release();
+    await waitFor(() => {
+      expect(within(panel).getByRole('button', { name: 'Roxo' })).toBeInTheDocument();
+    });
+  });
+
+  it('goes back to the saved color when the save fails', async () => {
+    const user = userEvent.setup();
+    const { panel } = await renderOpen();
+    server.use(http.patch('*/api/initiatives/:id', () => problemResponse('internal', 500)));
+    await user.click(within(panel).getByRole('button', { name: 'Turquesa' }));
+
+    await user.click(within(panel).getByRole('radio', { name: 'Roxo' }));
+
+    expect(await within(panel).findByRole('alert')).toBeVisible();
+    expect(within(panel).getByRole('button', { name: 'Turquesa' })).toBeInTheDocument();
+  });
+
+  it('moves an arrow selection without saving, and Escape cancels', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen();
+    await user.click(within(panel).getByRole('button', { name: 'Turquesa' }));
+
+    await user.keyboard('{ArrowRight}');
+    expect(within(panel).getByRole('radio', { name: 'Azul' })).toBeChecked();
+    expect(backend.patches).toEqual([]);
+    await user.keyboard('{Escape}');
+
+    expect(within(panel).queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(backend.patches).toEqual([]);
+    expect(screen.getByRole('complementary')).toBeInTheDocument();
+  });
+
+  it('chooses the arrow-selected color with Enter', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen();
+    await user.click(within(panel).getByRole('button', { name: 'Turquesa' }));
+
+    await user.keyboard('{ArrowRight}{Enter}');
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ color: 'azul' }]);
+    });
+  });
+
+  it('does not send a request when only whitespace changed in the name', async () => {
+    const user = userEvent.setup();
+    const { backend, panel } = await renderOpen();
+    const title = within(panel).getByRole('textbox', { name: 'Nome da iniciativa' });
+
+    await user.type(title, '   ');
+    await user.tab();
+
+    expect(backend.patches).toEqual([]);
+    expect(title).toHaveValue('Reforma');
   });
 });

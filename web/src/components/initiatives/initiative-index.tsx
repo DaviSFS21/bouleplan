@@ -4,6 +4,12 @@ import { ActionMenu } from '@/components/action-menu/action-menu';
 import { NewInitiativeField } from './new-initiative-field';
 import styles from './initiative-index.module.css';
 
+export interface FocusRequest {
+  // null focuses "Todas as tarefas"
+  id: string | null;
+  nonce: number;
+}
+
 type InitiativeIndexProps = Readonly<{
   initiatives: readonly Initiative[];
   selectedId: string | null;
@@ -15,6 +21,7 @@ type InitiativeIndexProps = Readonly<{
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
   actionError: string | null;
+  focusRequest: FocusRequest | null;
 }>;
 
 export function InitiativeIndex({
@@ -28,6 +35,7 @@ export function InitiativeIndex({
   onArchive,
   onDelete,
   actionError,
+  focusRequest,
 }: InitiativeIndexProps) {
   const nav = useRef<HTMLElement>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -36,6 +44,13 @@ export function InitiativeIndex({
     if (focusId === null) return;
     nav.current?.querySelector<HTMLElement>(`[data-initiative-id="${focusId}"]`)?.focus();
   }, [focusId]);
+
+  useEffect(() => {
+    if (!focusRequest) return;
+    const selector =
+      focusRequest.id === null ? '[data-all-tasks]' : `[data-initiative-id="${focusRequest.id}"]`;
+    nav.current?.querySelector<HTMLElement>(selector)?.focus();
+  }, [focusRequest]);
 
   async function create(name: string) {
     setFocusId(await onCreate(name));
@@ -54,6 +69,7 @@ export function InitiativeIndex({
           <button
             type="button"
             className={styles.item}
+            data-all-tasks=""
             aria-current={selectedId === null ? 'true' : undefined}
             onClick={() => {
               onSelect(null);

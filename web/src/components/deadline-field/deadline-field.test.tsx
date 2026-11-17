@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DeadlineField, formatDeadline, localToday } from './deadline-field';
@@ -8,7 +8,16 @@ const TODAY = '2026-12-10';
 describe('formatDeadline', () => {
   it('formats as weekday, day and short month in pt-BR without dots', () => {
     expect(formatDeadline('2026-12-18')).toBe('sex, 18 dez');
-    expect(formatDeadline('2027-01-05')).toBe('ter, 5 jan');
+    expect(formatDeadline('2027-01-05', '2027-06-01')).toBe('ter, 5 jan');
+  });
+
+  it('adds the year when it is not the current year', () => {
+    expect(formatDeadline('2099-12-18', '2026-11-17')).toBe('sex, 18 dez 2099');
+    expect(formatDeadline('2025-12-19', '2026-11-17')).toBe('sex, 19 dez 2025');
+  });
+
+  it('defaults to the real current date', () => {
+    expect(formatDeadline('2099-12-18')).toBe('sex, 18 dez 2099');
   });
 });
 
@@ -151,6 +160,29 @@ describe('DeadlineField', () => {
     await user.keyboard('{ArrowUp}');
 
     expect(screen.getByLabelText('Prazo')).toBeInTheDocument();
+  });
+
+  it('clears from the editing state without sending the typed draft first', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<DeadlineField value="2026-12-18" onChange={onChange} today={TODAY} />);
+    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+    await user.type(screen.getByLabelText('Prazo'), '2026-12-24');
+
+    await user.click(screen.getByRole('button', { name: 'Remover prazo' }));
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('keeps focus in the input on mouse down over "Remover prazo"', async () => {
+    const user = userEvent.setup();
+    render(<DeadlineField value="2026-12-18" onChange={vi.fn()} today={TODAY} />);
+    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+
+    const down = fireEvent.mouseDown(screen.getByRole('button', { name: 'Remover prazo' }));
+
+    expect(down).toBe(false);
+    expect(screen.getByLabelText('Prazo')).toHaveFocus();
   });
 
   it('clears the deadline with "Remover prazo"', async () => {

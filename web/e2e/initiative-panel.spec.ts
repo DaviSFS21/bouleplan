@@ -103,7 +103,7 @@ test('sets a deadline', async ({ page }) => {
   await patched(page, () => input.press('Enter'));
 
   await expect(
-    panel(page).getByRole('button', { name: /^Prazo geral: \p{L}{3}, 18 dez$/u }),
+    panel(page).getByRole('button', { name: /^Prazo geral: \p{L}{3}, 18 dez 2099$/u }),
   ).toBeVisible();
 });
 
@@ -173,4 +173,108 @@ test('archiving without undo frees the color for the next initiative', async ({ 
 
   const { actual, expected } = await dotColors(page, 'Casa', '--ini-amarelo');
   expect(actual).toBe(expected);
+});
+
+test.describe('index menu', () => {
+  test('"Abrir detalhes" opens the panel for that initiative', async ({ page }) => {
+    await createInitiative(page, 'Horta');
+    await createInitiative(page, 'Casa');
+    await expect(panel(page)).toBeHidden();
+
+    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('menuitem', { name: 'Abrir detalhes' }).click();
+
+    await expect(panel(page)).toBeVisible();
+    await expect(panel(page).getByRole('textbox', { name: 'Nome da iniciativa' })).toHaveValue(
+      'Horta',
+    );
+    await expect(page).toHaveURL(/detalhes=1$/);
+  });
+
+  test('"Editar nome" opens the panel with the title focused', async ({ page }) => {
+    await createInitiative(page, 'Horta');
+
+    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('menuitem', { name: 'Editar nome' }).click();
+
+    await expect(panel(page).getByRole('textbox', { name: 'Nome da iniciativa' })).toBeFocused();
+  });
+
+  test('"Cor…" opens the panel with the palette open', async ({ page }) => {
+    await createInitiative(page, 'Horta');
+
+    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('menuitem', { name: 'Cor…' }).click();
+
+    await expect(panel(page).getByRole('radiogroup', { name: 'Cor da iniciativa' })).toBeVisible();
+    await expect(panel(page).getByRole('radio', { name: 'Amarelo' })).toBeFocused();
+  });
+
+  test('"Cor…" on one initiative does not open the palette of the next one selected', async ({
+    page,
+  }) => {
+    await createInitiative(page, 'Horta');
+    await createInitiative(page, 'Casa');
+    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('menuitem', { name: 'Cor…' }).click();
+    await expect(panel(page).getByRole('radiogroup')).toBeVisible();
+
+    await initiativeItem(page, 'Casa').click();
+
+    await expect(panel(page).getByRole('textbox', { name: 'Nome da iniciativa' })).toHaveValue(
+      'Casa',
+    );
+    await expect(panel(page).getByRole('radiogroup')).toBeHidden();
+    await expect(initiativeItem(page, 'Casa')).toBeFocused();
+  });
+});
+
+for (const [action, message] of [
+  ['Arquivar', 'Iniciativa arquivada'],
+  ['Excluir', 'Iniciativa excluída'],
+] as const) {
+  test(`${action} of a non-selected initiative keeps the board and selection`, async ({ page }) => {
+    await createInitiative(page, 'Horta');
+    await createInitiative(page, 'Casa');
+    const url = page.url();
+
+    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('menuitem', { name: action }).click();
+
+    await expect(page.getByRole('status')).toContainText(message);
+    await expect(initiativeItem(page, 'Horta')).toBeHidden();
+    await expect(page).toHaveURL(url);
+    await expect(page.getByRole('heading', { level: 1, name: 'Casa' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Desfazer' }).click();
+
+    await expect(initiativeItem(page, 'Horta')).toBeVisible();
+    await expect(page).toHaveURL(url);
+    await expect(initiativeItem(page, 'Casa')).toHaveAttribute('aria-current', 'true');
+  });
+}
+
+test('moves focus to a stable item after archiving', async ({ page }) => {
+  await createInitiative(page, 'Horta');
+  await createInitiative(page, 'Casa');
+
+  await page.getByRole('button', { name: 'Ações de Horta' }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar' }).click();
+
+  await expect(page.getByRole('status')).toContainText('Iniciativa arquivada');
+  await expect(initiativeItem(page, 'Casa')).toBeFocused();
+});
+
+test('undoes an archive with Ctrl+Z', async ({ page }) => {
+  await createInitiative(page, 'Horta');
+  await openPanel(page, 'Horta');
+  await panel(page).getByRole('button', { name: 'Ações da iniciativa' }).click();
+  await page.getByRole('menuitem', { name: 'Arquivar' }).click();
+  await expect(page.getByRole('status')).toContainText('Iniciativa arquivada');
+  await expect(initiativeItem(page, 'Horta')).toBeHidden();
+
+  await page.keyboard.press('Control+z');
+
+  await expect(initiativeItem(page, 'Horta')).toHaveAttribute('aria-current', 'true');
+  await expect(page.getByRole('status')).not.toContainText('Iniciativa arquivada');
 });

@@ -42,6 +42,7 @@ describe('updateInitiativeMessage', () => {
       'initiative.description.invalid-characters',
       'A descrição tem caracteres inválidos.',
     ],
+    ['overallDeadline', 'initiative.deadline.invalid', 'Use uma data válida.'],
     ['color', 'initiative.color.invalid', 'Não foi possível salvar. Tente de novo.'],
     ['color', 'initiative.color.required', 'Não foi possível salvar. Tente de novo.'],
     ['overallDeadline', 'http.404', 'Não foi possível salvar. Tente de novo.'],

@@ -24,6 +24,7 @@ interface InlineTextProps {
   error?: string | null;
   validate?: (value: string) => string | null;
   focusSignal?: number;
+  trim?: boolean;
 }
 
 export function InlineText({
@@ -37,6 +38,7 @@ export function InlineText({
   error,
   validate,
   focusSignal = 0,
+  trim = false,
 }: Readonly<InlineTextProps>) {
   const [draft, setDraft] = useState(value);
   const [syncedValue, setSyncedValue] = useState(value);
@@ -67,14 +69,18 @@ export function InlineText({
       reverting.current = false;
       return;
     }
-    const next = event.currentTarget.value;
-    if (next === value) return;
+    const next = trim ? event.currentTarget.value.trim() : event.currentTarget.value;
+    if (next === value) {
+      setDraft(value);
+      return;
+    }
     const message = validate?.(next) ?? null;
     if (message) {
       setValidation(message);
       setDraft(value);
       return;
     }
+    setDraft(next);
     onCommit(next);
   }
 

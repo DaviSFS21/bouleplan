@@ -30,7 +30,7 @@ const UPDATE_INITIATIVE_MESSAGES: Readonly<
     'initiative.description.too-long': 'Use no máximo 10.000 caracteres.',
     'initiative.description.invalid-characters': 'A descrição tem caracteres inválidos.',
   },
-  overallDeadline: {},
+  overallDeadline: { 'initiative.deadline.invalid': 'Use uma data válida.' },
   color: {},
 };
 
@@ -46,3 +46,10 @@ export const ARCHIVE_INITIATIVE_FAILED_MESSAGE =
 export const DELETE_INITIATIVE_FAILED_MESSAGE =
   'Não foi possível excluir a iniciativa. Tente de novo.';
 export const UNDO_FAILED_MESSAGE = 'Não foi possível desfazer. Tente de novo.';
+
+export const SAVE_FAILED_MESSAGES: Readonly<Record<InitiativeField, string>> = {
+  name: 'Não foi possível salvar o nome. Tente de novo.',
+  description: 'Não foi possível salvar a descrição. Tente de novo.',
+  overallDeadline: 'Não foi possível salvar o prazo. Tente de novo.',
+  color: 'Não foi possível salvar a cor. Tente de novo.',
+};

@@ -9,14 +9,15 @@ const FORMAT = new Intl.DateTimeFormat('pt-BR', {
   month: 'short',
 });
 
-export function formatDeadline(iso: string): string {
+export function formatDeadline(iso: string, today: string = localToday()): string {
   const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
   const parts = new Map(
     FORMAT.formatToParts(new Date(year, month - 1, day)).map((part) => [part.type, part.value]),
   );
   const weekday = parts.get('weekday')?.replace('.', '') ?? '';
   const monthName = parts.get('month')?.replace('.', '') ?? '';
-  return `${weekday}, ${parts.get('day') ?? ''} ${monthName}`;
+  const label = `${weekday}, ${parts.get('day') ?? ''} ${monthName}`;
+  return year === Number(today.slice(0, 4)) ? label : `${label} ${String(year)}`;
 }
 
 export function localToday(now: Date = new Date()): string {
@@ -45,7 +46,7 @@ export function DeadlineField({
   const restoreFocus = useRef(false);
   const finished = useRef(false);
   const overdue = value !== null && value < today;
-  const text = value === null ? 'sem prazo' : formatDeadline(value);
+  const text = value === null ? 'sem prazo' : formatDeadline(value, today);
 
   useEffect(() => {
     if (editing) input.current?.focus();
@@ -118,6 +119,9 @@ export function DeadlineField({
         <button
           type="button"
           className={styles.remove}
+          onMouseDown={(event) => {
+            event.preventDefault();
+          }}
           onClick={() => {
             finished.current = true;
             restoreFocus.current = true;

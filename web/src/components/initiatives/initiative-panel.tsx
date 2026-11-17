@@ -2,7 +2,12 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useUpdateInitiative, type InitiativeChanges } from '@/api/initiatives';
-import { BLANK_NAME_MESSAGE, updateInitiativeMessage, type InitiativeField } from '@/api/messages';
+import {
+  BLANK_NAME_MESSAGE,
+  SAVE_FAILED_MESSAGES,
+  updateInitiativeMessage,
+  type InitiativeField,
+} from '@/api/messages';
 import type { Initiative } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { ColorPicker, colorName, type ColorToken } from '@/components/color-picker/color-picker';
@@ -20,54 +25,93 @@ export type PanelIntent = 'name' | 'color' | null;
 export interface PanelRequest {
   intent: PanelIntent;
   id: number;
+  target: string;
 }
 
 interface InitiativePanelProps {
   initiative: Initiative;
-  request: PanelRequest;
+  request: PanelRequest | null;
+  onRequestHandled: () => void;
   onClose: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onSaved: () => void;
+  onSaveFailed: (message: string) => void;
   now?: Date;
 }
 
 export function InitiativePanel({
   initiative,
   request,
+  onRequestHandled,
   onClose,
   onArchive,
   onDelete,
+  onSaved,
+  onSaveFailed,
   now,
 }: Readonly<InitiativePanelProps>) {
   const update = useUpdateInitiative();
   const [errors, setErrors] = useState<Partial<Record<InitiativeField, string>>>({});
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [pendingColor, setPendingColor] = useState<ColorToken | null>(null);
   const [nameFocus, setNameFocus] = useState(0);
   const [handledRequest, setHandledRequest] = useState<number | null>(null);
+  const [boundId, setBoundId] = useState(initiative.id);
   const colorButton = useRef<HTMLButtonElement>(null);
   const palette = useRef<HTMLDivElement>(null);
+  const live = useRef({ mounted: true, id: initiative.id });
   const clock = now ?? new Date();
+  const color = pendingColor ?? initiative.color;
 
-  if (request.id !== handledRequest) {
-    setHandledRequest(request.id);
-    if (request.intent === 'name') setNameFocus((signal) => signal + 1);
-    if (request.intent === 'color') setPaletteOpen(true);
+  if (boundId !== initiative.id) {
+    setBoundId(initiative.id);
+    setErrors({});
+    setPaletteOpen(false);
+    setPendingColor(null);
+    setNameFocus(0);
   }
 
-  async function save(field: InitiativeField, changes: InitiativeChanges) {
-    setErrors((current) => ({ ...current, [field]: undefined }));
-    try {
-      await update.mutateAsync({ id: initiative.id, changes });
-    } catch (failure) {
-      setErrors((current) => ({ ...current, [field]: updateInitiativeMessage(failure, field) }));
-    }
+  const pending = request?.target === initiative.id ? request : null;
+  if (pending && pending.id !== handledRequest) {
+    setHandledRequest(pending.id);
+    if (pending.intent === 'name') setNameFocus((signal) => signal + 1);
+    if (pending.intent === 'color') setPaletteOpen(true);
   }
+
+  useEffect(() => {
+    live.current = { mounted: true, id: initiative.id };
+    return () => {
+      live.current.mounted = false;
+    };
+  }, [initiative.id]);
+
+  useEffect(() => {
+    if (pending) onRequestHandled();
+  }, [pending, onRequestHandled]);
 
   useEffect(() => {
     if (paletteOpen) {
       palette.current?.querySelector<HTMLElement>('[role="radio"][tabindex="0"]')?.focus();
     }
   }, [paletteOpen]);
+
+  async function save(field: InitiativeField, changes: InitiativeChanges) {
+    const id = initiative.id;
+    setErrors((current) => ({ ...current, [field]: undefined }));
+    try {
+      await update.mutateAsync({ id, changes });
+      onSaved();
+    } catch (failure) {
+      if (live.current.mounted && live.current.id === id) {
+        setErrors((current) => ({ ...current, [field]: updateInitiativeMessage(failure, field) }));
+      } else {
+        onSaveFailed(SAVE_FAILED_MESSAGES[field]);
+      }
+    } finally {
+      if (field === 'color') setPendingColor(null);
+    }
+  }
 
   function closePalette() {
     setPaletteOpen(false);
@@ -107,16 +151,17 @@ export function InitiativePanel({
       onClose={onClose}
     >
       <InlineText
+        key={`name-${initiative.id}`}
         label="Nome da iniciativa"
         variant="title"
         value={initiative.name}
         maxLength={NAME_MAX_LENGTH}
         focusSignal={nameFocus}
+        trim
         error={errors.name}
-        validate={(text) => (text.trim() === '' ? BLANK_NAME_MESSAGE : null)}
-        onCommit={(text) => {
-          const name = text.trim();
-          if (name !== initiative.name) void save('name', { name });
+        validate={(text) => (text === '' ? BLANK_NAME_MESSAGE : null)}
+        onCommit={(name) => {
+          void save('name', { name });
         }}
       />
       <div className={styles.props}>
@@ -132,28 +177,23 @@ export function InitiativePanel({
         >
           <span
             className={styles.dot}
-            style={{ '--ini': `var(--ini-${initiative.color})` } as CSSProperties}
+            style={{ '--ini': `var(--ini-${color})` } as CSSProperties}
             aria-hidden="true"
           />
-          {colorName(initiative.color)}
+          {colorName(color)}
         </button>
         {paletteOpen ? (
-          <div
-            ref={palette}
-            className={styles.palette}
-            onKeyDown={(event) => {
-              if (event.key !== 'Escape') return;
-              event.stopPropagation();
-              closePalette();
-            }}
-          >
+          <div ref={palette} className={styles.palette}>
             <ColorPicker
               label="Cor da iniciativa"
-              value={initiative.color}
-              onChange={(color: ColorToken) => {
-                if (color !== initiative.color) void save('color', { color });
+              value={color}
+              onChange={(chosen) => {
+                closePalette();
+                if (chosen === initiative.color) return;
+                setPendingColor(chosen);
+                void save('color', { color: chosen });
               }}
-              onChoose={closePalette}
+              onCancel={closePalette}
             />
           </div>
         ) : null}
@@ -164,6 +204,7 @@ export function InitiativePanel({
         ) : null}
         <span className={styles.label}>Prazo geral</span>
         <DeadlineField
+          key={`deadline-${initiative.id}`}
           label="Prazo geral"
           value={initiative.overallDeadline}
           today={localToday(clock)}
@@ -182,6 +223,7 @@ export function InitiativePanel({
       <section className={styles.section}>
         <h2 className={styles.eyebrow}>Descrição</h2>
         <InlineText
+          key={`description-${initiative.id}`}
           label="Descrição"
           multiline
           value={initiative.description ?? ''}

@@ -156,12 +156,12 @@
 }
 
 .row .item {
-  padding-right: 40px;
+  padding-right: var(--space-10);
 }
 
 .actions {
   position: absolute;
-  top: 8px;
+  top: var(--space-2);
   right: var(--space-2);
   opacity: 0;
 }
