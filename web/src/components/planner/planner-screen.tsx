@@ -1,0 +1,529 @@
+'use client';
+
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragMoveEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import { useIsMutating } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useInitiatives } from '@/api/initiatives';
+import { DUPLICATE_ITEM_MESSAGE, LOAD_PLANNER_FAILED_MESSAGE } from '@/api/messages';
+import { usePlanner } from '@/api/planner';
+import { useTasks } from '@/api/tasks';
+import type { CalendarEvent } from '@/api/types';
+import { localToday } from '@/components/deadline-field/deadline-field';
+import { Icon } from '@/components/icon/icon';
+import {
+  PHASE_PARAM,
+  SELECTION_PARAM,
+  TASK_PARAM,
+  WEEK_PARAM,
+} from '@/components/initiatives/url-params';
+import { Loading } from '@/components/loading/loading';
+import { StatusStrip } from '@/components/status-strip/status-strip';
+import { TaskPanel } from '@/components/tasks/task-panel';
+import type { TaskPanelControl } from '@/components/tasks/task-board';
+import {
+  currentWeekStart,
+  isoWeekNumber,
+  stepWeek,
+  weekDates,
+  weekStartOf,
+} from '@/components/tasks/task-week';
+import { useMinuteClock } from '@/components/tasks/use-minute-clock';
+import type { Draft } from './day-column';
+import { EventPopover } from './event-popover';
+import { weekTitle } from './planner-dates';
+import {
+  resolveDrop,
+  type DragData,
+  type DropIntent,
+  type Preview,
+  type Resolution,
+} from './planner-drop';
+import { visibleHours } from './planner-geometry';
+import {
+  blockSpans,
+  buildDays,
+  weekSpans,
+  type BlockModel,
+  type EntryModel,
+} from './planner-model';
+import { RISK_FILTER, atRiskTasks, trayTasks } from './planner-tasks';
+import { Tray, TrayPreview } from './tray';
+import { usePlannerActions } from './use-planner-actions';
+import { useAddToToday } from './use-add-to-today';
+import { useWeekTaskActions } from './use-week-task-actions';
+import { WeekGrid } from './week-grid';
+import styles from './planner-screen.module.css';
+
+const DRAG_ACTIVATION_DISTANCE = 6;
+
+function isWeekStart(value: string | null): value is string {
+  return value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && weekStartOf(value) === value;
+}
+
+export function PlannerFallback() {
+  return (
+    <main className={styles.status}>
+      <div role="status" aria-label="Carregando a semana">
+        <Loading />
+      </div>
+    </main>
+  );
+}
+
+export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const clock = useMinuteClock(now);
+  const today = localToday(clock);
+  const requested = searchParams.get(WEEK_PARAM);
+  const weekStart = isWeekStart(requested) ? requested : currentWeekStart(clock);
+  const dates = useMemo(() => weekDates(weekStart), [weekStart]);
+
+  const initiativesQuery = useInitiatives();
+  const tasksQuery = useTasks();
+  const plannerQuery = usePlanner(weekStart);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<DragData | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [overStrip, setOverStrip] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [popover, setPopover] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
+  );
+
+  const initiatives = initiativesQuery.data;
+  const listed = useMemo(() => {
+    const live = new Set(initiatives?.map(({ id }) => id));
+    return (tasksQuery.data ?? []).filter((task) => live.has(task.initiativeId));
+  }, [tasksQuery.data, initiatives]);
+  const tasksById = useMemo(() => new Map(listed.map((task) => [task.id, task])), [listed]);
+  const colors = useMemo(
+    () => new Map((initiatives ?? []).map(({ id, color }) => [id, color])),
+    [initiatives],
+  );
+  const names = useMemo(
+    () => new Map((initiatives ?? []).map(({ id, name }) => [id, name])),
+    [initiatives],
+  );
+
+  const weekEnd = dates[6] ?? weekStart;
+  const atRisk = useMemo(() => atRiskTasks(listed, today, weekEnd), [listed, today, weekEnd]);
+  const atRiskIds = useMemo(() => new Set(atRisk.map(({ id }) => id)), [atRisk]);
+
+  const days = useMemo(
+    () =>
+      buildDays({
+        dates,
+        events: plannerQuery.data?.events ?? [],
+        items: plannerQuery.data?.items ?? [],
+        tasks: tasksById,
+        colors,
+        atRisk: atRiskIds,
+      }),
+    [dates, plannerQuery.data, tasksById, colors, atRiskIds],
+  );
+
+  const todayIndex = dates.indexOf(today);
+  const nowMinutes = todayIndex < 0 ? null : clock.getHours() * 60 + clock.getMinutes();
+  const { startHour, endHour } = visibleHours(weekSpans(days), nowMinutes);
+
+  const activeFilter =
+    filter === RISK_FILTER
+      ? atRisk.length > 0
+        ? RISK_FILTER
+        : null
+      : filter !== null && names.has(filter)
+        ? filter
+        : null;
+  const bandeja = useMemo(
+    () => trayTasks(listed, weekStart, activeFilter, atRisk),
+    [listed, weekStart, activeFilter, atRisk],
+  );
+
+  const taskParam = searchParams.get(TASK_PARAM);
+  const openTask = taskParam ? tasksById.get(taskParam) : undefined;
+  const taskWriting = useIsMutating({
+    predicate: (mutation) => mutation.options.scope?.id.startsWith('task-') === true,
+  });
+  const settled =
+    initiatives !== undefined && tasksQuery.data !== undefined && !tasksQuery.isFetching;
+  const dropTaskParam =
+    taskParam !== null && openTask === undefined && settled && taskWriting === 0;
+
+  // An unknown, hidden or removed task leaves no panel and no stale link.
+  useEffect(() => {
+    if (!dropTaskParam) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete(TASK_PARAM);
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [dropTaskParam, router, pathname]);
+
+  function navigate(change: (params: URLSearchParams) => void) {
+    const params = new URLSearchParams(window.location.search);
+    change(params);
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  function goToWeek(next: string | null) {
+    if (next === null) return;
+    navigate((params) => {
+      if (next === currentWeekStart(clock)) params.delete(WEEK_PARAM);
+      else params.set(WEEK_PARAM, next);
+    });
+  }
+
+  const taskPanel: TaskPanelControl = {
+    openId: openTask?.id ?? null,
+    open: (id) => {
+      if (new URLSearchParams(window.location.search).get(TASK_PARAM) === id) return;
+      navigate((params) => {
+        params.set(TASK_PARAM, id);
+      });
+    },
+    close: (id) => {
+      if (id !== undefined && new URLSearchParams(window.location.search).get(TASK_PARAM) !== id) {
+        return;
+      }
+      navigate((params) => {
+        params.delete(TASK_PARAM);
+      });
+    },
+    reopen: (id) => {
+      if (new URLSearchParams(window.location.search).has(TASK_PARAM)) return;
+      navigate((params) => {
+        params.set(TASK_PARAM, id);
+      });
+    },
+    selectPath: (initiativeId, phaseId) => {
+      const params = new URLSearchParams({ [SELECTION_PARAM]: initiativeId });
+      if (phaseId !== null) params.set(PHASE_PARAM, phaseId);
+      router.push(`/?${params.toString()}`);
+    },
+  };
+
+  const planner = usePlannerActions({ today, report: setError });
+  const todayList = useAddToToday(today, setError);
+  const {
+    actions: taskActions,
+    panelFocus,
+    focusPanel,
+  } = useWeekTaskActions({
+    panel: taskPanel,
+    report: setError,
+    addToToday: (task) => {
+      void todayList.add(task);
+    },
+    isInToday: todayList.isInToday,
+  });
+
+  const openedEvent = popover
+    ? plannerQuery.data?.events.find(({ id }) => id === popover.id)
+    : undefined;
+
+  function dayOf(date: string) {
+    return days.find((day) => day.date === date);
+  }
+
+  function evaluate(event: DragMoveEvent | DragEndEvent): Resolution {
+    const data = event.active.data.current as DragData;
+    const over = event.over;
+    const info = over?.data.current as { kind: 'day' | 'strip'; date: string } | undefined;
+    const target =
+      over && info
+        ? info.kind === 'day'
+          ? ({ kind: 'day', date: info.date, top: over.rect.top } as const)
+          : ({ kind: 'strip', date: info.date } as const)
+        : null;
+    const pointerY = (event.activatorEvent as MouseEvent).clientY + event.delta.y;
+    return resolveDrop(data, target, pointerY, event.delta.y, {
+      startHour,
+      blocksOf: (date) => {
+        const day = dayOf(date);
+        return day ? blockSpans(day) : [];
+      },
+      entriesOf: (date) => dayOf(date)?.entries.map(({ item }) => item) ?? [],
+    });
+  }
+
+  function apply(intent: DropIntent) {
+    switch (intent.type) {
+      case 'add-to-list':
+        void planner.addToList(intent.task, intent.date);
+        break;
+      case 'duplicate':
+        setError(DUPLICATE_ITEM_MESSAGE);
+        break;
+      case 'move-entry':
+        void planner.moveEntry(intent.item, intent.date);
+        break;
+      case 'reserve':
+        void planner.reserve(intent.task, intent.date, intent.span);
+        break;
+      case 'entry-to-block':
+        void planner.entryToBlock(intent.item, intent.date, intent.span);
+        break;
+      case 'move-block':
+        void planner.moveBlock(intent.item, intent.date, intent.span);
+        break;
+      case 'resize':
+        void planner.resizeBlock(intent.item, intent.end);
+        break;
+      case 'none':
+      case 'blocked':
+        break;
+    }
+  }
+
+  function resetDrag() {
+    setDragging(null);
+    setPreview(null);
+    setOverStrip(null);
+  }
+
+  function handleDragStart({ active }: DragStartEvent) {
+    setError(null);
+    setDragging(active.data.current as DragData);
+  }
+
+  function handleDragMove(event: DragMoveEvent) {
+    setPreview(evaluate(event).preview);
+    const info = event.over?.data.current as { kind: string; date: string } | undefined;
+    setOverStrip(info?.kind === 'strip' ? info.date : null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { intent } = evaluate(event);
+    resetDrag();
+    apply(intent);
+  }
+
+  function openFromPlanner(taskId: string, viaKeyboard = false) {
+    const task = tasksById.get(taskId);
+    if (task) taskActions.onOpen(task, viaKeyboard);
+  }
+
+  function removeEntry(entry: EntryModel) {
+    void planner.removeEntry(entry.item);
+  }
+
+  function removeBlock(block: BlockModel) {
+    void planner.removeBlock(block.item);
+  }
+
+  function openEvent(event: CalendarEvent, anchor: HTMLElement) {
+    setPopover({ id: event.id, anchor });
+  }
+
+  function commitDraft(title: string) {
+    if (!draft) return;
+    const { date, span } = draft;
+    setDraft(null);
+    void planner.createEvent(date, span, title);
+  }
+
+  if (!initiatives || !tasksQuery.data || !plannerQuery.data) {
+    const failed =
+      (initiativesQuery.isError && !initiatives) ||
+      (tasksQuery.isError && !tasksQuery.data) ||
+      (plannerQuery.isError && !plannerQuery.data);
+    if (!failed) return <PlannerFallback />;
+    return (
+      <main className={styles.status}>
+        <p role="alert" className={styles.message}>
+          {LOAD_PLANNER_FAILED_MESSAGE}
+        </p>
+        <button
+          type="button"
+          className={styles.retry}
+          onClick={() => {
+            void initiativesQuery.refetch();
+            void tasksQuery.refetch();
+            void plannerQuery.refetch();
+          }}
+        >
+          Tentar de novo
+        </button>
+      </main>
+    );
+  }
+
+  const previousWeek = stepWeek(weekStart, -1);
+  const nextWeek = stepWeek(weekStart, 1);
+  const dragged = dragging && 'task' in dragging ? dragging.task : null;
+
+  return (
+    <main className={styles.screen}>
+      <header className={styles.header}>
+        <div>
+          <p className={styles.overline}>{`Semana ${String(isoWeekNumber(weekStart))}`}</p>
+          <h1 className={styles.title}>{weekTitle(weekStart)}</h1>
+        </div>
+        <div className={styles.controls} role="group" aria-label="Navegar entre semanas">
+          <button
+            type="button"
+            className={styles.step}
+            aria-label="Semana anterior"
+            disabled={previousWeek === null}
+            onClick={() => {
+              goToWeek(previousWeek);
+            }}
+          >
+            <Icon icon={ChevronLeft} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.step}
+            aria-label="Próxima semana"
+            disabled={nextWeek === null}
+            onClick={() => {
+              goToWeek(nextWeek);
+            }}
+          >
+            <Icon icon={ChevronRight} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.today}
+            onClick={() => {
+              goToWeek(currentWeekStart(clock));
+            }}
+          >
+            Hoje
+          </button>
+        </div>
+      </header>
+      {atRisk.length > 0 ? (
+        <StatusStrip
+          tone="atencao"
+          title="Prazos sem tempo reservado."
+          action={{
+            label: 'Mostrar na bandeja',
+            onClick: () => {
+              setFilter(RISK_FILTER);
+            },
+          }}
+        >
+          {atRisk.length === 1
+            ? '1 tarefa vence nesta semana com tempo a reservar.'
+            : `${String(atRisk.length)} tarefas vencem nesta semana com tempo a reservar.`}
+        </StatusStrip>
+      ) : null}
+      {error ? (
+        <p role="alert" className={styles.error}>
+          {error}
+        </p>
+      ) : null}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
+        onDragEnd={handleDragEnd}
+        onDragCancel={resetDrag}
+      >
+        <div className={styles.body}>
+          <Tray
+            tasks={bandeja}
+            initiatives={initiatives}
+            filter={activeFilter}
+            onFilter={setFilter}
+            showRiskFilter={atRisk.length > 0}
+            atRiskIds={atRiskIds}
+            today={today}
+            openTaskId={openTask?.id ?? null}
+            draggingTaskId={dragging?.kind === 'tray' ? dragging.task.id : null}
+            actions={{
+              onOpen: openFromPlanner,
+              onAddToToday: (task) => {
+                void todayList.add(task);
+              },
+              isInToday: todayList.isInToday,
+            }}
+          />
+          <WeekGrid
+            label={`Semana ${String(isoWeekNumber(weekStart))}`}
+            today={today}
+            nowMinutes={nowMinutes}
+            days={days}
+            startHour={startHour}
+            endHour={endHour}
+            preview={preview}
+            draft={draft}
+            dragging={dragging}
+            overStrip={overStrip}
+            onOpenTask={openFromPlanner}
+            onRemoveEntry={removeEntry}
+            onRemoveBlock={removeBlock}
+            onOpenEvent={openEvent}
+            onDraw={setDraft}
+            onCommitDraft={commitDraft}
+            onCancelDraft={() => {
+              setDraft(null);
+            }}
+          />
+        </div>
+        <DragOverlay dropAnimation={null}>
+          {dragged && (dragging?.kind === 'tray' || dragging?.kind === 'ficha') ? (
+            <TrayPreview
+              task={dragged}
+              color={colors.get(dragged.initiativeId) ?? ''}
+              atRisk={atRiskIds.has(dragged.id)}
+              today={today}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+      {popover && openedEvent ? (
+        <EventPopover
+          event={openedEvent}
+          anchor={popover.anchor}
+          onClose={() => {
+            setPopover(null);
+          }}
+          onRename={(title) => {
+            void planner.renameEvent(openedEvent, title);
+          }}
+          onDelete={() => {
+            setPopover(null);
+            void planner.deleteEvent(openedEvent);
+          }}
+        />
+      ) : null}
+      {openTask ? (
+        <TaskPanel
+          task={openTask}
+          tasks={listed}
+          initiativeNames={names}
+          actions={taskActions}
+          onOpenTask={(id) => {
+            taskPanel.open(id);
+            focusPanel();
+          }}
+          focusSignal={panelFocus}
+          onSelectPath={taskPanel.selectPath}
+          fallbackFocus={() =>
+            document.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`)
+          }
+          now={now}
+        />
+      ) : null}
+    </main>
+  );
+}

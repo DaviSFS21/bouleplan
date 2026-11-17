@@ -1,6 +1,7 @@
 @import './tokens.css';
 
 html {
+  --nav-height: 48px;
   color-scheme: light;
 }
 

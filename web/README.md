@@ -43,6 +43,11 @@ Opens at <http://localhost:3000>.
 - `src/api/client.ts` is a typed `openapi-fetch` client on `/api`. Problem responses (`application/problem+json`) become an `ApiError` carrying `detail`.
 - Tests mock HTTP with `msw` (`src/test/server.ts`, started in `vitest.setup.ts`); unmocked requests fail the test.
 
+## Screens
+
+- `/` is the board (Quadro) and `/semana?semana=YYYY-MM-DD` the weekly planner (Semana). Both open the task panel through `?tarefa=<id>`.
+- The planner drags with `@dnd-kit/core` (pointer only); the drop rules are pure functions in `src/components/planner/planner-drop.ts`.
+
 ## Checks
 
 | Command              | What it does                                                   |

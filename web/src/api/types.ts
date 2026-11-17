@@ -21,3 +21,11 @@ export type TaskChanges = Pick<
   | 'phaseId'
   | 'plannedWeekStart'
 >;
+
+export type CalendarEvent = components['schemas']['CalendarEvent'];
+export type ScheduledItem = components['schemas']['ScheduledItem'];
+export type PlannerWeek = components['schemas']['Planner'];
+export type CreateCalendarEventRequest = components['schemas']['CreateCalendarEventRequest'];
+export type UpdateCalendarEventRequest = components['schemas']['UpdateCalendarEventRequest'];
+export type CreateScheduledItemRequest = components['schemas']['CreateScheduledItemRequest'];
+export type UpdateScheduledItemRequest = components['schemas']['UpdateScheduledItemRequest'];

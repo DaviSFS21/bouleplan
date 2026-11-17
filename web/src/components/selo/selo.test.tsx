@@ -10,7 +10,9 @@ describe('selo', () => {
   });
 
   it('gives each priority its own class', () => {
-    const classes = new Set((['P1', 'P2', 'P3'] as const).map(seloClassName));
+    const classes = new Set(
+      (['P1', 'P2', 'P3'] as const).map((priority) => seloClassName(priority)),
+    );
 
     expect(classes.size).toBe(3);
   });
@@ -20,5 +22,19 @@ describe('selo', () => {
 
     expect(screen.getByText('Bloqueada')).toBeVisible();
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('has a mini size for the planner', () => {
+    render(
+      <>
+        <PrioritySelo priority="P2" mini />
+        <BlockedSelo mini />
+      </>,
+    );
+
+    expect(screen.getByText('P2').className).toMatch(/mini/);
+    expect(screen.getByText('Bloqueada').className).toMatch(/mini/);
+    expect(seloClassName('P1', true)).toMatch(/mini/);
+    expect(seloClassName('P1')).not.toMatch(/mini/);
   });
 });

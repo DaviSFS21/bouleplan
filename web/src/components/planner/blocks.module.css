@@ -1,0 +1,209 @@
+.event {
+  position: absolute;
+  left: var(--space-1);
+  right: var(--space-1);
+  box-sizing: border-box;
+  margin-top: 2px;
+  padding: 3px var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  touch-action: manipulation;
+}
+
+.event:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.title {
+  display: flex;
+  gap: var(--space-1);
+  align-items: center;
+  min-width: 0;
+  font: var(--type-rotulo);
+}
+
+.titleText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fixed {
+  border: 0;
+  background: var(--fixo);
+  color: var(--sobre-fixo);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dedicated {
+  z-index: 2;
+  padding-left: 11px;
+  background: var(--tempo-dedicado);
+  box-shadow: inset 3px 0 0 var(--ini, var(--neutro));
+  color: var(--tinta);
+  cursor: grab;
+}
+
+.source {
+  opacity: 0.4;
+}
+
+.blocked {
+  background:
+    repeating-linear-gradient(45deg, var(--bloqueio-hachura) 0 2px, transparent 2px 6px),
+    var(--bloqueio-fundo);
+  box-shadow: var(--sombra-flutuante);
+  outline: 1.5px dashed var(--terracota-escuro);
+  outline-offset: -1.5px;
+  cursor: not-allowed;
+}
+
+.preview {
+  z-index: 5;
+  pointer-events: none;
+}
+
+.reason {
+  margin-top: 2px;
+  color: var(--terracota-escuro);
+  font: var(--type-meta);
+  font-weight: 500;
+}
+
+.menu {
+  position: absolute;
+  top: 0;
+  right: 0;
+  opacity: 0;
+}
+
+.dedicated:hover .menu,
+.dedicated:focus-within .menu,
+.menu:has([aria-expanded='true']) {
+  opacity: 1;
+}
+
+.handle {
+  position: absolute;
+  right: 0;
+  bottom: -2px;
+  left: 0;
+  height: 10px;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.dedicated:hover .handle::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  margin-left: -10px;
+  border-radius: 2px;
+  background: var(--tinta-muted);
+  opacity: 0.6;
+}
+
+.draft {
+  z-index: 5;
+  background: var(--fixo);
+  color: var(--sobre-fixo);
+}
+
+.draftInput {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: var(--type-rotulo);
+  outline: 0;
+}
+
+.draftInput::placeholder {
+  color: var(--sobre-fixo);
+  opacity: 0.7;
+}
+
+.draw {
+  z-index: 5;
+  background: var(--fixo);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.deadlines {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  pointer-events: none;
+  border-bottom: 2px solid var(--terracota-escuro);
+}
+
+.deadlines::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--terracota-escuro);
+}
+
+.deadline {
+  max-width: calc(100% - var(--space-2));
+  margin: 0 0 3px var(--space-2);
+  padding: 0 var(--space-1);
+  overflow: hidden;
+  border: 0;
+  border-radius: 3px;
+  background: var(--papel);
+  color: var(--terracota-escuro);
+  font: var(--type-rotulo);
+  font-size: 11px;
+  line-height: 14px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.deadline:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.now {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 4;
+  height: 0;
+  border-top: 1px solid var(--tinta);
+  pointer-events: none;
+}
+
+.now::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tinta);
+}

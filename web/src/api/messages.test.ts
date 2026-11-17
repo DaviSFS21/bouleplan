@@ -11,6 +11,7 @@ import {
   renamePhaseMessage,
   updateInitiativeMessage,
   blockerMessage,
+  plannerMessage,
 } from './messages';
 import { ApiError } from './problem';
 
@@ -156,6 +157,48 @@ describe('blockerMessage', () => {
   it('uses the fallback for errors that are not ApiError', () => {
     expect(blockerMessage(new TypeError('x'), 'add')).toBe(
       'Não foi possível adicionar o bloqueio. Tente de novo.',
+    );
+  });
+});
+
+describe('plannerMessage', () => {
+  it.each([
+    ['reserve', 'scheduled-item.overlap', 'Já há tempo reservado nesse horário.'],
+    ['add-to-list', 'scheduled-item.duplicate', 'Essa tarefa já está na lista desse dia.'],
+    ['reserve', 'scheduled-item.task-done', 'Tarefas feitas não vão para a semana.'],
+    [
+      'move',
+      'scheduled-item.time.invalid',
+      'Use horários de 15 em 15 minutos, dentro do mesmo dia.',
+    ],
+    ['create-event', 'calendar-event.title.blank', 'Dê um título ao compromisso.'],
+    ['update-event', 'calendar-event.title.too-long', 'Use no máximo 300 caracteres.'],
+    [
+      'update-event',
+      'calendar-event.title.invalid-characters',
+      'O título tem caracteres inválidos.',
+    ],
+    [
+      'create-event',
+      'calendar-event.time.invalid',
+      'Use horários de 15 em 15 minutos, dentro do mesmo dia.',
+    ],
+    ['remove', 'http.404', 'Esse item não existe mais.'],
+    ['add-to-list', 'internal', 'Não foi possível pôr na lista do dia. Tente de novo.'],
+    ['reserve', 'internal', 'Não foi possível reservar o tempo. Tente de novo.'],
+    ['move', 'internal', 'Não foi possível mover. Tente de novo.'],
+    ['resize', 'internal', 'Não foi possível ajustar a duração. Tente de novo.'],
+    ['remove', 'internal', 'Não foi possível tirar da agenda. Tente de novo.'],
+    ['create-event', 'internal', 'Não foi possível criar o compromisso. Tente de novo.'],
+    ['update-event', 'internal', 'Não foi possível salvar o compromisso. Tente de novo.'],
+    ['remove-event', 'internal', 'Não foi possível excluir o compromisso. Tente de novo.'],
+  ] as const)('maps %s failures with %s', (action, code, message) => {
+    expect(plannerMessage(failure(code), action)).toBe(message);
+  });
+
+  it('uses the fallback for errors that are not ApiError', () => {
+    expect(plannerMessage(new TypeError('x'), 'move')).toBe(
+      'Não foi possível mover. Tente de novo.',
     );
   });
 });

@@ -1,6 +1,6 @@
 .screen {
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh - var(--nav-height));
 }
 
 .status {
@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-4);
-  min-height: 100vh;
+  min-height: calc(100vh - var(--nav-height));
   padding: var(--space-8);
   text-align: center;
 }

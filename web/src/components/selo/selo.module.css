@@ -38,3 +38,10 @@
   width: 11px;
   height: 11px;
 }
+
+.mini {
+  padding: 1px var(--space-1);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 12px;
+}

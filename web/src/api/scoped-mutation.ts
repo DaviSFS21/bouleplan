@@ -22,7 +22,7 @@ export function hasQueued(queryClient: QueryClient, scope: string, key: QueryKey
 // A mutation scope runs mutations with the same id one after another.
 export function runScoped<TVariables, TData>(
   queryClient: QueryClient,
-  target: { scope: string; invalidate: QueryKey; awaitRefetch?: boolean },
+  target: { scope: string; invalidate: QueryKey; awaitRefetch?: boolean; exact?: boolean },
   variables: TVariables,
   mutationFn: (variables: TVariables) => Promise<TData>,
   onSuccess: (data: TData) => void,
@@ -45,7 +45,10 @@ export function runScoped<TVariables, TData>(
         onSuccess(data);
         // A refetch now would erase the optimistic state of the changes still queued.
         if (hasQueued(queryClient, target.scope, target.invalidate)) return;
-        const refetch = queryClient.invalidateQueries({ queryKey: target.invalidate, exact: true });
+        const refetch = queryClient.invalidateQueries({
+          queryKey: target.invalidate,
+          exact: target.exact ?? true,
+        });
         if (target.awaitRefetch !== false) await refetch;
       },
     });

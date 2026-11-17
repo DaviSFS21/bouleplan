@@ -36,6 +36,8 @@ import { useToast } from '@/components/toast/toast';
 import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
+import { useAddToToday } from '@/components/planner/use-add-to-today';
+import { localToday } from '@/components/deadline-field/deadline-field';
 import { useClock } from './use-clock';
 import { TaskCardPreview } from './task-card';
 import type { TaskActions } from './task-menu';
@@ -156,6 +158,7 @@ export function TaskBoard({
   );
   const openTask = taskPanel.openId ? listed.find(({ id }) => id === taskPanel.openId) : undefined;
   const clock = useClock(now);
+  const todayList = useAddToToday(localToday(clock), setError);
   const colors = new Map(initiatives.map(({ id, color }) => [id, color]));
   const names = new Map(initiatives.map(({ id, name }) => [id, name]));
   const chosen = initiatives.find(({ id }) => id === rememberedId) ?? initiatives[0] ?? null;
@@ -280,6 +283,10 @@ export function TaskBoard({
         failed: DELETE_TASK_FAILED_MESSAGE,
       });
     },
+    onAddToToday: (task) => {
+      void todayList.add(task);
+    },
+    isInTodayList: todayList.isInToday,
   };
 
   function handleDragStart({ active }: DragStartEvent) {
