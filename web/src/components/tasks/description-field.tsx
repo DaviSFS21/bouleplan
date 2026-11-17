@@ -20,20 +20,35 @@ const MAX_LENGTH = 10_000;
 interface DescriptionFieldProps {
   value: string;
   onSave: (text: string) => void;
+  onRevert?: () => void;
   error?: string | null;
 }
 
-export function DescriptionField({ value, onSave, error }: Readonly<DescriptionFieldProps>) {
+export function DescriptionField({
+  value,
+  onSave,
+  onRevert,
+  error,
+}: Readonly<DescriptionFieldProps>) {
   const [draft, setDraft] = useState(value);
+  const [dirty, setDirty] = useState(false);
+  const [syncedValue, setSyncedValue] = useState(value);
   const field = useRef<HTMLTextAreaElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const latest = useRef({ draft, value, onSave, error });
+  const latest = useRef({ draft, dirty, value, onSave, error });
   const sent = useRef<{ from: string; text: string } | null>(null);
   const errorId = useId();
 
   useEffect(() => {
-    latest.current = { draft, value, onSave, error };
+    latest.current = { draft, dirty, value, onSave, error };
   });
+
+  // While the field is clean it follows the saved text; typed text is never overwritten.
+  if (value !== syncedValue) {
+    setSyncedValue(value);
+    if (!dirty) setDraft(value);
+    else if (draft.trim() === value) setDirty(false);
+  }
 
   useLayoutEffect(() => {
     const element = field.current;
@@ -49,7 +64,8 @@ export function DescriptionField({ value, onSave, error }: Readonly<DescriptionF
 
   const flush = useCallback(() => {
     clearTimeout(timer.current);
-    const { draft: text, value: saved, onSave: save } = latest.current;
+    const { draft: text, dirty: changed, value: saved, onSave: save } = latest.current;
+    if (!changed) return;
     const next = text.trim();
     if (next === saved) return;
     // The blur and the unmount that follows it must not send the same text twice.
@@ -70,15 +86,22 @@ export function DescriptionField({ value, onSave, error }: Readonly<DescriptionF
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setDraft(event.target.value);
+    setDirty(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(flush, DESCRIPTION_IDLE_MS);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== 'Escape') return;
+    if (event.key !== 'Escape' || event.nativeEvent.isComposing) return;
+    const { draft: text, value: saved } = latest.current;
+    // With nothing to revert, Esc is left to close the panel.
+    if (text === saved) return;
     event.stopPropagation();
     clearTimeout(timer.current);
-    setDraft(latest.current.value);
+    sent.current = null;
+    setDraft(saved);
+    setDirty(false);
+    onRevert?.();
   }
 
   return (

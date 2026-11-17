@@ -97,11 +97,12 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const card = useRef<HTMLElement | null>(null);
   const returnFocus = useRef(false);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
-    id: task.id,
-    data: { task } satisfies DraggedTask,
-    disabled: editing,
-  });
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging, active } =
+    useDraggable({
+      id: task.id,
+      data: { task } satisfies DraggedTask,
+      disabled: editing,
+    });
 
   function endEdit() {
     setEditing(false);
@@ -117,10 +118,10 @@ export function TaskCard({
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     listeners?.onKeyDown?.(event);
-    if (event.defaultPrevented || event.target !== event.currentTarget || editing) return;
+    if (event.defaultPrevented || event.target !== event.currentTarget || editing || active) return;
     if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      actions.onOpen(task);
+      actions.onOpen(task, true);
     } else if (
       event.key.toLowerCase() === 'e' &&
       !event.ctrlKey &&

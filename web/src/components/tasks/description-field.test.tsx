@@ -128,4 +128,65 @@ describe('DescriptionField autosave', () => {
 
     expect(field.style.height).toBe('120px');
   });
+
+  it('follows a newer saved text while clean, so a blur without typing saves nothing', async () => {
+    const onSave = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    const view = render(<DescriptionField value="velho" onSave={onSave} />);
+
+    view.rerender(<DescriptionField value="novo de fora" onSave={onSave} />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+    expect(field).toHaveValue('novo de fora');
+    await user.click(field);
+    await user.tab();
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('keeps typed text when the saved text changes, and becomes clean once it matches', async () => {
+    const onSave = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    const view = render(<DescriptionField value="a" onSave={onSave} />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(field, 'b');
+    view.rerender(<DescriptionField value="outro" onSave={onSave} />);
+    expect(field).toHaveValue('ab');
+    view.rerender(<DescriptionField value="ab" onSave={onSave} />);
+    view.rerender(<DescriptionField value="c" onSave={onSave} />);
+
+    expect(field).toHaveValue('c');
+  });
+
+  it('leaves Esc to the panel when there is nothing to revert, and while composing', async () => {
+    const onKey = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <div onKeyDown={onKey}>
+        <DescriptionField value="salvo" onSave={vi.fn()} />
+      </div>,
+    );
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+    await user.click(field);
+
+    await user.keyboard('{Escape}');
+    expect(onKey).toHaveBeenCalledTimes(1);
+
+    await user.type(field, ' mais');
+    fireEvent.keyDown(field, { key: 'Escape', isComposing: true });
+    expect(field).toHaveValue('salvo mais');
+  });
+
+  it('asks to clear the error when Esc reverts', async () => {
+    const onRevert = vi.fn();
+    const user = userEvent.setup({ delay: null });
+    render(<DescriptionField value="salvo" onSave={vi.fn()} onRevert={onRevert} error="Falhou" />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+
+    await user.type(field, ' x');
+    await user.keyboard('{Escape}');
+
+    expect(onRevert).toHaveBeenCalledOnce();
+    expect(field).toHaveValue('salvo');
+  });
 });

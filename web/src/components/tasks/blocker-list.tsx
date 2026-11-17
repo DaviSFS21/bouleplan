@@ -23,6 +23,8 @@ interface BlockerListProps {
   // Visible tasks: titles of the listed ones and the candidates to add.
   tasks: readonly Task[];
   selfId: string;
+  // Tasks that would only close a cycle if added here.
+  exclude?: readonly string[];
   hintOf: (task: Task) => string;
   onOpen: (id: string) => void;
   onAdd: (id: string) => Promise<void>;
@@ -35,6 +37,7 @@ export function BlockerList({
   ids,
   tasks,
   selfId,
+  exclude = [],
   hintOf,
   onOpen,
   onAdd,
@@ -44,10 +47,11 @@ export function BlockerList({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const busy = useRef(false);
+  const busy = useRef(new Set<string>());
   const restoreFocus = useRef(false);
   const addButton = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const list = useRef<HTMLUListElement>(null);
   const listboxId = useId();
 
   const listed = ids.flatMap((id) => tasks.find((task) => task.id === id) ?? []);
@@ -55,7 +59,10 @@ export function BlockerList({
   const options = tasks
     .filter(
       (task) =>
-        task.id !== selfId && !ids.includes(task.id) && normalize(task.title).includes(wanted),
+        task.id !== selfId &&
+        !ids.includes(task.id) &&
+        !exclude.includes(task.id) &&
+        normalize(task.title).includes(wanted),
     )
     .slice(0, MAX_OPTIONS);
   const current = Math.min(active, options.length - 1);
@@ -69,6 +76,13 @@ export function BlockerList({
     }
   }, [adding]);
 
+  const activeId = options[current]?.id;
+  useEffect(() => {
+    if (!activeId) return;
+    const element = document.getElementById(`${listboxId}-${activeId}`);
+    if (element && 'scrollIntoView' in element) element.scrollIntoView({ block: 'nearest' });
+  }, [activeId, listboxId]);
+
   function closeCombobox(returnFocus: boolean) {
     restoreFocus.current = returnFocus;
     setAdding(false);
@@ -76,22 +90,32 @@ export function BlockerList({
     setActive(0);
   }
 
-  async function run(action: () => Promise<void>, kind: 'add' | 'remove') {
-    if (busy.current) return;
-    busy.current = true;
+  async function run(action: () => Promise<void>, kind: 'add' | 'remove', id: string) {
+    const key = `${kind}:${id}`;
+    if (busy.current.has(key)) return;
+    busy.current.add(key);
     setError(null);
     try {
       await action();
     } catch (failure) {
       setError(blockerMessage(failure, kind));
     } finally {
-      busy.current = false;
+      busy.current.delete(key);
     }
+  }
+
+  // The focused button must not vanish with the row, or Esc stops reaching the panel.
+  function focusAround(id: string) {
+    const rows = Array.from(list.current?.querySelectorAll<HTMLElement>('li') ?? []);
+    const index = rows.findIndex((row) => row.dataset.taskId === id);
+    const neighbour = rows[index + 1] ?? rows[index - 1];
+    const target = neighbour?.querySelector<HTMLElement>('[data-remove]') ?? addButton.current;
+    target?.focus();
   }
 
   function choose(task: Task) {
     closeCombobox(true);
-    void run(() => onAdd(task.id), 'add');
+    void run(() => onAdd(task.id), 'add', task.id);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -121,9 +145,9 @@ export function BlockerList({
   return (
     <div role="group" aria-label={label} className={styles.blockers}>
       {listed.length > 0 ? (
-        <ul className={styles.blockerItems}>
+        <ul ref={list} className={styles.blockerItems}>
           {listed.map((task) => (
-            <li key={task.id} className={styles.blockerItem}>
+            <li key={task.id} data-task-id={task.id} className={styles.blockerItem}>
               <button
                 type="button"
                 className={styles.blockerTitle}
@@ -137,8 +161,10 @@ export function BlockerList({
                 type="button"
                 className={styles.iconButton}
                 aria-label={`Remover ${task.title}`}
+                data-remove=""
                 onClick={() => {
-                  void run(() => onRemove(task.id), 'remove');
+                  focusAround(task.id);
+                  void run(() => onRemove(task.id), 'remove', task.id);
                 }}
               >
                 <Icon icon={X} size={14} />
@@ -194,7 +220,9 @@ export function BlockerList({
               ))}
             </ul>
           ) : (
-            <p className={styles.comboEmpty}>Nenhuma tarefa encontrada.</p>
+            <p role="status" className={styles.comboEmpty}>
+              Nenhuma tarefa encontrada.
+            </p>
           )}
         </div>
       ) : (

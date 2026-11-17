@@ -21,6 +21,10 @@ interface SidePanelProps {
   footer?: ReactNode;
   opener?: RefObject<HTMLElement | null>;
   fallbackFocus?: () => HTMLElement | null;
+  // Closing returns focus to the fallback first: the opener may be an older, unrelated element.
+  preferFallback?: boolean;
+  // Each new positive value moves focus into the panel, as the first open does.
+  focusSignal?: number;
   onClose: () => void;
   children: ReactNode;
 }
@@ -33,16 +37,24 @@ export function SidePanel({
   footer,
   opener,
   fallbackFocus,
+  preferFallback = false,
+  focusSignal = 0,
   onClose,
   children,
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
 
   const fallback = useRef(fallbackFocus);
+  const prefer = useRef(preferFallback);
 
   useEffect(() => {
     fallback.current = fallbackFocus;
-  }, [fallbackFocus]);
+    prefer.current = preferFallback;
+  }, [fallbackFocus, preferFallback]);
+
+  useEffect(() => {
+    if (focusSignal > 0) panel.current?.focus();
+  }, [focusSignal]);
 
   // Layout effects run before any child effect, so this still sees the opener, not a field a child focused.
   useLayoutEffect(() => {
@@ -51,7 +63,10 @@ export function SidePanel({
     const openedFromRef = currentOpener() === previous;
     return () => {
       // The opener ref follows the header button now rendered, which can differ from the one clicked.
-      const candidates = [openedFromRef ? currentOpener() : previous, fallback.current?.()];
+      const first = openedFromRef ? currentOpener() : previous;
+      const candidates = prefer.current
+        ? [fallback.current?.(), first]
+        : [first, fallback.current?.()];
       const target = candidates.find(
         (element): element is HTMLElement =>
           element instanceof HTMLElement && element.isConnected && element !== document.body,

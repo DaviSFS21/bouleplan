@@ -177,6 +177,79 @@ describe('BlockerList', () => {
     );
   });
 
+  it('lets two different removals run at once', async () => {
+    const pending: (() => void)[] = [];
+    const onRemove = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    const user = userEvent.setup();
+    render(
+      <BlockerList
+        label="Bloqueia"
+        addLabel="x"
+        ids={['p', 's']}
+        tasks={all}
+        selfId="self"
+        hintOf={() => ''}
+        onOpen={vi.fn()}
+        onAdd={vi.fn()}
+        onRemove={onRemove}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Remover Pintar sala' }));
+    await user.click(screen.getByRole('button', { name: 'Remover Lixar parede' }));
+
+    expect(onRemove).toHaveBeenCalledTimes(2);
+    pending.forEach((release) => {
+      release();
+    });
+  });
+
+  it('offers neither tasks of the excluded list', async () => {
+    render(
+      <BlockerList
+        label="Bloqueia"
+        addLabel="x"
+        ids={[]}
+        exclude={['p']}
+        tasks={all}
+        selfId="self"
+        hintOf={() => ''}
+        onOpen={vi.fn()}
+        onAdd={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: '+ Adicionar' }));
+
+    expect(screen.queryByRole('option', { name: /Pintar sala/ })).not.toBeInTheDocument();
+  });
+
+  it('announces when nothing matches', async () => {
+    const { user } = setup();
+    const input = await openCombobox(user);
+
+    await user.type(input, 'zzz');
+
+    expect(screen.getByRole('status')).toHaveTextContent('Nenhuma tarefa encontrada.');
+  });
+
+  it('scrolls the active option into view', async () => {
+    const scroll = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scroll;
+    const { user } = setup();
+    await openCombobox(user);
+
+    await user.keyboard('{ArrowDown}');
+
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest' });
+    Reflect.deleteProperty(window.HTMLElement.prototype, 'scrollIntoView');
+  });
+
   it('sends one request for a repeated click', async () => {
     let release: () => void = () => undefined;
     const { user, onRemove } = setup({

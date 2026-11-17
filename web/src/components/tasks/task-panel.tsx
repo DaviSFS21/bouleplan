@@ -42,6 +42,7 @@ interface TaskPanelProps {
   initiativeNames: ReadonlyMap<string, string>;
   actions: TaskActions;
   onOpenTask: (id: string) => void;
+  focusSignal: number;
   onSelectPath: (initiativeId: string, phaseId: string | null) => void;
   fallbackFocus: () => HTMLElement | null;
   now?: Date;
@@ -68,6 +69,7 @@ export function TaskPanel({
   initiativeNames,
   actions,
   onOpenTask,
+  focusSignal,
   onSelectPath,
   fallbackFocus,
   now,
@@ -261,6 +263,8 @@ export function TaskPanel({
       actions={menu}
       footer={footer}
       fallbackFocus={fallbackFocus}
+      preferFallback
+      focusSignal={focusSignal}
       onClose={actions.onClose}
     >
       <InlineText
@@ -340,6 +344,7 @@ export function TaskPanel({
             ids={task.blocks}
             tasks={tasks}
             selfId={task.id}
+            exclude={task.blockedBy}
             hintOf={(other) => initiativeNames.get(other.initiativeId) ?? ''}
             onOpen={onOpenTask}
             onAdd={(other) => addBlocker.mutateAsync(relation('blocks', other))}
@@ -354,6 +359,7 @@ export function TaskPanel({
             ids={task.blockedBy}
             tasks={tasks}
             selfId={task.id}
+            exclude={task.blocks}
             hintOf={(other) => initiativeNames.get(other.initiativeId) ?? ''}
             onOpen={onOpenTask}
             onAdd={(other) => addBlocker.mutateAsync(relation('blockedBy', other))}
@@ -367,6 +373,9 @@ export function TaskPanel({
           key={`description-${task.id}`}
           value={task.description ?? ''}
           error={errors.description}
+          onRevert={() => {
+            setErrors((current) => ({ ...current, description: undefined }));
+          }}
           onSave={(text) => {
             void save('description', { description: text === '' ? null : text });
           }}

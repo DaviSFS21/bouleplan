@@ -880,7 +880,7 @@ describe('the description', () => {
     ).toBeVisible();
   });
 
-  it('saves the text still waiting when the panel closes', async () => {
+  it('saves the description when the panel is closed with the × button', async () => {
     const { backend, user } = await openTask(sand);
 
     await user.type(field(), 'rascunho');
@@ -957,5 +957,136 @@ describe('the panel header', () => {
       `?iniciativa=${reforma.id}&fase=${piso.id}`,
     );
     expect(inPanel().getByRole('link', { name: 'Reforma' })).toBeVisible();
+  });
+});
+
+describe('focus inside the panel', () => {
+  const related = {
+    tasks: world.tasks.map((item) => {
+      if (item.id === smash.id) return { ...item, blocks: [quote.id, sand.id] };
+      if (item.id === quote.id) return { ...item, blockedBy: [smash.id] };
+      if (item.id === sand.id) return { ...item, blockedBy: [smash.id] };
+      return item;
+    }),
+  };
+
+  it('moves into the panel when a listed task is opened, so Esc still closes it', async () => {
+    const { user } = await openTask(smash, related);
+
+    await user.click(
+      within(inPanel().getByRole('group', { name: 'Bloqueia' })).getByRole('button', {
+        name: 'Pedir orçamento',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(inPanel().getByRole('textbox', { name: 'Título da tarefa' })).toHaveValue(
+        'Pedir orçamento',
+      );
+    });
+    expect(panel().contains(document.activeElement)).toBe(true);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('complementary', { name: 'Tarefa' })).not.toBeInTheDocument();
+  });
+
+  it('moves to the next × after a removal, then to "+ Adicionar" when the list is empty', async () => {
+    const { user } = await openTask(smash, related);
+    const blocks = inPanel().getByRole('group', { name: 'Bloqueia' });
+
+    await user.click(within(blocks).getByRole('button', { name: 'Remover Lixar parede' }));
+    await waitFor(() => {
+      expect(within(blocks).queryByRole('button', { name: 'Lixar parede' })).toBeNull();
+    });
+    expect(within(blocks).getByRole('button', { name: 'Remover Pedir orçamento' })).toHaveFocus();
+
+    await user.click(within(blocks).getByRole('button', { name: 'Remover Pedir orçamento' }));
+    await waitFor(() => {
+      expect(within(blocks).queryByRole('button', { name: 'Pedir orçamento' })).toBeNull();
+    });
+    expect(within(blocks).getByRole('button', { name: '+ Adicionar' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('complementary', { name: 'Tarefa' })).not.toBeInTheDocument();
+  });
+
+  it('removes two blockers clicked one right after the other', async () => {
+    const { backend, user } = await openTask(smash, related);
+    const blocks = inPanel().getByRole('group', { name: 'Bloqueia' });
+
+    await user.click(within(blocks).getByRole('button', { name: 'Remover Lixar parede' }));
+    await user.click(within(blocks).getByRole('button', { name: 'Remover Pedir orçamento' }));
+
+    await waitFor(() => {
+      expect(backend.calls).toEqual(
+        expect.arrayContaining([
+          `unblock ${smash.id} ${sand.id}`,
+          `unblock ${smash.id} ${quote.id}`,
+        ]),
+      );
+    });
+  });
+
+  it('moves into the panel when Enter opens another card, and Esc returns to that card', async () => {
+    const { user } = await openTask(smash);
+    await waitFor(() => {
+      expect(panel()).toHaveFocus();
+    });
+    card('Lixar parede').focus();
+
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => {
+      expect(inPanel().getByRole('textbox', { name: 'Título da tarefa' })).toHaveValue(
+        'Lixar parede',
+      );
+    });
+    expect(panel().contains(document.activeElement)).toBe(true);
+    await user.keyboard('{Escape}');
+    expect(card('Lixar parede')).toHaveFocus();
+  });
+
+  it('does not push a second history entry for Enter on the open card', async () => {
+    const { user } = await openTask(smash);
+    const before = window.history.length;
+    card('Quebrar piso').focus();
+
+    await user.keyboard('{Enter}');
+
+    expect(window.history.length).toBe(before);
+    await waitFor(() => {
+      expect(panel()).toHaveFocus();
+    });
+  });
+
+  it('saves a description waiting when the panel closes without a blur', async () => {
+    const { backend } = await openTask(sand);
+    fireEvent.change(inPanel().getByRole('textbox', { name: 'Descrição' }), {
+      target: { value: 'sem blur' },
+    });
+
+    fireEvent.keyDown(panel(), { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(patches(backend)).toEqual([{ description: 'sem blur' }]);
+    });
+  });
+});
+
+describe('a keyboard drag', () => {
+  it('is not interrupted by Enter or E on the card', async () => {
+    navigateTo(`/?iniciativa=${reforma.id}`);
+    serveTaskApi(world);
+    renderWithQuery(<InitiativesScreen />);
+    const user = userEvent.setup();
+    await screen.findByRole('article', { name: 'Lixar parede' });
+    card('Lixar parede').focus();
+    await user.keyboard(' ');
+    await screen.findByText(/A tarefa Lixar parede está sobre a coluna/);
+
+    await user.keyboard('{Enter}');
+    await user.keyboard('e');
+
+    expect(screen.queryByRole('complementary', { name: 'Tarefa' })).not.toBeInTheDocument();
+    expect(within(card('Lixar parede')).queryByRole('textbox')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
   });
 });

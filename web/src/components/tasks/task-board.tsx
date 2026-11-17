@@ -101,6 +101,7 @@ export function TaskBoard({
   const [dragging, setDragging] = useState<{ task: Task; over: TaskStatus | null } | null>(null);
   const [rememberedId, setRememberedId] = useState(rememberedInitiativeId);
   const [focusTick, setFocusTick] = useState(0);
+  const [panelFocus, setPanelFocus] = useState(0);
   const pendingFocus = useRef<FocusRequest | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const busy = useRef(new Set<string>());
@@ -244,8 +245,9 @@ export function TaskBoard({
   }
 
   const actions: TaskActions = {
-    onOpen: (task) => {
+    onOpen: (task, viaKeyboard = false) => {
       taskPanel.open(task.id);
+      if (viaKeyboard) setPanelFocus((signal) => signal + 1);
     },
     onClose: () => {
       taskPanel.close();
@@ -420,7 +422,11 @@ export function TaskBoard({
           tasks={listed}
           initiativeNames={names}
           actions={actions}
-          onOpenTask={taskPanel.open}
+          onOpenTask={(id) => {
+            taskPanel.open(id);
+            setPanelFocus((signal) => signal + 1);
+          }}
+          focusSignal={panelFocus}
           onSelectPath={taskPanel.selectPath}
           fallbackFocus={() =>
             root.current?.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`) ?? null

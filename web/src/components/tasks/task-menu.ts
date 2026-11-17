@@ -6,7 +6,8 @@ import { STATUSES, statusTitle } from './task-filter';
 export const PRIORITIES: readonly TaskPriority[] = ['P1', 'P2', 'P3'];
 
 export interface TaskActions {
-  onOpen: (task: Task) => void;
+  // viaKeyboard moves focus into the panel, as for the first open.
+  onOpen: (task: Task, viaKeyboard?: boolean) => void;
   onClose: () => void;
   onRename: (task: Task, title: string) => void;
   onPriority: (task: Task, priority: TaskPriority) => void;
@@ -34,7 +35,7 @@ export function taskMenuItems(
             label: 'Abrir',
             shortcut: 'Enter',
             onSelect: () => {
-              actions.onOpen(task);
+              actions.onOpen(task, true);
             },
           },
         ]

@@ -163,6 +163,8 @@ export function InitiativesScreen() {
   }
 
   function openTask(id: string) {
+    const current = currentParams();
+    if (current.get(TASK_PARAM) === id && !current.has(DETAILS_PARAM)) return;
     navigate((params) => {
       params.set(TASK_PARAM, id);
       params.delete(DETAILS_PARAM);
