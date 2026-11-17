@@ -44,6 +44,19 @@ class InitiativePatchDeadlineColorTest {
   }
 
   @Test
+  @DisplayName("overallDeadline: a year outside 1 to 9999 is a rule violation, not a 500")
+  void deadlineOutOfRange() {
+    for (String date :
+        new String[] {"+999999999-01-01", "+10000-01-01", "0000-12-31", "-0001-01-01"}) {
+      InitiativeAssertions.assertProblem(
+          InitiativeApi.patch(id, "{\"overallDeadline\": \"" + date + "\"}"),
+          400,
+          "initiative.deadline.invalid");
+    }
+    InitiativeApi.patch(id, "{\"overallDeadline\": \"9999-12-31\"}").statusCode(200);
+  }
+
+  @Test
   @DisplayName("color: a token recolors, absent keeps")
   void colorSemantics() {
     InitiativeApi.patch(id, "{\"color\": \"roxo\"}")

@@ -36,7 +36,7 @@ class InitiativeServiceLifecycleTest {
         }
 
         @Override
-        public Optional<Initiative> findByIdAndUser(UUID id, UUID userId) {
+        public Optional<Initiative> findByIdAndUserForUpdate(UUID id, UUID userId) {
           return Optional.of(initiative);
         }
 

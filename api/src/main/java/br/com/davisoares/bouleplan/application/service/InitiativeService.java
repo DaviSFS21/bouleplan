@@ -70,7 +70,7 @@ public class InitiativeService
   @Override
   @Transactional
   public Optional<Initiative> update(UUID id, UpdateInitiativeCommand command) {
-    return find(id)
+    return findActiveForUpdate(id)
         .map(initiative -> {
           if (command.name().present()) {
             initiative.rename(command.name().value());
@@ -91,7 +91,7 @@ public class InitiativeService
   @Override
   @Transactional
   public Optional<Initiative> archive(UUID id) {
-    return find(id)
+    return findActiveForUpdate(id)
         .map(initiative -> {
           initiative.archive();
           return initiative;
@@ -102,7 +102,7 @@ public class InitiativeService
   @Transactional
   public Optional<Initiative> unarchive(UUID id) {
     return repository
-        .findByIdAndUser(id, currentUser.id())
+        .findByIdAndUserForUpdate(id, currentUser.id())
         .filter(initiative -> !initiative.isDeleted())
         .map(initiative -> {
           initiative.unarchive();
@@ -113,7 +113,7 @@ public class InitiativeService
   @Override
   @Transactional
   public Optional<Initiative> delete(UUID id) {
-    return find(id)
+    return findActiveForUpdate(id)
         .map(initiative -> {
           initiative.softDelete();
           return initiative;
@@ -124,11 +124,15 @@ public class InitiativeService
   @Transactional
   public Optional<Initiative> restore(UUID id) {
     return repository
-        .findByIdAndUser(id, currentUser.id())
+        .findByIdAndUserForUpdate(id, currentUser.id())
         .map(initiative -> {
           initiative.restore();
           return initiative;
         });
+  }
+
+  private Optional<Initiative> findActiveForUpdate(UUID id) {
+    return repository.findByIdAndUserForUpdate(id, currentUser.id()).filter(Initiative::isActive);
   }
 
   private static InitiativeColor parseColor(String token) {

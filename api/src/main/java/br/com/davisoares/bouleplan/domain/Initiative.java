@@ -23,6 +23,8 @@ public class Initiative extends PanacheEntityBase {
 
   public static final int MAX_NAME_LENGTH = 200;
   public static final int MAX_DESCRIPTION_LENGTH = 10_000;
+  public static final int MIN_DEADLINE_YEAR = 1;
+  public static final int MAX_DEADLINE_YEAR = 9999;
 
   @Id @GeneratedValue @UuidGenerator private UUID id;
 
@@ -152,6 +154,12 @@ public class Initiative extends PanacheEntityBase {
 
   /** Sets or clears ({@code null}) the overall deadline. */
   public void scheduleDeadline(LocalDate deadline) {
+    if (deadline != null
+        && (deadline.getYear() < MIN_DEADLINE_YEAR || deadline.getYear() > MAX_DEADLINE_YEAR)) {
+      throw new InvalidInitiativeException(
+          "initiative.deadline.invalid",
+          "Deadline year must be between " + MIN_DEADLINE_YEAR + " and " + MAX_DEADLINE_YEAR);
+    }
     overallDeadline = deadline;
   }
 
