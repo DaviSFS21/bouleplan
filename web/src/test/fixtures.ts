@@ -10,6 +10,7 @@ export function initiative(overrides: Partial<Initiative> = {}): Initiative {
     color: 'turquesa',
     origin: 'native',
     createdAt: '2026-01-01T10:00:00-03:00',
+    updatedAt: '2026-01-01T10:00:00-03:00',
     ...overrides,
   };
 }
