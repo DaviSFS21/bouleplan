@@ -9,15 +9,25 @@ import jakarta.persistence.EntityManager;
 import java.util.UUID;
 
 /** Database cleanup shared by tests that commit data (HTTP calls run in their own transaction). */
+@SuppressWarnings("PMD.TooManyMethods") // one cleanup or insert helper per table
 public final class TestData {
 
   private TestData() {}
 
-  /** Deletes every blocker, task, phase and then initiative, in a committed transaction. */
+  /**
+   * Deletes every item, event, blocker, task, phase and then initiative, in a committed
+   * transaction.
+   */
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
     QuarkusTransaction.requiringNew()
         .run(() -> {
+          Panache.getEntityManager()
+              .createNativeQuery("delete from scheduled_item")
+              .executeUpdate();
+          Panache.getEntityManager()
+              .createNativeQuery("delete from calendar_event")
+              .executeUpdate();
           Panache.getEntityManager().createNativeQuery("delete from task_blocker").executeUpdate();
           Task.deleteAll();
           Phase.deleteAll();
@@ -145,5 +155,49 @@ public final class TestData {
               .setParameter(1, UUID.fromString(id))
               .executeUpdate();
         });
+  }
+
+  /** Inserts an event of another user and returns its id. */
+  public static String insertForeignEvent(EntityManager entityManager) {
+    UUID otherUser = UUID.randomUUID();
+    UUID eventId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
+              .setParameter(1, otherUser)
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into calendar_event (id, user_id, title, date, start_time, end_time)"
+                      + " values (?1, ?2, 'Theirs', date '2026-11-17', time '09:00', time '10:00')")
+              .setParameter(1, eventId)
+              .setParameter(2, otherUser)
+              .executeUpdate();
+        });
+    return eventId.toString();
+  }
+
+  /** Inserts a day-list entry and a block for a task of another user; returns the block id. */
+  public static String insertForeignItem(EntityManager entityManager, String taskId) {
+    UUID blockId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery(
+                  "insert into scheduled_item (id, task_id, date, sort_order)"
+                      + " values (?1, ?2, date '2026-11-17', 0)")
+              .setParameter(1, UUID.randomUUID())
+              .setParameter(2, UUID.fromString(taskId))
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into scheduled_item (id, task_id, date, start_time, end_time)"
+                      + " values (?1, ?2, date '2026-11-17', time '09:00', time '10:00')")
+              .setParameter(1, blockId)
+              .setParameter(2, UUID.fromString(taskId))
+              .executeUpdate();
+        });
+    return blockId.toString();
   }
 }

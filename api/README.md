@@ -81,6 +81,33 @@ hexagonal architecture on the production classes:
 | `PUT` | `/tasks/{blockingId}/blocks/{blockedId}` | 204, idempotent; 404 unless both tasks are active in an active phase and initiative of the user; 422 `task.blocker.self` or `task.blocker.cycle` |
 | `DELETE` | `/tasks/{blockingId}/blocks/{blockedId}` | 204, idempotent (also when there is no link); 404 unless both tasks are reachable |
 
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/planner?weekStart=YYYY-MM-DD` | 200 `{weekStart, events, items}` for the 7 days from a Monday; items of visible tasks sorted by date, day-list order, then start; 400 `planner.week.invalid` if `weekStart` is missing, not a date or not a Monday |
+| `POST` | `/calendar-events` | 201 with `Location: /calendar-events/{id}`; body `{title, date, startTime, endTime}` |
+| `PATCH` | `/calendar-events/{id}` | 200; merge patch of the same fields (none can be `null`); 404 if it is not the user's |
+| `DELETE` | `/calendar-events/{id}` | 204 (physical delete); 404 as above |
+| `POST` | `/scheduled-items` | 201 with `Location: /scheduled-items/{id}`; `{taskId, date}` adds the task to the day list (`sortOrder` = highest of the user's day + 1, 0 first), `{taskId, date, startTime, endTime}` creates a dedicated block; 404 unless the task is active in an active phase and initiative of the user; 422 `scheduled-item.task-done`; 409 `scheduled-item.duplicate` or `scheduled-item.overlap` |
+| `PATCH` | `/scheduled-items/{id}` | 200; merge patch of `date`, `startTime`, `endTime`, `sortOrder` (see below); same 404, 422 and 409 |
+| `DELETE` | `/scheduled-items/{id}` | 204 (physical delete); 404 unless its task is reachable |
+| `GET` | `/tasks/{id}/scheduled-items` | 200, the task's dedicated blocks on any date by date and start; 404 if the task is not reachable |
+
+Times are `HH:mm` quarter hours from `00:00` to `23:45`, the start before the end on the same day
+(`24:00` is a malformed request). Fixed events may overlap anything. Dedicated blocks of the user
+cannot overlap on a date (`[start, end)`, so touching blocks are fine): 409 `scheduled-item.overlap`.
+Only blocks of visible tasks count. A day-list entry has an order and no times, a block has both
+times and no order. `PATCH` merges the sent fields into the item and the result decides its kind:
+both times `null` is a day-list entry, both set is a block, one set is `scheduled-item.time.invalid`.
+A day-list entry keeps its `sortOrder` on the same day, and is appended when it changes day, comes
+from a block, or sends `sortOrder: null`; a number sets the order as given (no renumbering). A block
+cannot have a `sortOrder`. Items of a task that is archived, deleted, or in an archived or deleted
+phase or initiative are hidden, answer 404 and come back with it; an item of a task that is `done`
+cannot be created or changed (422), but can be deleted.
+
+Every task JSON has `reservedMinutes` (the minutes of the task's visible dedicated blocks) and
+`reservedByDeadlineMinutes` (the same, only blocks dated on or before the `deadline`; equal to
+`reservedMinutes` when there is no deadline). The task list gets both with one grouped query.
+
 A task without `phaseId` goes to the initiative's implicit phase, created on demand and reused, even
 when the initiative has named phases; the task JSON shows it as `phaseId: null`. Every task JSON has `blocks` and
 `blockedBy`: the ids of the visible tasks it blocks and that block it, in the order of `GET /tasks`.
@@ -100,8 +127,9 @@ Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid`, `task.planned-week.invalid` |
-| `/problems/rule-violation` | 422 | `task.blocker.self`, `task.blocker.cycle` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid`, `task.planned-week.invalid`, `calendar-event.title.blank`, `calendar-event.title.too-long`, `calendar-event.title.invalid-characters`, `calendar-event.time.invalid`, `scheduled-item.time.invalid`, `planner.week.invalid` |
+| `/problems/rule-violation` | 409 | `scheduled-item.overlap`, `scheduled-item.duplicate` |
+| `/problems/rule-violation` | 422 | `task.blocker.self`, `task.blocker.cycle`, `scheduled-item.task-done` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |
@@ -112,7 +140,8 @@ Deadlines must have a year from 1 to 9999.
 Writes to one initiative (update, archive, unarchive, delete, restore) load it with
 `select ... for update`, so concurrent writes are serialized and none is lost.
 
-Lock order: user, then initiative, then phase, then task. Phase writes lock the owning initiative
+Lock order: user, then initiative, then phase, then task (item and event writes: user first, then
+the task chain). Phase writes lock the owning initiative
 row first; task writes lock the initiative, the phase and the task (parent ids are read without
 loading the child, and the task's phase is read again once the initiative is locked, because a move
 changes it). A task create locks the initiative, which serializes the creation of the implicit phase.
@@ -122,6 +151,12 @@ Blocker writes lock the user's `app_user` row first, so the cycle check and the 
 concurrent writes never interleave (they may touch tasks of unrelated initiatives), and then both
 tasks by id order. A link is refused with 422 `task.blocker.cycle` when the blocked task already
 reaches the blocking one through stored links (a recursive query that includes hidden tasks).
+
+Writes to `scheduled_item` and `calendar_event` (all of them, events included) lock the user's
+`app_user` row first, so the overlap and duplicate checks and the order of two concurrent writes
+never interleave, even for tasks of unrelated initiatives. A write to an item then takes the
+initiative, phase and task locks of its task, in the order above, and the item row itself is only
+read: every item write holds the user lock.
 
 Concurrent creates are serialized per user: the use case locks the user's `app_user` row
 (`select ... for update`) before choosing a color.

@@ -1,6 +1,8 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.domain.DomainRuleViolation;
+import br.com.davisoares.bouleplan.domain.ScheduleConflictException;
+import br.com.davisoares.bouleplan.domain.ScheduleRefusedException;
 import br.com.davisoares.bouleplan.domain.TaskBlockerException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
@@ -14,28 +16,36 @@ import org.jboss.resteasy.reactive.server.ServerExceptionMapper;
 /** Translates exceptions into RFC 9457 problem responses. */
 public class ProblemExceptionMappers {
 
+  private static final String RULE_VIOLATION_TYPE = "/problems/rule-violation";
+  private static final String RULE_VIOLATION_TITLE = "Rule violation";
   private static final Logger LOG = Logger.getLogger(ProblemExceptionMappers.class);
 
   /** Any broken domain rule. */
   @ServerExceptionMapper
   public RestResponse<Problem> ruleViolation(DomainRuleViolation exception) {
     return problem(
-        400,
-        "/problems/rule-violation",
-        "Rule violation",
-        exception.code(),
-        exception.getMessage());
+        400, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
   }
 
   /** A blocker link that is not allowed: well-formed, but it contradicts the existing links. */
   @ServerExceptionMapper
   public RestResponse<Problem> blockerRefused(TaskBlockerException exception) {
     return problem(
-        422,
-        "/problems/rule-violation",
-        "Rule violation",
-        exception.code(),
-        exception.getMessage());
+        422, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
+  }
+
+  /** A scheduled item that contradicts another one: an overlap or a duplicate. */
+  @ServerExceptionMapper
+  public RestResponse<Problem> scheduleConflict(ScheduleConflictException exception) {
+    return problem(
+        409, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
+  }
+
+  /** A scheduling request that the state of the task does not allow. */
+  @ServerExceptionMapper
+  public RestResponse<Problem> scheduleRefused(ScheduleRefusedException exception) {
+    return problem(
+        422, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
   }
 
   /** Mistyped JSON body; outranks Quarkus' built-in mapper, which answers with plain JSON. */
