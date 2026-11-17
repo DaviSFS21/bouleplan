@@ -209,3 +209,26 @@ export function plannerMessage(error: unknown, action: PlannerAction): string {
 }
 
 export const LOAD_PLANNER_FAILED_MESSAGE = 'Não foi possível carregar a semana.';
+
+export type IntrospectionAction = 'save' | 'close';
+
+const INTROSPECTION_MESSAGES: Readonly<Record<string, string>> = {
+  'introspection.closed': 'Esta folha já foi fechada e não muda mais.',
+  'introspection.answer.too-long': 'Use no máximo 10.000 caracteres.',
+  'introspection.answer.invalid-characters': 'A resposta tem caracteres inválidos.',
+  'introspection.week.invalid': 'Essa semana não é válida.',
+};
+
+const INTROSPECTION_FALLBACK_MESSAGES: Readonly<Record<IntrospectionAction, string>> = {
+  save: 'Não foi possível salvar a resposta. Tente de novo.',
+  close: 'Não foi possível fechar o Introspecto. Tente de novo.',
+};
+
+export function introspectionMessage(error: unknown, action: IntrospectionAction): string {
+  const fallback = INTROSPECTION_FALLBACK_MESSAGES[action];
+  return error instanceof ApiError ? (INTROSPECTION_MESSAGES[error.code] ?? fallback) : fallback;
+}
+
+export const LOAD_INTROSPECTION_FAILED_MESSAGE = 'Não foi possível carregar o Introspecto.';
+export const CLOSE_UNSAVED_MESSAGE =
+  'Não foi possível salvar as respostas, então a folha não foi fechada.';

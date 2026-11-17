@@ -159,6 +159,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/introspections/{weekStart}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets the sheet of a week, or an unsaved empty draft */
+        get: operations["getIntrospection"];
+        /** Saves the answers of an open sheet */
+        put: operations["saveIntrospection"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/introspections/{weekStart}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closes the sheet of a week, creating an empty one if needed */
+        post: operations["closeIntrospection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/phases/{id}": {
         parameters: {
             query?: never;
@@ -467,6 +502,23 @@ export interface components {
             createdAt: components["schemas"]["OffsetDateTime"];
             updatedAt: components["schemas"]["OffsetDateTime"];
         };
+        Introspection: {
+            /** Format: date */
+            weekStart: string;
+            /** @description One entry per question, in display order */
+            answers: components["schemas"]["IntrospectionAnswer"][];
+            /** @description Null while the sheet is a draft */
+            closedAt: ((string | components["schemas"]["OffsetDateTime"] | null) | null) | components["schemas"]["OffsetDateTime"] | null;
+            /** @description Null until the sheet is first saved */
+            updatedAt: ((string | components["schemas"]["OffsetDateTime"] | null) | null) | components["schemas"]["OffsetDateTime"] | null;
+        };
+        IntrospectionAnswer: {
+            /** @example went_well */
+            key: string;
+            /** @description The question text the sheet was created with */
+            prompt: string;
+            answer: string;
+        };
         /**
          * Format: date-time
          * @example 2022-03-10T12:15:50-04:00
@@ -505,6 +557,15 @@ export interface components {
              * @example initiative.name.blank
              */
             code: string;
+        };
+        SaveIntrospectionAnswer: {
+            /** @enum {string} */
+            key: "went_well" | "went_badly" | "to_improve";
+            answer: string;
+        };
+        SaveIntrospectionRequest: {
+            /** @description Each key at most once; keys not sent keep their answer */
+            answers: components["schemas"]["SaveIntrospectionAnswer"][];
         };
         ScheduledItem: {
             id: components["schemas"]["UUID"];
@@ -1103,6 +1164,124 @@ export interface operations {
             };
             /** @description No archived or active initiative with this id */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getIntrospection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the reviewed week */
+                weekStart: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Introspection"];
+                };
+            };
+            /** @description introspection.week.invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    saveIntrospection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the reviewed week */
+                weekStart: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveIntrospectionRequest"];
+            };
+        };
+        responses: {
+            /** @description The sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Introspection"];
+                };
+            };
+            /** @description introspection.week.invalid, an answer rule code, or a malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description introspection.closed: the sheet is already closed */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    closeIntrospection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The Monday of the reviewed week */
+                weekStart: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Introspection"];
+                };
+            };
+            /** @description introspection.week.invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description introspection.closed: the sheet is already closed */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

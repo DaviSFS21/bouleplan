@@ -1,5 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { expectNoSeriousViolations } from './axe';
 import { addEvent, reserve, seedInitiative, type World } from './api-seed';
 import { resetDatabase } from './reset-database';
 
@@ -29,18 +29,6 @@ async function seedBoard(page: Page): Promise<World> {
 // Beside the page on a desktop, a modal over it on a phone.
 function panelRole(touch: boolean): PanelRole {
   return touch ? 'dialog' : 'complementary';
-}
-
-async function expectNoSeriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).analyze();
-  const serious = violations
-    .filter(({ impact }) => impact === 'serious' || impact === 'critical')
-    .map(({ id, impact, nodes }) => ({
-      id,
-      impact,
-      targets: nodes.map(({ target }) => target.join(' ')),
-    }));
-  expect(serious).toEqual([]);
 }
 
 for (const { name, size, touch } of VIEWPORTS) {

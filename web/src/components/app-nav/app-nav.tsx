@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, SquareKanban, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Notebook, SquareKanban, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon } from '@/components/icon/icon';
@@ -15,6 +15,7 @@ interface Section {
 const SECTIONS: readonly Section[] = [
   { href: '/', label: 'Quadro', icon: SquareKanban },
   { href: '/semana', label: 'Semana', icon: CalendarDays },
+  { href: '/introspecto', label: 'Introspecto', icon: Notebook },
 ];
 
 interface AppNavProps {

@@ -9,6 +9,7 @@ export async function resetDatabase(): Promise<void> {
   try {
     await client.query('truncate initiative cascade');
     await client.query('delete from calendar_event');
+    await client.query('delete from introspection');
   } finally {
     await client.end();
   }

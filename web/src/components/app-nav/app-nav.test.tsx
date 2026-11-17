@@ -29,6 +29,30 @@ describe('AppNav', () => {
     expect(week).not.toHaveAttribute('aria-current');
   });
 
+  it('links Introspecto after the week, with the notebook icon and its label', () => {
+    navigateTo('/introspecto');
+    render(<AppNav />);
+
+    const links = screen.getAllByRole('link').map((link) => link.textContent);
+    expect(links).toEqual(['Quadro', 'Semana', 'Introspecto']);
+    const link = screen.getByRole('link', { name: 'Introspecto' });
+    expect(link).toHaveAttribute('href', '/introspecto');
+    expect(link).toHaveAttribute('aria-current', 'page');
+    expect(link.querySelector('svg')).toHaveClass('lucide-notebook');
+    expect(screen.getByRole('link', { name: 'Semana' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('marks Introspecto active whatever the query', () => {
+    navigateTo('/introspecto?semana=2026-11-09');
+    render(<AppNav />);
+
+    expect(screen.getByRole('link', { name: 'Introspecto' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'Quadro' })).not.toHaveAttribute('aria-current');
+  });
+
   it('marks the week active on its page, whatever the query', () => {
     navigateTo('/semana?semana=2026-11-16');
     render(<AppNav />);
