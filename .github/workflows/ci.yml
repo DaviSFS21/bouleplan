@@ -1,13 +1,4 @@
-# Bouléplan CI
-#
-# Three jobs:
-#   api   → lint (Checkstyle + PMD), tests against a real PostgreSQL (Dev Services), build
-#   web   → formatting, lint, types, tests with coverage, production build
-#   sonar → merges both reports and runs SonarQube Cloud; fails if the quality
-#           gate fails
-#
-# Actions are pinned to a commit SHA (version in the comment): a tag can be
-# moved to different code, a SHA cannot.
+# Actions are pinned to commit SHAs: a tag can be moved, a SHA cannot.
 
 name: CI
 
@@ -42,8 +33,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
-      # check = Checkstyle + PMD + tests + JaCoCo report; build = packages the app.
-      # Tests start PostgreSQL through Testcontainers (the runner ships with Docker).
       - name: Lint, tests and build
         run: ./gradlew check build
 
@@ -80,7 +69,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # The pnpm version comes from the "packageManager" field in web/package.json.
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           package_json_file: web/package.json
@@ -122,10 +110,10 @@ jobs:
     needs: [api, web]
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Pull requests from forks do not get SONAR_TOKEN, so the job is skipped for them.
+    # Fork pull requests do not receive SONAR_TOKEN.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
-      # Full history: Sonar uses git blame to tell "new code" apart.
+      # Sonar needs git blame to detect new code.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -140,14 +128,10 @@ jobs:
           name: web-sonar-inputs
           path: web/coverage
 
-      # Sonar refuses to analyze .java files without a compiled-classes folder.
-      # While main holds only package-info.java files, Gradle emits no bytecode
-      # and the folder does not exist, so make sure both folders are present.
+      # Sonar refuses .java sources without a compiled-classes folder.
       - name: Ensure compiled-classes folders exist
         run: mkdir -p api/build/classes/java/main api/build/classes/java/test
 
-      # Settings live in sonar-project.properties. qualitygate.wait makes the job
-      # wait for the gate result and fail if the gate fails.
       - name: Analysis and quality gate
         uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
         env:

@@ -39,11 +39,7 @@ tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-parameters")
 }
 
-// Dev mode: database credentials come from the repository root .env (shared
-// with Docker Compose and git-ignored). Each KEY=value line becomes an
-// environment variable of quarkusDev; blank lines and # comments are skipped.
-// A missing file is fine here: Quarkus then fails with a clear message naming
-// the unresolved ${DB_...} property.
+// quarkusDev reads the same root .env as Docker Compose.
 tasks.quarkusDev {
     val envFile = rootDir.resolve("../.env")
     if (envFile.isFile) {
@@ -56,7 +52,6 @@ tasks.quarkusDev {
     }
 }
 
-// Checkstyle: Google Style, zero tolerance.
 checkstyle {
     toolVersion = libs.versions.checkstyle.get()
     configFile = layout.projectDirectory.file("config/checkstyle/checkstyle.xml").asFile
@@ -66,9 +61,6 @@ checkstyle {
     isShowViolations = true
 }
 
-// Spotless: google-java-format is the single source of truth for formatting.
-// `check` depends on spotlessCheck, so unformatted code fails the build;
-// run `./gradlew spotlessApply` to fix it.
 spotless {
     java {
         target("src/main/java/**/*.java", "src/test/java/**/*.java")
@@ -79,7 +71,6 @@ spotless {
     }
 }
 
-// PMD: custom ruleset, zero tolerance.
 pmd {
     toolVersion = libs.versions.pmd.get()
     ruleSetFiles = files("config/pmd/ruleset.xml")
@@ -89,14 +80,7 @@ pmd {
     rulesMinimumPriority = 5
 }
 
-// Coverage, as recommended by the Quarkus JaCoCo guide:
-// - the Gradle JaCoCo agent measures plain unit tests. It skips the Quarkus
-//   class loader, because classes loaded there are transformed and would not
-//   match the compiled classes on disk;
-// - the quarkus-jacoco extension measures code running inside @QuarkusTest,
-//   reuses the agent's data file, and writes a single merged report to
-//   build/jacoco-report/jacoco.xml (settings in application.properties).
-// The Gradle jacocoTestReport task is therefore disabled.
+// The Gradle agent alone reports 0% for @QuarkusTest code; quarkus-jacoco merges both.
 jacoco {
     toolVersion = libs.versions.jacoco.get()
 }
@@ -114,8 +98,6 @@ tasks.jacocoTestReport {
     enabled = false
 }
 
-// API contract: the OpenAPI schema generated at build time is normalized (stable
-// formatting, UTF-8) and compared with the committed ../contract/openapi.json.
 val committedContract = rootDir.resolve("../contract/openapi.json")
 val generatedContract = layout.buildDirectory.file("contract/openapi.json")
 
