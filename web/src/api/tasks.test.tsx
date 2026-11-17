@@ -505,13 +505,15 @@ describe('blockers', () => {
 
   it('takes the relation off both tasks with DELETE', async () => {
     const calls: string[] = [];
+    const items = [blocking, { ...blocked, blockedBy: ['a'] }];
+    const { result } = await loaded(items);
     server.use(
       http.delete('*/api/tasks/:blockingId/blocks/:blockedId', ({ params }) => {
         calls.push(`DELETE ${String(params.blockingId)} ${String(params.blockedId)}`);
+        items.splice(0, 2, { ...blocking, blocks: [] }, { ...blocked, blockedBy: [] });
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const { result } = await loaded([blocking, { ...blocked, blockedBy: ['a'] }]);
 
     await act(async () => {
       await result.current.removeBlocker.mutateAsync({ blockingId: 'a', blockedId: 'b' });
