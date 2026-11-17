@@ -85,14 +85,39 @@ public class TaskBlockerService
   @Override
   public Map<UUID, TaskRelations> findFor(Collection<UUID> taskIds) {
     List<TaskBlockerLink> links = taskIds.isEmpty() ? List.of() : blockers.findTouching(taskIds);
-    Map<UUID, Integer> rank = rankOfVisible(links);
+    List<UUID> endpoints =
+        links.stream()
+            .flatMap(link -> Stream.of(link.blockingId(), link.blockedId()))
+            .distinct()
+            .toList();
+    List<Task> visible =
+        endpoints.isEmpty()
+            ? List.of()
+            : tasks.findVisibleByIdsAndUser(endpoints, currentUser.id());
+    return relationsOf(taskIds.stream().distinct().toList(), links, visible);
+  }
+
+  @Override
+  public Map<UUID, TaskRelations> findForAllVisible() {
+    List<Task> visible = tasks.findVisibleByUser(currentUser.id());
+    List<TaskBlockerLink> links = blockers.findOfUser(currentUser.id());
+    return relationsOf(visible.stream().map(Task::getId).toList(), links, visible);
+  }
+
+  // The visible tasks come in task list order, which sorts each side of the links.
+  private static Map<UUID, TaskRelations> relationsOf(
+      List<UUID> taskIds, List<TaskBlockerLink> links, List<Task> visibleInListOrder) {
+    List<UUID> order = visibleInListOrder.stream().map(Task::getId).toList();
+    Map<UUID, Integer> rank =
+        IntStream.range(0, order.size())
+            .boxed()
+            .collect(Collectors.toMap(order::get, Function.identity()));
     Comparator<UUID> listOrder = Comparator.comparing(rank::get);
     Map<UUID, List<UUID>> blocksOf =
         group(links, rank, TaskBlockerLink::blockingId, TaskBlockerLink::blockedId, listOrder);
     Map<UUID, List<UUID>> blockedByOf =
         group(links, rank, TaskBlockerLink::blockedId, TaskBlockerLink::blockingId, listOrder);
     return taskIds.stream()
-        .distinct()
         .collect(
             Collectors.toMap(
                 Function.identity(),
@@ -100,24 +125,6 @@ public class TaskBlockerService
                     new TaskRelations(
                         blocksOf.getOrDefault(id, List.of()),
                         blockedByOf.getOrDefault(id, List.of()))));
-  }
-
-  // The position of each visible task of the links in the task list order.
-  private Map<UUID, Integer> rankOfVisible(List<TaskBlockerLink> links) {
-    List<UUID> endpoints =
-        links.stream()
-            .flatMap(link -> Stream.of(link.blockingId(), link.blockedId()))
-            .distinct()
-            .toList();
-    List<UUID> inListOrder =
-        endpoints.isEmpty()
-            ? List.of()
-            : tasks.findVisibleByIdsAndUser(endpoints, currentUser.id()).stream()
-                .map(Task::getId)
-                .toList();
-    return IntStream.range(0, inListOrder.size())
-        .boxed()
-        .collect(Collectors.toMap(inListOrder::get, Function.identity()));
   }
 
   private static Map<UUID, List<UUID>> group(

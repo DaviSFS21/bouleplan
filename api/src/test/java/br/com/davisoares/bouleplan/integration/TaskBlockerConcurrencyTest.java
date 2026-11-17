@@ -10,7 +10,6 @@ import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.RemoveTaskBlockerUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
 import br.com.davisoares.bouleplan.domain.TaskBlockerException;
-import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -54,23 +53,12 @@ class TaskBlockerConcurrencyTest {
     return createTask.create(other, TaskCommands.create("T", null)).orElseThrow().getId();
   }
 
+  private BlockerDb db() {
+    return new BlockerDb(entityManager);
+  }
+
   private static List<String> newOutcomes() {
     return new CopyOnWriteArrayList<>();
-  }
-
-  private void clearBlockers() {
-    QuarkusTransaction.requiringNew()
-        .run(() -> entityManager.createNativeQuery("delete from task_blocker").executeUpdate());
-  }
-
-  private long storedLinks() {
-    return QuarkusTransaction.requiringNew()
-        .call(() ->
-            ((Number)
-                    entityManager
-                        .createNativeQuery("select count(*) from task_blocker")
-                        .getSingleResult())
-                .longValue());
   }
 
   // Cycles are refused by a rule exception; any other failure (a deadlock, say) must surface.
@@ -90,7 +78,7 @@ class TaskBlockerConcurrencyTest {
     UUID first = newTask(null);
     UUID second = newTask(null);
     for (int round = 0; round < ROUNDS; round++) {
-      clearBlockers();
+      db().clearBlockers();
       List<String> outcomes = newOutcomes();
 
       Races.race(link(outcomes, first, second), link(outcomes, second, first));
@@ -98,7 +86,7 @@ class TaskBlockerConcurrencyTest {
       assertThat(outcomes)
           .as(ROUND_MESSAGE, round)
           .containsExactlyInAnyOrder(LINKED, "task.blocker.cycle");
-      assertThat(storedLinks()).as(ROUND_MESSAGE, round).isEqualTo(1);
+      assertThat(db().storedLinks()).as(ROUND_MESSAGE, round).isEqualTo(1);
     }
   }
 
@@ -111,7 +99,7 @@ class TaskBlockerConcurrencyTest {
     UUID c = newTaskInNewInitiative("Ring C");
     UUID d = newTaskInNewInitiative("Ring D");
     for (int round = 0; round < ROUNDS; round++) {
-      clearBlockers();
+      db().clearBlockers();
       addBlocker.add(a, b);
       addBlocker.add(c, d);
       List<String> outcomes = newOutcomes();
@@ -122,7 +110,7 @@ class TaskBlockerConcurrencyTest {
       assertThat(outcomes)
           .as(ROUND_MESSAGE, round)
           .containsExactlyInAnyOrder(LINKED, "task.blocker.cycle");
-      assertThat(storedLinks()).as(ROUND_MESSAGE, round).isEqualTo(3);
+      assertThat(db().storedLinks()).as(ROUND_MESSAGE, round).isEqualTo(3);
     }
   }
 
@@ -134,7 +122,7 @@ class TaskBlockerConcurrencyTest {
     UUID first = newTask(design);
     UUID second = newTask(build);
     for (int round = 0; round < ROUNDS; round++) {
-      clearBlockers();
+      db().clearBlockers();
       List<String> outcomes = newOutcomes();
       UUID firstTarget = round % 2 == 0 ? build : design;
       UUID secondTarget = round % 2 == 0 ? design : build;
@@ -146,9 +134,13 @@ class TaskBlockerConcurrencyTest {
           () -> updateTask.update(second, TaskCommands.moveTo(secondTarget)),
           () -> removeBlocker.remove(first, second));
 
-      assertThat(outcomes).as(ROUND_MESSAGE, round).hasSize(2);
-      assertThat(outcomes.stream().filter(LINKED::equals)).hasSizeLessThanOrEqualTo(2);
-      assertThat(storedLinks()).as(ROUND_MESSAGE, round).isLessThanOrEqualTo(1);
+      assertThat(outcomes)
+          .as(ROUND_MESSAGE, round)
+          .hasSize(2)
+          .allMatch(outcome -> LINKED.equals(outcome) || "task.blocker.cycle".equals(outcome));
+      assertThat(db().phaseOf(first)).as(ROUND_MESSAGE, round).isEqualTo(firstTarget);
+      assertThat(db().phaseOf(second)).as(ROUND_MESSAGE, round).isEqualTo(secondTarget);
+      assertThat(db().storedLinks()).as(ROUND_MESSAGE, round).isLessThanOrEqualTo(1);
     }
   }
 }

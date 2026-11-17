@@ -64,6 +64,22 @@ public class PostgresTaskBlockerRepository implements TaskBlockerRepository {
 
   @Override
   @SuppressWarnings("unchecked") // a native query returns raw rows
+  public List<TaskBlockerLink> findOfUser(UUID userId) {
+    List<Object[]> rows =
+        entityManager
+            .createNativeQuery(
+                "select b.blocking_task_id, b.blocked_task_id from task_blocker b"
+                    + " join task t on t.id = b.blocking_task_id"
+                    + " join phase p on p.id = t.phase_id"
+                    + " join initiative i on i.id = p.initiative_id"
+                    + " where i.user_id = :user")
+            .setParameter("user", userId)
+            .getResultList();
+    return rows.stream().map(row -> new TaskBlockerLink((UUID) row[0], (UUID) row[1])).toList();
+  }
+
+  @Override
+  @SuppressWarnings("unchecked") // a native query returns raw rows
   public List<TaskBlockerLink> findTouching(Collection<UUID> taskIds) {
     List<Object[]> rows =
         entityManager

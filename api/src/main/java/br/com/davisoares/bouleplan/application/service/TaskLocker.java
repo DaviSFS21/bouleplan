@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,10 +61,15 @@ class TaskLocker {
     return lockInitiativeOf(id)
         .flatMap(initiative -> currentLocation(id))
         .flatMap(location -> lockPhasesForMove(location, targetPhaseId))
-        .flatMap(target -> tasks.findByIdForUpdate(id).map(task -> new TaskMove(task, target)));
+        .flatMap(target ->
+            tasks
+                .findByIdForUpdate(id)
+                .filter(Task::isActive)
+                .map(task -> new TaskMove(task, target.get())));
   }
 
-  private Optional<Phase> lockPhasesForMove(TaskLocation location, UUID targetPhaseId) {
+  // The target is a supplier so that an implicit phase is only created for a task that moves.
+  private Optional<Supplier<Phase>> lockPhasesForMove(TaskLocation location, UUID targetPhaseId) {
     UUID initiativeId = location.initiativeId();
     UUID targetId =
         targetPhaseId == null
@@ -82,16 +88,18 @@ class TaskLocker {
         .flatMap(current -> targetOf(locked, targetPhaseId, targetId, initiativeId));
   }
 
-  private Optional<Phase> targetOf(
+  private Optional<Supplier<Phase>> targetOf(
       Map<UUID, Phase> locked, UUID targetPhaseId, UUID targetId, UUID initiativeId) {
-    Optional<Phase> target;
+    Optional<Supplier<Phase>> target;
     if (targetPhaseId == null) {
       target =
-          Optional.of(targetId == null ? newImplicitPhase(initiativeId) : locked.get(targetId));
+          Optional.of(
+              targetId == null ? () -> newImplicitPhase(initiativeId) : () -> locked.get(targetId));
     } else {
       target =
           Optional.ofNullable(locked.get(targetPhaseId))
-              .filter(phase -> !phase.isImplicit() && phase.isActive());
+              .filter(phase -> !phase.isImplicit() && phase.isActive())
+              .map(phase -> () -> phase);
     }
     return target;
   }

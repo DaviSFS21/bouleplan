@@ -1,5 +1,6 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 import br.com.davisoares.bouleplan.TestData;
@@ -94,5 +95,15 @@ class TaskPhaseMoveRefusedResourceTest {
     PhaseActions.archive(design).statusCode(200);
 
     InitiativeAssertions.assertNotFound(TaskApi.patch(taskId, body(build)));
+  }
+
+  @Test
+  @DisplayName("a refused move to the implicit phase of a hidden task creates no phase")
+  void hiddenTaskCreatesNoImplicitPhase() {
+    TaskActions.archive(taskId).statusCode(200);
+
+    InitiativeAssertions.assertNotFound(TaskApi.patch(taskId, body(null)));
+
+    assertThat(TestData.countImplicitPhases(entityManager, initiativeId)).isZero();
   }
 }

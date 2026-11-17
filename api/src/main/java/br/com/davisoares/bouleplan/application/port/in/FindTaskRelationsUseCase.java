@@ -12,4 +12,7 @@ public interface FindTaskRelationsUseCase {
    * out but stay stored.
    */
   Map<UUID, TaskRelations> findFor(Collection<UUID> taskIds);
+
+  /** The relations of every visible task of the user, in a number of queries that is constant. */
+  Map<UUID, TaskRelations> findForAllVisible();
 }

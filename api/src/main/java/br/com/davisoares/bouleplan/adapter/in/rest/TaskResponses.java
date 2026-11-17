@@ -29,8 +29,7 @@ class TaskResponses {
   }
 
   List<TaskResponse> ofAll(List<Task> tasks) {
-    Map<UUID, TaskRelations> relations =
-        findRelations.findFor(tasks.stream().map(Task::getId).toList());
+    Map<UUID, TaskRelations> relations = findRelations.findForAllVisible();
     return tasks.stream()
         .map(task ->
             TaskResponse.from(task, relations.getOrDefault(task.getId(), TaskRelations.NONE)))
