@@ -51,7 +51,7 @@ Each project's README lists its lint, test and build commands.
 
 ## End-to-end tests
 
-Playwright tests in [`web/e2e/`](web/e2e) drive the real UI against the real API and PostgreSQL. They start no servers and **delete every initiative before each test**, so point them only at a disposable database.
+Playwright tests in [`web/e2e/`](web/e2e) drive the real UI against the real API and PostgreSQL. They start no servers and **delete every initiative (and everything under it) before each test**, so point them only at a disposable database.
 
 1. Start the database, the API and the frontend as in [Running locally](#running-locally).
 2. Install the browser once: `cd web && pnpm exec playwright install chromium`.

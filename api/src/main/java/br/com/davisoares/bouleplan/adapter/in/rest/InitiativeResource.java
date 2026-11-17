@@ -98,6 +98,12 @@ public class InitiativeResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(operationId = "createInitiative", summary = "Creates an initiative")
+  @RequestBody(
+      required = true,
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON,
+              schema = @Schema(implementation = CreateInitiativeRequest.class)))
   @APIResponse(
       responseCode = "201",
       description = "Initiative created",
@@ -113,11 +119,8 @@ public class InitiativeResource {
           @Content(
               mediaType = Problem.MEDIA_TYPE,
               schema = @Schema(implementation = Problem.class)))
-  public RestResponse<InitiativeResponse> create(CreateInitiativeRequest request) {
-    if (request == null) {
-      throw new MalformedRequestException();
-    }
-    Initiative created = createInitiative.create(request.name());
+  public RestResponse<InitiativeResponse> create(String body) {
+    Initiative created = createInitiative.create(JsonBodies.createName(objectMapper, body));
     return RestResponse.ResponseBuilder.<InitiativeResponse>created(
             URI.create("/initiatives/" + created.getId()))
         .entity(InitiativeResponse.from(created))

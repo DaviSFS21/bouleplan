@@ -19,7 +19,10 @@ const horta = initiative({
 });
 
 function serveInitiatives(items: Initiative[]) {
-  server.use(http.get('*/api/initiatives', () => HttpResponse.json(items)));
+  server.use(
+    http.get('*/api/initiatives', () => HttpResponse.json(items)),
+    http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
+  );
 }
 
 function renderScreen() {

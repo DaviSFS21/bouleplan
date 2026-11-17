@@ -165,7 +165,7 @@ for (const [action, message] of [
 test('archiving without undo frees the color for the next initiative', async ({ page }) => {
   await createInitiative(page, 'Horta');
   await initiativeItem(page, 'Horta').hover();
-  await page.getByRole('button', { name: 'Ações de Horta' }).click();
+  await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
   await expect(initiativeItem(page, 'Horta')).toBeHidden();
 
@@ -181,7 +181,7 @@ test.describe('index menu', () => {
     await createInitiative(page, 'Casa');
     await expect(panel(page)).toBeHidden();
 
-    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Abrir detalhes' }).click();
 
     await expect(panel(page)).toBeVisible();
@@ -194,7 +194,7 @@ test.describe('index menu', () => {
   test('"Editar nome" opens the panel with the title focused', async ({ page }) => {
     await createInitiative(page, 'Horta');
 
-    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Editar nome' }).click();
 
     await expect(panel(page).getByRole('textbox', { name: 'Nome da iniciativa' })).toBeFocused();
@@ -203,7 +203,7 @@ test.describe('index menu', () => {
   test('"Cor…" opens the panel with the palette open', async ({ page }) => {
     await createInitiative(page, 'Horta');
 
-    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Cor…' }).click();
 
     await expect(panel(page).getByRole('radiogroup', { name: 'Cor da iniciativa' })).toBeVisible();
@@ -215,7 +215,7 @@ test.describe('index menu', () => {
   }) => {
     await createInitiative(page, 'Horta');
     await createInitiative(page, 'Casa');
-    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Cor…' }).click();
     await expect(panel(page).getByRole('radiogroup')).toBeVisible();
 
@@ -238,7 +238,7 @@ for (const [action, message] of [
     await createInitiative(page, 'Casa');
     const url = page.url();
 
-    await page.getByRole('button', { name: 'Ações de Horta' }).click();
+    await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: action }).click();
 
     await expect(page.getByRole('status')).toContainText(message);
@@ -258,7 +258,7 @@ test('moves focus to a stable item after archiving', async ({ page }) => {
   await createInitiative(page, 'Horta');
   await createInitiative(page, 'Casa');
 
-  await page.getByRole('button', { name: 'Ações de Horta' }).click();
+  await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
 
   await expect(page.getByRole('status')).toContainText('Iniciativa arquivada');

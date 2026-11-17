@@ -18,6 +18,7 @@ interface SidePanelProps {
   actions?: ReactNode;
   footer?: ReactNode;
   opener?: RefObject<HTMLElement | null>;
+  fallbackFocus?: () => HTMLElement | null;
   onClose: () => void;
   children: ReactNode;
 }
@@ -28,16 +29,31 @@ export function SidePanel({
   actions,
   footer,
   opener,
+  fallbackFocus,
   onClose,
   children,
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
 
+  const fallback = useRef(fallbackFocus);
+
+  useEffect(() => {
+    fallback.current = fallbackFocus;
+  }, [fallbackFocus]);
+
   // Layout effects run before any child effect, so this still sees the opener, not a field a child focused.
   useLayoutEffect(() => {
-    const previous = opener?.current ?? document.activeElement;
+    const previous = document.activeElement;
+    const currentOpener = () => opener?.current ?? null;
+    const openedFromRef = currentOpener() === previous;
     return () => {
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+      // The opener ref follows the header button now rendered, which can differ from the one clicked.
+      const candidates = [openedFromRef ? currentOpener() : previous, fallback.current?.()];
+      const target = candidates.find(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement && element.isConnected && element !== document.body,
+      );
+      target?.focus();
     };
   }, [opener]);
 

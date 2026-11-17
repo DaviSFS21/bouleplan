@@ -53,3 +53,33 @@ export const SAVE_FAILED_MESSAGES: Readonly<Record<InitiativeField, string>> = {
   overallDeadline: 'Não foi possível salvar o prazo. Tente de novo.',
   color: 'Não foi possível salvar a cor. Tente de novo.',
 };
+
+export const BLANK_PHASE_NAME_MESSAGE = 'Dê um nome à fase.';
+
+const PHASE_NAME_MESSAGES: Readonly<Record<string, string>> = {
+  'phase.name.blank': BLANK_PHASE_NAME_MESSAGE,
+  'phase.name.too-long': 'Use no máximo 200 caracteres.',
+  'phase.name.invalid-characters': 'O nome tem caracteres inválidos.',
+};
+
+export const CREATE_PHASE_FALLBACK_MESSAGE = 'Não foi possível criar a fase. Tente de novo.';
+export const RENAME_PHASE_FALLBACK_MESSAGE = 'Não foi possível salvar o nome. Tente de novo.';
+export const ARCHIVE_PHASE_FAILED_MESSAGE = 'Não foi possível arquivar a fase. Tente de novo.';
+export const DELETE_PHASE_FAILED_MESSAGE = 'Não foi possível excluir a fase. Tente de novo.';
+
+function phaseNameMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? (PHASE_NAME_MESSAGES[error.code] ?? fallback) : fallback;
+}
+
+export function createPhaseMessage(error: unknown): string {
+  return phaseNameMessage(error, CREATE_PHASE_FALLBACK_MESSAGE);
+}
+
+export function renamePhaseMessage(error: unknown): string {
+  return phaseNameMessage(error, RENAME_PHASE_FALLBACK_MESSAGE);
+}
+
+export function phaseCountSuffix(count: number): string {
+  if (count === 0) return '';
+  return `, com ${String(count)} ${count === 1 ? 'fase' : 'fases'}`;
+}

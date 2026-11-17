@@ -33,6 +33,7 @@
   color: var(--tinta-muted);
 }
 
+.overlineButton,
 .titleButton {
   max-width: 100%;
   margin: 0 calc(-1 * var(--space-2));
@@ -48,10 +49,12 @@
   cursor: pointer;
 }
 
+.overlineButton:hover,
 .titleButton:hover {
   background: var(--papel-elevado);
 }
 
+.overlineButton:focus-visible,
 .titleButton:focus-visible {
   outline: 2px solid var(--tinta);
   outline-offset: 2px;

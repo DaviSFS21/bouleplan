@@ -43,6 +43,7 @@ function serve(initial: Initiative[]): Backend {
   };
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(backend.items)),
+    http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
     http.patch('*/api/initiatives/:id', async ({ request, params }) => {
       const body = (await request.json()) as Record<string, unknown>;
       backend.patches.push(body);
@@ -185,6 +186,7 @@ describe('index action menus', () => {
       'Abrir detalhes',
       'Editar nome',
       'Cor…',
+      'Nova fase',
       'Arquivar',
       'Excluir',
     ]);
@@ -472,7 +474,7 @@ describe('archive and delete', () => {
       await user.click(trigger);
       await user.click(screen.getByRole('menuitem', { name: action }));
 
-      expect(await screen.findByRole('status')).toHaveTextContent(message);
+      expect(await screen.findByText(message)).toBeVisible();
       expect(backend.calls).toEqual([`${call} ${reforma.id}`]);
       expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
       expect(window.location.search).toBe('');
@@ -557,6 +559,12 @@ describe('InitiativePanel footer', () => {
     renderWithQuery(
       <InitiativePanel
         initiative={{ ...reforma, updatedAt: '2026-11-17T11:58:00-03:00' }}
+        phases={[]}
+        selectedPhaseId={null}
+        onSelectPhase={vi.fn()}
+        onCreatePhase={vi.fn()}
+        opener={{ current: null }}
+        fallbackFocus={() => null}
         request={null}
         onRequestHandled={vi.fn()}
         now={new Date('2026-11-17T12:00:00-03:00')}
@@ -644,7 +652,7 @@ describe('archive and delete of a non-selected initiative', () => {
 
       await user.click(screen.getByRole('menuitem', { name: action }));
 
-      expect(await screen.findByRole('status')).toHaveTextContent(message);
+      expect(await screen.findByText(message)).toBeVisible();
       expect(backend.calls).toEqual([`${call} ${horta.id}`]);
       expect(window.location.search).toBe(`?iniciativa=${reforma.id}`);
       expect(screen.getByRole('heading', { level: 1, name: 'Reforma' })).toBeVisible();
@@ -667,7 +675,7 @@ describe('archive and delete of a non-selected initiative', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ações de Horta' }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
 
     expect(panel).toBeInTheDocument();
     expect(window.location.search).toBe(detailsUrl(reforma.id).slice(1));
@@ -688,7 +696,7 @@ describe('focus after archive or delete', () => {
 
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
 
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
     expect(within(index()).getByRole('button', { name: expected })).toHaveFocus();
   });
 
@@ -699,7 +707,7 @@ describe('focus after archive or delete', () => {
     await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
     await user.click(screen.getByRole('menuitem', { name: 'Excluir' }));
 
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
     expect(within(index()).getByRole('button', { name: 'Todas as tarefas' })).toHaveFocus();
   });
 
@@ -708,7 +716,7 @@ describe('focus after archive or delete', () => {
     const { backend, panel } = await renderOpen();
     await user.click(within(panel).getByRole('button', { name: 'Ações da iniciativa' }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
-    await screen.findByRole('status');
+    await screen.findByText(/^Iniciativa (arquivada|excluída)/);
 
     await user.keyboard('{Control>}z{/Control}');
 
