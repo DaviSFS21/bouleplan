@@ -1,7 +1,7 @@
 package br.com.davisoares.bouleplan.domain;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.Objects;
 
 /** A planner week starts on a Monday. */
 public final class PlannerWeek {
@@ -13,8 +13,8 @@ public final class PlannerWeek {
 
   /** The date itself, or a violation with the code {@code planner.week.invalid}. */
   public static LocalDate requireMonday(LocalDate weekStart) {
-    if (weekStart == null
-        || weekStart.getDayOfWeek() != DayOfWeek.MONDAY
+    if (Objects.isNull(weekStart)
+        || !CalendarDates.isMonday(weekStart)
         || !EntityText.hasValidYear(weekStart)) {
       throw new InvalidScheduleException(
           "planner.week.invalid",
