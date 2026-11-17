@@ -82,7 +82,7 @@ async function seed(page: Page, tasks: Seed[]) {
 }
 
 async function openWeek(page: Page) {
-  await page.getByRole('tab', { name: 'Semana', exact: true }).click();
+  await page.getByRole('link', { name: 'Semana', exact: true }).click();
   await expect(page).toHaveURL(/\/semana/);
   await expect(
     page.getByRole('complementary', { name: 'Para planejar', exact: true }),
@@ -122,9 +122,9 @@ test('navigates to the week', async ({ page }) => {
 
   await expect(page.getByText(/^Semana \d+$/)).toBeVisible();
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Semana', exact: true })).toHaveAttribute(
-    'aria-selected',
-    'true',
+  await expect(page.getByRole('link', { name: 'Semana', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
   );
   await expect(trayItem(page, 'Comprar tinta')).toBeVisible();
 });

@@ -121,3 +121,35 @@
 .alerts:empty {
   margin-block-end: calc(-1 * var(--space-4));
 }
+
+.announcer {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .screen {
+    padding: var(--space-4);
+  }
+
+  .title {
+    font: var(--type-titulo-secao);
+    letter-spacing: var(--type-titulo-secao-tracking);
+  }
+}
+
+@media (pointer: coarse) {
+  .step,
+  .today {
+    min-height: 44px;
+  }
+
+  .step {
+    width: 44px;
+  }
+}

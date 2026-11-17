@@ -2,7 +2,21 @@
 
 html {
   --nav-height: 48px;
+  --bar-target: 52px;
+  --bar-offset: 0px;
   color-scheme: light;
+}
+
+/* On phones the navigation is a bottom bar: the page makes room for it and floating pieces sit above it. */
+@media (max-width: 767px) {
+  html {
+    --nav-height: 0px;
+    --bar-offset: calc(var(--bar-target) + 2 * var(--space-1) + env(safe-area-inset-bottom));
+  }
+
+  body {
+    padding-bottom: var(--bar-offset);
+  }
 }
 
 html[data-theme='grafite'] {

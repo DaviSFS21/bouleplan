@@ -3,6 +3,7 @@
 import { useDroppable } from '@dnd-kit/core';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { CalendarEvent } from '@/api/types';
+import { useIsCoarsePointer } from '@/components/responsive/use-media-query';
 import {
   DeadlineLines,
   DedicatedBlock,
@@ -66,6 +67,8 @@ export function DayColumn({
   const agenda = useRef<HTMLDivElement | null>(null);
   const [drawing, setDrawing] = useState<Span | null>(null);
   const abort = useRef<(() => void) | null>(null);
+  // On touch the week is for reading: a press on empty time scrolls instead of drawing an event.
+  const coarse = useIsCoarsePointer();
 
   useEffect(
     () => () => {
@@ -81,7 +84,7 @@ export function DayColumn({
 
   // A press on empty time starts a span; releasing hands it to the draft.
   function startDrawing(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.button !== 0 || event.target !== event.currentTarget) return;
+    if (coarse || event.button !== 0 || event.target !== event.currentTarget) return;
     const top = agenda.current?.getBoundingClientRect().top ?? 0;
     const anchor = quarterAt(event.clientY, top, startHour);
     setDrawing(drawnSpan(anchor, anchor));

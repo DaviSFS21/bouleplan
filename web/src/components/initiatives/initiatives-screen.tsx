@@ -34,7 +34,9 @@ import {
 import { useTasks } from '@/api/tasks';
 import type { Phase } from '@/api/types';
 import { useToast } from '@/components/toast/toast';
+import { Drawer } from '@/components/drawer/drawer';
 import { Loading } from '@/components/loading/loading';
+import { useIsBelowDesktop } from '@/components/responsive/use-media-query';
 import { InitiativeBoard } from './initiative-board';
 import { InitiativeIndex, type FocusRequest } from './initiative-index';
 import { InitiativePanel, type PanelIntent, type PanelRequest } from './initiative-panel';
@@ -94,6 +96,12 @@ export function InitiativesScreen() {
   const counter = useRef(0);
   const leaving = useRef(new Set<string>());
   const opener = useRef<HTMLButtonElement | null>(null);
+  const drawerOpener = useRef<HTMLButtonElement | null>(null);
+  const belowDesktop = useIsBelowDesktop();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Back at the desktop width the index is in place again, so a later narrow screen starts closed.
+  if (!belowDesktop && drawerOpen) setDrawerOpen(false);
 
   const clearRequest = useCallback(() => {
     setRequest(null);
@@ -385,58 +393,84 @@ export function InitiativesScreen() {
     });
   }
 
+  function closeDrawer() {
+    setDrawerOpen(false);
+  }
+
+  const index = (
+    <InitiativeIndex
+      inDrawer={belowDesktop}
+      initiatives={data}
+      selectedId={selected?.id ?? null}
+      onSelect={(id) => {
+        closeDrawer();
+        select(id);
+      }}
+      onCreate={create}
+      onOpenDetails={(id) => {
+        closeDrawer();
+        openDetails(id);
+      }}
+      onEditName={(id) => {
+        closeDrawer();
+        openDetails(id, 'name');
+      }}
+      onEditColor={(id) => {
+        closeDrawer();
+        openDetails(id, 'color');
+      }}
+      onArchive={(id) => {
+        void archive(id);
+      }}
+      onDelete={(id) => {
+        void remove(id);
+      }}
+      onNewPhase={newPhaseIn}
+      phaseIndex={{
+        phases,
+        failed: phasesFailed,
+        selectedId: filteredPhase?.id ?? null,
+        onSelect: (id) => {
+          closeDrawer();
+          selectPhase(id);
+        },
+        onCreate: (name) => createPhaseIn(selected?.id ?? '', name),
+        onRename: (phase, name) => {
+          void renamePhase(phase, name);
+        },
+        onArchive: (phase) => {
+          void leavePhase(phase, archivePhase.mutateAsync, unarchivePhase.mutateAsync, {
+            done: 'Fase arquivada',
+            failed: ARCHIVE_PHASE_FAILED_MESSAGE,
+          });
+        },
+        newPhaseSignal:
+          newPhaseRequest?.initiativeId === selected?.id ? (newPhaseRequest?.nonce ?? 0) : 0,
+        onNewPhaseHandled: clearNewPhaseRequest,
+        onDelete: (phase) => {
+          void leavePhase(phase, deletePhase.mutateAsync, restorePhase.mutateAsync, {
+            done: 'Fase excluída',
+            failed: DELETE_PHASE_FAILED_MESSAGE,
+          });
+        },
+      }}
+      actionError={actionError?.search === searchParams.toString() ? actionError.message : null}
+      focusRequest={focusRequest}
+      tasks={tasksQuery.data}
+    />
+  );
+
   return (
     <main className={styles.screen}>
-      <InitiativeIndex
-        initiatives={data}
-        selectedId={selected?.id ?? null}
-        onSelect={select}
-        onCreate={create}
-        onOpenDetails={(id) => {
-          openDetails(id);
-        }}
-        onEditName={(id) => {
-          openDetails(id, 'name');
-        }}
-        onEditColor={(id) => {
-          openDetails(id, 'color');
-        }}
-        onArchive={(id) => {
-          void archive(id);
-        }}
-        onDelete={(id) => {
-          void remove(id);
-        }}
-        onNewPhase={newPhaseIn}
-        phaseIndex={{
-          phases,
-          failed: phasesFailed,
-          selectedId: filteredPhase?.id ?? null,
-          onSelect: selectPhase,
-          onCreate: (name) => createPhaseIn(selected?.id ?? '', name),
-          onRename: (phase, name) => {
-            void renamePhase(phase, name);
-          },
-          onArchive: (phase) => {
-            void leavePhase(phase, archivePhase.mutateAsync, unarchivePhase.mutateAsync, {
-              done: 'Fase arquivada',
-              failed: ARCHIVE_PHASE_FAILED_MESSAGE,
-            });
-          },
-          newPhaseSignal:
-            newPhaseRequest?.initiativeId === selected?.id ? (newPhaseRequest?.nonce ?? 0) : 0,
-          onNewPhaseHandled: clearNewPhaseRequest,
-          onDelete: (phase) => {
-            void leavePhase(phase, deletePhase.mutateAsync, restorePhase.mutateAsync, {
-              done: 'Fase excluída',
-              failed: DELETE_PHASE_FAILED_MESSAGE,
-            });
-          },
-        }}
-        actionError={actionError?.search === searchParams.toString() ? actionError.message : null}
-        focusRequest={focusRequest}
-        tasks={tasksQuery.data}
-      />
+      {belowDesktop ? (
+        drawerOpen ? (
+          <Drawer label="Gaveta de iniciativas" opener={drawerOpener} onClose={closeDrawer}>
+            {index}
+          </Drawer>
+        ) : null
+      ) : (
+        index
+      )}
       <InitiativeBoard
         initiative={selected}
         phase={filteredPhase}
@@ -449,6 +483,17 @@ export function InitiativesScreen() {
           void tasksQuery.refetch();
         }}
         taskPanel={taskPanel}
+        drawerButton={
+          belowDesktop
+            ? {
+                open: drawerOpen,
+                onOpen: () => {
+                  setDrawerOpen(true);
+                },
+              }
+            : undefined
+        }
+        drawerOpenerRef={drawerOpener}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
         }}

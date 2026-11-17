@@ -10,16 +10,22 @@ afterEach(() => {
 });
 
 describe('AppNav', () => {
+  it('is a navigation landmark of page links, not a tablist', () => {
+    render(<AppNav />);
+
+    expect(screen.getByRole('navigation', { name: 'Seções' })).toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+  });
+
   it('links the board and the week, with the board active on the home page', () => {
     render(<AppNav />);
 
-    const board = screen.getByRole('tab', { name: 'Quadro' });
-    const week = screen.getByRole('tab', { name: 'Semana' });
+    const board = screen.getByRole('link', { name: 'Quadro' });
+    const week = screen.getByRole('link', { name: 'Semana' });
     expect(board).toHaveAttribute('href', '/');
     expect(week).toHaveAttribute('href', '/semana');
-    expect(board).toHaveAttribute('aria-selected', 'true');
     expect(board).toHaveAttribute('aria-current', 'page');
-    expect(week).toHaveAttribute('aria-selected', 'false');
     expect(week).not.toHaveAttribute('aria-current');
   });
 
@@ -27,8 +33,8 @@ describe('AppNav', () => {
     navigateTo('/semana?semana=2026-11-16');
     render(<AppNav />);
 
-    expect(screen.getByRole('tab', { name: 'Semana' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'Quadro' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('link', { name: 'Semana' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Quadro' })).not.toHaveAttribute('aria-current');
   });
 
   it('follows the route', () => {
@@ -38,6 +44,6 @@ describe('AppNav', () => {
       navigateTo('/semana');
     });
 
-    expect(screen.getByRole('tab', { name: 'Semana' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('link', { name: 'Semana' })).toHaveAttribute('aria-current', 'page');
   });
 });

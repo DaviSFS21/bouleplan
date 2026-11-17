@@ -56,3 +56,96 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+
+.scroller {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dayTabs {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+
+.dayTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 6px 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--tinta-muted);
+  cursor: pointer;
+}
+
+.dayTab[aria-selected='true'] {
+  background: var(--papel-elevado);
+}
+
+.dayTab:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.tabNumber {
+  color: var(--tinta);
+  /* 24px makes terracota pass as large text on the selected tab. */
+  font: 300 24px/28px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayTab .tabNumber {
+  color: var(--terracota);
+}
+
+.tabWeekday {
+  font: 500 11px/14px var(--font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1023px) {
+  .week {
+    grid-template-columns: 28px repeat(7, 160px);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .day {
+    scroll-snap-align: start;
+  }
+
+  .hours {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--papel-elevado);
+  }
+}
+
+@media (max-width: 767px) {
+  .week {
+    grid-template-columns: 28px minmax(0, 1fr);
+    overflow-x: visible;
+    scroll-snap-type: none;
+    padding: var(--space-3);
+  }
+
+  /* The day strip names the day; the row stays so the subgrid keeps its three rows. */
+  .head {
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  .hours {
+    position: static;
+  }
+}

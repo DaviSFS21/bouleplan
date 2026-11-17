@@ -1,6 +1,6 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import {
   useEffect,
   useLayoutEffect,
@@ -9,7 +9,9 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { trapTab } from '@/components/focus-trap/trap-tab';
 import { Icon } from '@/components/icon/icon';
+import { useIsPhone } from '@/components/responsive/use-media-query';
 import styles from './side-panel.module.css';
 
 interface SidePanelProps {
@@ -43,6 +45,7 @@ export function SidePanel({
   children,
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
+  const phone = useIsPhone();
 
   const fallback = useRef(fallbackFocus);
   const prefer = useRef(preferFallback);
@@ -81,25 +84,42 @@ export function SidePanel({
 
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') onClose();
+    else if (phone) trapTab(event, panel.current);
   }
+
+  const eyebrowText = (
+    <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
+  );
 
   return (
     <aside
       ref={panel}
+      role={phone ? 'dialog' : undefined}
+      aria-modal={phone ? true : undefined}
       aria-label={label}
       tabIndex={-1}
       className={styles.panel}
       onKeyDown={handleKeyDown}
     >
       <header className={styles.header}>
-        <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
+        {phone ? (
+          <button type="button" className={styles.back} onClick={onClose}>
+            <Icon icon={ChevronLeft} size={18} aria-hidden="true" />
+            Voltar
+          </button>
+        ) : (
+          eyebrowText
+        )}
         <div className={styles.actions}>
           {actions}
-          <button type="button" className={styles.close} aria-label="Fechar" onClick={onClose}>
-            <Icon icon={X} />
-          </button>
+          {phone ? null : (
+            <button type="button" className={styles.close} aria-label="Fechar" onClick={onClose}>
+              <Icon icon={X} />
+            </button>
+          )}
         </div>
       </header>
+      {phone ? eyebrowText : null}
       <div className={styles.content}>{children}</div>
       {footer ? <footer className={styles.footer}>{footer}</footer> : null}
     </aside>

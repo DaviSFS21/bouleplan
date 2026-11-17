@@ -10,6 +10,8 @@ import {
   type DragEndEvent,
   type DragMoveEvent,
   type DragStartEvent,
+  type SensorDescriptor,
+  type SensorOptions,
 } from '@dnd-kit/core';
 import { useIsMutating } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -29,6 +31,7 @@ import {
   WEEK_PARAM,
 } from '@/components/initiatives/url-params';
 import { Loading } from '@/components/loading/loading';
+import { useIsBelowDesktop, useIsCoarsePointer } from '@/components/responsive/use-media-query';
 import { StatusStrip } from '@/components/status-strip/status-strip';
 import { TaskPanel } from '@/components/tasks/task-panel';
 import { useTaskActions } from '@/components/tasks/use-task-actions';
@@ -43,10 +46,17 @@ import {
 import { useMinuteClock } from '@/components/tasks/use-minute-clock';
 import type { Draft } from './day-column';
 import { EventPopover } from './event-popover';
+import {
+  KeyboardMovesContext,
+  usePlannerKeyboard,
+  type KeyboardMoves,
+  type ReserveOrigin,
+} from './keyboard-moves';
 import { weekTitle } from './planner-dates';
 import {
   resolveDrop,
   type DragData,
+  type DropContext,
   type DropIntent,
   type Preview,
   type Resolution,
@@ -60,6 +70,7 @@ import {
   type EntryModel,
 } from './planner-model';
 import { RISK_FILTER, atRiskTasks, trayTasks } from './planner-tasks';
+import { ReservePopover } from './reserve-popover';
 import { Tray, TrayPreview } from './tray';
 import { usePlannerActions } from './use-planner-actions';
 import { useAddToToday } from './use-add-to-today';
@@ -67,6 +78,7 @@ import { WeekGrid } from './week-grid';
 import styles from './planner-screen.module.css';
 
 const DRAG_ACTIVATION_DISTANCE = 6;
+const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 const TRAY = '[data-planner-tray]';
 
 function isWeekStart(value: string | null): value is string {
@@ -103,8 +115,13 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   const [overStrip, setOverStrip] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [popover, setPopover] = useState<{ id: string } | null>(null);
+  const [reserving, setReserving] = useState<ReserveOrigin | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
+  const keptFocus = useRef<string | null>(null);
+  const belowDesktop = useIsBelowDesktop();
+  // Touch is for reading the week: moves go through the menus, and the tray is not shown.
+  const coarse = useIsCoarsePointer();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
   );
@@ -265,6 +282,17 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     if (target && lost) target.focus();
   }, [focusTick]);
 
+  // A moved item is drawn again in its new place, so focus is lost until it is there.
+  useEffect(() => {
+    const selector = keptFocus.current;
+    if (selector === null) return;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    const target = lost ? document.querySelector<HTMLElement>(selector) : null;
+    if (!target) return;
+    keptFocus.current = null;
+    target.focus();
+  }, [days]);
+
   function requestFocus(finder: () => HTMLElement | null) {
     pendingFocus.current = finder;
     setFocusTick((tick) => tick + 1);
@@ -272,6 +300,17 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
 
   function dayOf(date: string) {
     return days.find((day) => day.date === date);
+  }
+
+  function dropContext(): DropContext {
+    return {
+      startHour,
+      blocksOf: (date) => {
+        const day = dayOf(date);
+        return day ? blockSpans(day) : [];
+      },
+      entriesOf: (date) => dayOf(date)?.entries.map(({ item }) => item) ?? [],
+    };
   }
 
   function evaluate(event: DragMoveEvent | DragEndEvent): Resolution {
@@ -285,43 +324,47 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
           : ({ kind: 'strip', date: info.date } as const)
         : null;
     const pointerY = (event.activatorEvent as MouseEvent).clientY + event.delta.y;
-    return resolveDrop(data, target, pointerY, event.delta.y, {
-      startHour,
-      blocksOf: (date) => {
-        const day = dayOf(date);
-        return day ? blockSpans(day) : [];
-      },
-      entriesOf: (date) => dayOf(date)?.entries.map(({ item }) => item) ?? [],
-    });
+    return resolveDrop(data, target, pointerY, event.delta.y, dropContext());
   }
 
-  function apply(intent: DropIntent) {
+  function apply(intent: DropIntent): Promise<void> {
     switch (intent.type) {
       case 'add-to-list':
-        void planner.addToList(intent.task, intent.date);
-        break;
+        return planner.addToList(intent.task, intent.date);
       case 'duplicate':
         setError(DUPLICATE_ITEM_MESSAGE);
-        break;
+        return Promise.resolve();
       case 'move-entry':
-        void planner.moveEntry(intent.item, intent.date);
-        break;
+        return planner.moveEntry(intent.item, intent.date);
       case 'reserve':
-        void planner.reserve(intent.task, intent.date, intent.span);
-        break;
+        return planner.reserve(intent.task, intent.date, intent.span);
       case 'entry-to-block':
-        void planner.entryToBlock(intent.item, intent.date, intent.span);
-        break;
+        return planner.entryToBlock(intent.item, intent.date, intent.span);
       case 'move-block':
-        void planner.moveBlock(intent.item, intent.date, intent.span);
-        break;
+        return planner.moveBlock(intent.item, intent.date, intent.span);
       case 'resize':
-        void planner.resizeBlock(intent.item, intent.end);
-        break;
+        return planner.resizeBlock(intent.item, intent.end);
       case 'none':
       case 'blocked':
-        break;
+        return Promise.resolve();
     }
+  }
+
+  const keyboard = usePlannerKeyboard({
+    dates,
+    startHour,
+    context: dropContext,
+    apply,
+    keepFocus: (selector) => {
+      keptFocus.current = selector;
+    },
+  });
+  const keyboardMoves: KeyboardMoves = { ...keyboard.moves, startReserve: setReserving };
+
+  function reserveAnchor(origin: ReserveOrigin): string {
+    return origin.kind === 'tray'
+      ? `${TRAY} [data-task-id="${origin.task.id}"]`
+      : `[data-ficha-id="${origin.item.id}"]`;
   }
 
   function resetDrag() {
@@ -344,7 +387,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   function handleDragEnd(event: DragEndEvent) {
     const { intent } = evaluate(event);
     resetDrag();
-    apply(intent);
+    void apply(intent);
   }
 
   function openFromPlanner(taskId: string, viaKeyboard = false) {
@@ -481,12 +524,16 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
             tone="atencao"
             title="Prazos sem tempo reservado."
             announce={false}
-            action={{
-              label: 'Mostrar na bandeja',
-              onClick: () => {
-                setFilter(RISK_FILTER);
-              },
-            }}
+            action={
+              belowDesktop
+                ? undefined
+                : {
+                    label: 'Mostrar na bandeja',
+                    onClick: () => {
+                      setFilter(RISK_FILTER);
+                    },
+                  }
+            }
           >
             {atRisk.length === 1
               ? '1 tarefa vence nesta semana com tempo a reservar.'
@@ -500,58 +547,60 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
         </p>
       ) : null}
       <DndContext
-        sensors={sensors}
+        sensors={coarse ? NO_SENSORS : sensors}
         collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         onDragCancel={resetDrag}
       >
-        <div className={styles.body}>
-          <Tray
-            tasks={bandeja}
-            initiatives={initiatives}
-            filter={activeFilter}
-            onFilter={setFilter}
-            showRiskFilter={atRisk.length > 0}
-            atRiskIds={atRiskIds}
-            today={today}
-            openTaskId={openTask?.id ?? null}
-            draggingTaskId={dragging?.kind === 'tray' ? dragging.task.id : null}
-            actions={{
-              onOpen: openFromPlanner,
-              onAddToToday: (task) => {
-                void todayList.add(task);
-              },
-              isInToday: todayList.isInToday,
-            }}
-          />
-          <WeekGrid
-            label={`Semana ${String(isoWeekNumber(weekStart))}`}
-            today={today}
-            nowMinutes={nowMinutes}
-            days={days}
-            startHour={startHour}
-            endHour={endHour}
-            preview={preview}
-            draft={draft}
-            dragging={dragging}
-            overStrip={overStrip}
-            onOpenTask={openFromPlanner}
-            onRemoveEntry={(entry) => {
-              void removeEntry(entry);
-            }}
-            onRemoveBlock={(block) => {
-              void removeBlock(block);
-            }}
-            onOpenEvent={openEvent}
-            onDraw={setDraft}
-            onCommitDraft={commitDraft}
-            onCancelDraft={() => {
-              setDraft(null);
-            }}
-          />
-        </div>
+        <KeyboardMovesContext value={keyboardMoves}>
+          <div className={styles.body}>
+            <Tray
+              tasks={bandeja}
+              initiatives={initiatives}
+              filter={activeFilter}
+              onFilter={setFilter}
+              showRiskFilter={atRisk.length > 0}
+              atRiskIds={atRiskIds}
+              today={today}
+              openTaskId={openTask?.id ?? null}
+              draggingTaskId={dragging?.kind === 'tray' ? dragging.task.id : null}
+              actions={{
+                onOpen: openFromPlanner,
+                onAddToToday: (task) => {
+                  void todayList.add(task);
+                },
+                isInToday: todayList.isInToday,
+              }}
+            />
+            <WeekGrid
+              label={`Semana ${String(isoWeekNumber(weekStart))}`}
+              today={today}
+              nowMinutes={nowMinutes}
+              days={days}
+              startHour={startHour}
+              endHour={endHour}
+              preview={preview}
+              draft={draft}
+              dragging={dragging}
+              overStrip={overStrip}
+              onOpenTask={openFromPlanner}
+              onRemoveEntry={(entry) => {
+                void removeEntry(entry);
+              }}
+              onRemoveBlock={(block) => {
+                void removeBlock(block);
+              }}
+              onOpenEvent={openEvent}
+              onDraw={setDraft}
+              onCommitDraft={commitDraft}
+              onCancelDraft={() => {
+                setDraft(null);
+              }}
+            />
+          </div>
+        </KeyboardMovesContext>
         <DragOverlay dropAnimation={null}>
           {dragged && (dragging?.kind === 'tray' || dragging?.kind === 'ficha') ? (
             <TrayPreview
@@ -563,6 +612,34 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
           ) : null}
         </DragOverlay>
       </DndContext>
+      <div role="status" aria-label="Movimentos da agenda" className={styles.announcer}>
+        <span key={keyboard.announcement.id}>{keyboard.announcement.text}</span>
+      </div>
+      {reserving ? (
+        <ReservePopover
+          origin={reserving}
+          dates={dates}
+          initialDate={
+            reserving.kind === 'ficha'
+              ? reserving.item.date
+              : (dates.find((date) => date === today) ?? weekStart)
+          }
+          anchorSelector={reserveAnchor(reserving)}
+          onReserve={(date, start) => {
+            const fitted = keyboard.reserve(reserving, date, start);
+            if (fitted) {
+              setReserving(null);
+              requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(reserving)));
+            }
+            return fitted;
+          }}
+          onCancel={() => {
+            const origin = reserving;
+            setReserving(null);
+            requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(origin)));
+          }}
+        />
+      ) : null}
       {popover && openedEvent ? (
         <EventPopover
           event={openedEvent}

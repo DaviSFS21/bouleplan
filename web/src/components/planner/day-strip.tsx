@@ -4,8 +4,10 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { X } from 'lucide-react';
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
 import { isPending } from '@/api/planner';
+import { ActionMenu } from '@/components/action-menu/action-menu';
 import { Icon } from '@/components/icon/icon';
 import { PrioritySelo } from '@/components/selo/selo';
+import { arrowStep, useKeyboardMoves } from './keyboard-moves';
 import { dayLabel } from './planner-dates';
 import type { DragData } from './planner-drop';
 import type { EntryModel } from './planner-model';
@@ -21,18 +23,21 @@ interface FichaProps {
 
 function Ficha({ entry, moving, onOpen, onRemove }: Readonly<FichaProps>) {
   const { item, task, color } = entry;
+  const pending = isPending(item.id);
+  const keyboard = useKeyboardMoves();
   const { listeners, setNodeRef } = useDraggable({
     id: `ficha:${item.id}`,
     data: { kind: 'ficha', item, task } satisfies DragData,
-    disabled: isPending(item.id),
+    disabled: pending,
   });
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (
-      event.target === event.currentTarget &&
-      event.key === 'Enter' &&
-      !event.nativeEvent.isComposing
-    ) {
+    if (event.target !== event.currentTarget) return;
+    const step = event.altKey && keyboard ? arrowStep(event.key) : null;
+    if (keyboard && step?.quarters === 0) {
+      event.preventDefault();
+      if (!pending) keyboard.moveFicha({ item, task }, step.days);
+    } else if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
       event.preventDefault();
       onOpen(task.id, true);
     }
@@ -61,10 +66,26 @@ function Ficha({ entry, moving, onOpen, onRemove }: Readonly<FichaProps>) {
           <span className={styles.title}>{task.title}</span>
           <span className={styles.remaining}>{remainingLabel(task)}</span>
         </span>
+        {keyboard ? (
+          <div className={styles.menu}>
+            <ActionMenu
+              label={`Ações da tarefa ${task.title}`}
+              items={[
+                {
+                  label: 'Reservar tempo…',
+                  disabled: pending,
+                  onSelect: () => {
+                    keyboard.startReserve({ kind: 'ficha', item, task });
+                  },
+                },
+              ]}
+            />
+          </div>
+        ) : null}
         <button
           type="button"
           className={styles.remove}
-          disabled={isPending(item.id)}
+          disabled={pending}
           aria-label={`Tirar ${task.title} da lista do dia`}
           onClick={() => {
             onRemove(entry);

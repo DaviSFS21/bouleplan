@@ -21,16 +21,14 @@ export function AppNav() {
   const pathname = usePathname();
   return (
     <header className={styles.header}>
-      <nav aria-label="Seções">
-        <div role="tablist" aria-label="Seções" className={styles.tabs}>
+      <nav aria-label="Seções" className={styles.nav}>
+        <div className={styles.links}>
           {SECTIONS.map(({ href, label, icon }) => {
             const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
             return (
               <Link
                 key={href}
                 href={href}
-                role="tab"
-                aria-selected={active}
                 aria-current={active ? 'page' : undefined}
                 className={styles.item}
               >

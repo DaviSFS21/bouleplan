@@ -97,3 +97,9 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+@media (pointer: coarse) {
+  .new {
+    min-height: 44px;
+  }
+}

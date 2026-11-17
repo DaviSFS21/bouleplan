@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionMenu } from '@/components/action-menu/action-menu';
+import { PHONE, setViewport } from '@/test/viewport';
 import { SidePanel } from './side-panel';
 
 function Harness({ withOpenerRef = false }: Readonly<{ withOpenerRef?: boolean }>) {
@@ -153,5 +154,93 @@ describe('SidePanel eyebrow style', () => {
     const link = screen.getByRole('link', { name: 'Reforma' });
     expect(link.parentElement?.className).toContain('path');
     expect(link.parentElement?.className).not.toContain('eyebrow');
+  });
+});
+
+describe('SidePanel on a phone', () => {
+  function PhoneHarness() {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Abrir painel
+        </button>
+        {open ? (
+          <SidePanel
+            label="Tarefa"
+            eyebrow={<a href="/x">Reforma</a>}
+            eyebrowStyle="path"
+            actions={
+              <ActionMenu
+                label="Ações da tarefa"
+                items={[{ label: 'Excluir', onSelect: vi.fn() }]}
+              />
+            }
+            onClose={() => {
+              setOpen(false);
+            }}
+          >
+            <button type="button">Campo</button>
+          </SidePanel>
+        ) : null}
+      </>
+    );
+  }
+
+  it('is a full-screen modal dialog with "Voltar" instead of "×"', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Tarefa' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fechar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  });
+
+  it('puts the path below the header', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    const header = screen.getByRole('banner');
+    expect(header).not.toHaveTextContent('Reforma');
+    expect(screen.getByRole('link', { name: 'Reforma' })).toBeInTheDocument();
+  });
+
+  it('returns focus to the opener on "Voltar"', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Voltar' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir painel' })).toHaveFocus();
+  });
+
+  it('keeps Tab inside the panel', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    await user.tab({ shift: true });
+    expect(screen.getByRole('button', { name: 'Campo' })).toHaveFocus();
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Voltar' })).toHaveFocus();
   });
 });

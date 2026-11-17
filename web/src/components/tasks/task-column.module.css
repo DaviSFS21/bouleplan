@@ -34,3 +34,19 @@
   border-radius: var(--radius-md);
   list-style: none;
 }
+
+@media (max-width: 1023px) {
+  .column {
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .column {
+    width: 100%;
+  }
+
+  .title {
+    display: none;
+  }
+}

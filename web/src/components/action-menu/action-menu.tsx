@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Icon } from '@/components/icon/icon';
+import { useIsPhone } from '@/components/responsive/use-media-query';
 import { placeMenu } from './place-menu';
 import styles from './action-menu.module.css';
 
@@ -50,6 +51,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const sheet = useIsPhone();
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   function menuItems() {
@@ -60,7 +62,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
   }
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || sheet) return;
     function reposition() {
       const anchor = trigger.current?.getBoundingClientRect();
       const box = menu.current?.getBoundingClientRect();
@@ -74,14 +76,15 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       window.removeEventListener('scroll', reposition, true);
       window.removeEventListener('resize', reposition);
     };
-  }, [open]);
+  }, [open, sheet]);
 
   useEffect(() => {
     if (open) menuItems()[0]?.focus();
   }, [open]);
 
+  // A sheet has a veil of its own, which closes it on click so the tap never reaches what is behind.
   useEffect(() => {
-    if (!open) return;
+    if (!open || sheet) return;
     function closeOnOutsidePointer(event: PointerEvent) {
       const target = event.target;
       if (!(target instanceof Node)) return;
@@ -94,7 +97,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
     return () => {
       document.removeEventListener('pointerdown', closeOnOutsidePointer);
     };
-  }, [open]);
+  }, [open, sheet]);
 
   function move(step: (index: number, count: number) => number) {
     const elements = menuItems();
@@ -127,10 +130,20 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
         trigger.current?.focus();
         break;
       case 'Tab':
-        trigger.current?.focus();
-        setOpen(false);
+        if (sheet) {
+          event.preventDefault();
+          move((index, count) => (index + (event.shiftKey ? -1 : 1) + count) % count);
+        } else {
+          trigger.current?.focus();
+          setOpen(false);
+        }
         break;
     }
+  }
+
+  function dismiss() {
+    setOpen(false);
+    trigger.current?.focus();
   }
 
   function select(item: { onSelect: () => void }) {
@@ -157,82 +170,87 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       </button>
       {open
         ? createPortal(
-            <div
-              ref={menu}
-              id={menuId}
-              role="menu"
-              aria-label={label}
-              className={styles.menu}
-              style={position}
-            >
-              {items.map((entry, index) =>
-                'separator' in entry ? (
-                  <div
-                    key={`separator-${String(index)}`}
-                    role="separator"
-                    className={styles.separator}
-                  />
-                ) : 'group' in entry ? (
-                  <div key={`group-${entry.group}`} role="group" aria-label={entry.group}>
-                    <div className={styles.section} aria-hidden="true">
-                      {entry.group}
-                    </div>
+            <>
+              {sheet ? <div className={styles.veil} aria-hidden="true" onClick={dismiss} /> : null}
+              <div
+                ref={menu}
+                id={menuId}
+                role="menu"
+                aria-label={label}
+                className={[styles.menu, sheet ? styles.sheet : ''].join(' ').trim()}
+                style={sheet ? undefined : position}
+              >
+                {items.map((entry, index) =>
+                  'separator' in entry ? (
                     <div
-                      className={
-                        entry.items.some((radio) => radio.chipClassName) ? styles.chips : undefined
-                      }
-                    >
-                      {entry.items.map((radio) => (
-                        <button
-                          key={radio.label}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={radio.checked}
-                          tabIndex={-1}
-                          className={
-                            radio.chipClassName
-                              ? [radio.chipClassName, styles.chip].join(' ')
-                              : [styles.item, styles.radio].join(' ')
-                          }
-                          onClick={() => {
-                            select(radio);
-                          }}
-                        >
-                          {radio.chipClassName ? null : (
-                            <span className={styles.check}>
-                              {radio.checked ? (
-                                <Icon icon={Check} size={14} aria-hidden="true" />
-                              ) : null}
-                            </span>
-                          )}
-                          {radio.label}
-                        </button>
-                      ))}
+                      key={`separator-${String(index)}`}
+                      role="separator"
+                      className={styles.separator}
+                    />
+                  ) : 'group' in entry ? (
+                    <div key={`group-${entry.group}`} role="group" aria-label={entry.group}>
+                      <div className={styles.section} aria-hidden="true">
+                        {entry.group}
+                      </div>
+                      <div
+                        className={
+                          entry.items.some((radio) => radio.chipClassName)
+                            ? styles.chips
+                            : undefined
+                        }
+                      >
+                        {entry.items.map((radio) => (
+                          <button
+                            key={radio.label}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={radio.checked}
+                            tabIndex={-1}
+                            className={
+                              radio.chipClassName
+                                ? [radio.chipClassName, styles.chip].join(' ')
+                                : [styles.item, styles.radio].join(' ')
+                            }
+                            onClick={() => {
+                              select(radio);
+                            }}
+                          >
+                            {radio.chipClassName ? null : (
+                              <span className={styles.check}>
+                                {radio.checked ? (
+                                  <Icon icon={Check} size={14} aria-hidden="true" />
+                                ) : null}
+                              </span>
+                            )}
+                            {radio.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <button
-                    key={entry.label}
-                    type="button"
-                    role="menuitem"
-                    tabIndex={-1}
-                    disabled={entry.disabled}
-                    className={styles.item}
-                    aria-keyshortcuts={entry.shortcut}
-                    onClick={() => {
-                      select(entry);
-                    }}
-                  >
-                    {entry.label}
-                    {entry.shortcut ? (
-                      <span className={styles.shortcut} aria-hidden="true">
-                        {entry.shortcut}
-                      </span>
-                    ) : null}
-                  </button>
-                ),
-              )}
-            </div>,
+                  ) : (
+                    <button
+                      key={entry.label}
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      disabled={entry.disabled}
+                      className={styles.item}
+                      aria-keyshortcuts={entry.shortcut}
+                      onClick={() => {
+                        select(entry);
+                      }}
+                    >
+                      {entry.label}
+                      {entry.shortcut ? (
+                        <span className={styles.shortcut} aria-hidden="true">
+                          {entry.shortcut}
+                        </span>
+                      ) : null}
+                    </button>
+                  ),
+                )}
+              </div>
+            </>,
             document.body,
           )
         : null}

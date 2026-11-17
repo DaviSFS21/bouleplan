@@ -122,3 +122,32 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+.menu {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  opacity: 0;
+}
+
+.ficha:hover .menu,
+.ficha:focus-within .menu,
+.menu:has([aria-expanded='true']) {
+  opacity: 1;
+}
+
+@media (pointer: coarse) {
+  .remove {
+    display: inline-flex;
+  }
+
+  .remove::after {
+    content: '';
+    position: absolute;
+    inset: -13px;
+  }
+
+  .menu {
+    opacity: 1;
+  }
+}

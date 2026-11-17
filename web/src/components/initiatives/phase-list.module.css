@@ -96,3 +96,14 @@
 .row:has([aria-expanded='true']) .count {
   opacity: 0;
 }
+
+@media (pointer: coarse) {
+  .phase {
+    min-height: 44px;
+    padding-block: var(--space-3);
+  }
+
+  .actions {
+    opacity: 1;
+  }
+}

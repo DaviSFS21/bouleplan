@@ -9,13 +9,17 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  type SensorDescriptor,
+  type SensorOptions,
 } from '@dnd-kit/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useManyPhases } from '@/api/phases';
 import { BLANK_TASK_TITLE_MESSAGE, createTaskMessage } from '@/api/messages';
 import { compareTasks, useCreateTask } from '@/api/tasks';
 import type { Initiative, Phase, Task, TaskStatus } from '@/api/types';
 import { Loading } from '@/components/loading/loading';
+import { useIsCoarsePointer, useIsPhone } from '@/components/responsive/use-media-query';
+import { TabStrip, tabPanelProps } from '@/components/tab-strip/tab-strip';
 import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
@@ -35,8 +39,10 @@ import {
   landingIndex,
   screenReaderInstructions,
 } from './task-dnd';
-import { STATUSES, tasksIn, visibleTasks } from './task-filter';
+import { STATUSES, statusTitle, tasksIn, visibleTasks } from './task-filter';
 import styles from './task-board.module.css';
+
+const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 
 export interface TaskPanelControl {
   openId: string | null;
@@ -82,6 +88,11 @@ export function TaskBoard({
   const [focusTick, setFocusTick] = useState(0);
   const pendingFocus = useRef<FocusRequest | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const phone = useIsPhone();
+  // Touch scrolls and taps; moving a card goes through its menu.
+  const coarse = useIsCoarsePointer();
+  const [shownStatus, setShownStatus] = useState<TaskStatus>('to_do');
+  const tabsPrefix = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
     useSensor(KeyboardSensor, {
@@ -157,6 +168,7 @@ export function TaskBoard({
     extra: { onAddToToday: (task) => void todayList.add(task), isInTodayList: todayList.isInToday },
     focus: {
       moved: (task, status) => {
+        setShownStatus(status);
         requestFocus(task.id, status);
       },
       leaving: (task) => {
@@ -262,7 +274,7 @@ export function TaskBoard({
         </p>
       ) : null}
       <DndContext
-        sensors={sensors}
+        sensors={coarse ? NO_SENSORS : sensors}
         collisionDetection={columnCollision}
         accessibility={{ announcements, screenReaderInstructions }}
         onDragStart={handleDragStart}
@@ -276,14 +288,31 @@ export function TaskBoard({
           setDragging(null);
         }}
       >
+        {phone ? (
+          <TabStrip
+            label="Estados"
+            prefix={tabsPrefix}
+            items={STATUSES.map((status) => {
+              const label = `${statusTitle(status)} · ${String(tasksIn(visible, status).length)}`;
+              return { id: status, label, content: label };
+            })}
+            selectedId={shownStatus}
+            onSelect={(id) => {
+              setShownStatus(id as TaskStatus);
+            }}
+            className={styles.stateTabs}
+            tabClassName={styles.stateTab}
+          />
+        ) : null}
         <div className={styles.columns}>
-          {STATUSES.map((status) => {
+          {STATUSES.filter((status) => !phone || status === shownStatus).map((status) => {
             const column = tasksIn(visible, status);
             const lands = dragging?.over === status && dragging.task.status !== status;
             return (
               <TaskColumn
                 key={status}
                 status={status}
+                tabPanel={phone ? tabPanelProps(tabsPrefix, shownStatus) : undefined}
                 tasks={column}
                 pathOf={pathOf}
                 colorOf={(task) => colors.get(task.initiativeId) ?? ''}

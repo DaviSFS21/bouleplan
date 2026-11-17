@@ -158,3 +158,20 @@
   color: var(--tinta-muted);
   font: var(--type-meta);
 }
+
+/* The tray is a desktop piece: below 1024px a task enters the day list from its menu on the board. */
+@media (max-width: 1023px) {
+  .tray {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .menu {
+    opacity: 1;
+  }
+
+  .pill {
+    min-height: 44px;
+  }
+}

@@ -1,0 +1,84 @@
+.popover {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 260px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--papel-flutuante);
+  box-shadow: var(--sombra-flutuante);
+}
+
+.popover:focus {
+  outline: none;
+}
+
+.title {
+  margin: 0;
+  font: var(--type-titulo-tarefa);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--tinta-muted);
+  font: var(--type-rotulo);
+}
+
+.select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--tinta-muted);
+  border-radius: var(--radius-sm);
+  background: var(--papel);
+  color: var(--tinta);
+  font: var(--type-texto);
+}
+
+.select:focus-visible,
+.submit:focus-visible,
+.cancel:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.refusal {
+  margin: 0;
+  color: var(--erro);
+  font: var(--type-rotulo);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.submit,
+.cancel {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font: var(--type-botao);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.submit {
+  background: var(--tinta);
+  color: var(--papel);
+}
+
+.cancel {
+  background: transparent;
+  color: var(--tinta);
+}
+
+.cancel:hover {
+  background: var(--papel-elevado);
+}
