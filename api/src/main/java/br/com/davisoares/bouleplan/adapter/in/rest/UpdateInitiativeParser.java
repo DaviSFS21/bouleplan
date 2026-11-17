@@ -20,20 +20,26 @@ final class UpdateInitiativeParser {
   private UpdateInitiativeParser() {}
 
   static UpdateInitiativeCommand parse(ObjectMapper mapper, String body) {
-    JsonNode root = readTree(mapper, body);
-    if (!root.isObject()) {
-      throw new MalformedRequestException();
-    }
-    for (Iterator<String> names = root.fieldNames(); names.hasNext(); ) {
-      if (!FIELDS.contains(names.next())) {
-        throw new MalformedRequestException();
-      }
-    }
+    JsonNode root = readObject(mapper, body, FIELDS);
     return new UpdateInitiativeCommand(
         text(root, "name"),
         text(root, "description"),
         date(root, "overallDeadline"),
         text(root, "color"));
+  }
+
+  /** Parses a JSON object body whose field names must all be in {@code fields}. */
+  static JsonNode readObject(ObjectMapper mapper, String body, Set<String> fields) {
+    JsonNode root = readTree(mapper, body);
+    if (!root.isObject()) {
+      throw new MalformedRequestException();
+    }
+    for (Iterator<String> names = root.fieldNames(); names.hasNext(); ) {
+      if (!fields.contains(names.next())) {
+        throw new MalformedRequestException();
+      }
+    }
+    return root;
   }
 
   private static JsonNode readTree(ObjectMapper mapper, String body) {
@@ -47,7 +53,7 @@ final class UpdateInitiativeParser {
     }
   }
 
-  private static Change<String> text(JsonNode root, String field) {
+  static Change<String> text(JsonNode root, String field) {
     JsonNode node = root.get(field);
     if (node != null && !node.isNull() && !node.isTextual()) {
       throw new MalformedRequestException();

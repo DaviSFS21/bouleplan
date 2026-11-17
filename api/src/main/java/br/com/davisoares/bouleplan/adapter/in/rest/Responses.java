@@ -8,5 +8,7 @@ final class Responses {
   static final String NOT_FOUND = "404";
   static final String NO_ACTIVE = "No active initiative with this id";
 
+  static final String NO_PHASE = "No active phase with this id in an active initiative of the user";
+
   private Responses() {}
 }

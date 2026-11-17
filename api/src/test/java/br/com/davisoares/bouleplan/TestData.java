@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan;
 
 import br.com.davisoares.bouleplan.domain.Initiative;
+import br.com.davisoares.bouleplan.domain.Phase;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
@@ -10,11 +11,12 @@ public final class TestData {
 
   private TestData() {}
 
-  /** Deletes every initiative in a committed transaction. */
+  /** Deletes every phase, then every initiative, in a committed transaction. */
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
     QuarkusTransaction.requiringNew()
         .run(() -> {
+          Phase.deleteAll();
           Initiative.deleteAll();
         });
   }
@@ -49,5 +51,45 @@ public final class TestData {
               .setParameter(1, UUID.fromString(id))
               .executeUpdate();
         });
+  }
+
+  /** Persists the implicit phase of an initiative and returns its id. */
+  public static String insertImplicitPhase(String initiativeId) {
+    return QuarkusTransaction.requiringNew()
+        .call(() -> {
+          Phase phase = Phase.createImplicit(UUID.fromString(initiativeId));
+          phase.persist();
+          return phase.getId().toString();
+        });
+  }
+
+  /**
+   * Inserts an active initiative with an active phase, both of another user; returns the phase id.
+   */
+  public static String insertForeignPhase(EntityManager entityManager) {
+    UUID otherUser = UUID.randomUUID();
+    UUID initiativeId = UUID.randomUUID();
+    UUID phaseId = UUID.randomUUID();
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
+              .setParameter(1, otherUser)
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into initiative (id, user_id, name, color)"
+                      + " values (?1, ?2, 'Theirs', 'azul')")
+              .setParameter(1, initiativeId)
+              .setParameter(2, otherUser)
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into phase (id, initiative_id, name) values (?1, ?2, 'Theirs')")
+              .setParameter(1, phaseId)
+              .setParameter(2, initiativeId)
+              .executeUpdate();
+        });
+    return phaseId.toString();
   }
 }

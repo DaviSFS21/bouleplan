@@ -21,7 +21,7 @@ import org.hibernate.annotations.UuidGenerator;
 @Table(name = "initiative")
 public class Initiative extends PanacheEntityBase {
 
-  public static final int MAX_NAME_LENGTH = 200;
+  public static final int MAX_NAME_LENGTH = EntityText.MAX_NAME_LENGTH;
   public static final int MAX_DESCRIPTION_LENGTH = 10_000;
   public static final int MIN_DEADLINE_YEAR = 1;
   public static final int MAX_DEADLINE_YEAR = 9999;
@@ -75,29 +75,15 @@ public class Initiative extends PanacheEntityBase {
   }
 
   private static String validName(String name) {
-    String trimmed = name == null ? "" : stripInvisible(name);
-    if (trimmed.isEmpty()) {
-      throw new InvalidInitiativeException(
-          "initiative.name.blank", "Initiative name must not be blank");
-    }
-    if (trimmed.codePoints().anyMatch(Initiative::isInvalidCodePoint)) {
-      throw new InvalidInitiativeException(
-          "initiative.name.invalid-characters",
-          "Initiative name must not contain control or invalid characters");
-    }
-    if (trimmed.length() > MAX_NAME_LENGTH) {
-      throw new InvalidInitiativeException(
-          "initiative.name.too-long",
-          "Initiative name must have at most " + MAX_NAME_LENGTH + " characters");
-    }
-    return trimmed;
+    return EntityText.validName(
+        name, "Initiative", "initiative.name", InvalidInitiativeException::new);
   }
 
   private static String validDescription(String description) {
     String trimmed =
         description == null
             ? ""
-            : stripInvisible(description.replace("\r\n", "\n").replace('\r', '\n'));
+            : EntityText.stripInvisible(description.replace("\r\n", "\n").replace('\r', '\n'));
     if (trimmed.codePoints().anyMatch(Initiative::isInvalidDescriptionCodePoint)) {
       throw new InvalidInitiativeException(
           "initiative.description.invalid-characters",
@@ -112,34 +98,7 @@ public class Initiative extends PanacheEntityBase {
   }
 
   private static boolean isInvalidDescriptionCodePoint(int codePoint) {
-    return codePoint != '\n' && codePoint != '\t' && isInvalidCodePoint(codePoint);
-  }
-
-  private static boolean isInvalidCodePoint(int codePoint) {
-    return Character.isISOControl(codePoint) || Character.getType(codePoint) == Character.SURROGATE;
-  }
-
-  private static boolean isInvisible(char c) {
-    return Character.isWhitespace(c)
-        || Character.isSpaceChar(c)
-        || Character.getType(c) == Character.FORMAT
-        || c == 0x2800
-        || c == 0x3164
-        || c == 0x115F
-        || c == 0x1160
-        || c == 0xFFA0;
-  }
-
-  private static String stripInvisible(String value) {
-    int start = 0;
-    int end = value.length();
-    while (start < end && isInvisible(value.charAt(start))) {
-      start++;
-    }
-    while (end > start && isInvisible(value.charAt(end - 1))) {
-      end--;
-    }
-    return value.substring(start, end);
+    return codePoint != '\n' && codePoint != '\t' && EntityText.isInvalidCodePoint(codePoint);
   }
 
   /** Renames with the same rules as creation. */

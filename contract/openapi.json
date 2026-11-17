@@ -14,6 +14,18 @@
                     }
                 }
             },
+            "CreatePhaseRequest": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    }
+                }
+            },
             "Initiative": {
                 "required": [
                     "id",
@@ -79,6 +91,40 @@
                 "examples": [
                     "2022-03-10T12:15:50-04:00"
                 ]
+            },
+            "Phase": {
+                "required": [
+                    "id",
+                    "initiativeId",
+                    "name",
+                    "origin",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "initiativeId": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "origin": {
+                        "type": "string",
+                        "enum": [
+                            "native"
+                        ]
+                    },
+                    "createdAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    },
+                    "updatedAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    }
+                }
             },
             "Problem": {
                 "required": [
@@ -161,12 +207,24 @@
                         ]
                     }
                 }
+            },
+            "UpdatePhaseRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    }
+                }
             }
         }
     },
     "tags": [
         {
             "name": "Initiatives"
+        },
+        {
+            "name": "Phases"
         }
     ],
     "paths": {
@@ -416,6 +474,114 @@
                 }
             }
         },
+        "/initiatives/{id}/phases": {
+            "get": {
+                "summary": "Lists the active phases of an active initiative in creation order",
+                "operationId": "listPhases",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Active named phases",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Phase"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Creates a phase in an active initiative",
+                "operationId": "createPhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreatePhaseRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Phase created",
+                        "headers": {
+                            "Location": {
+                                "description": "URI of the created phase"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/initiatives/{id}/restore": {
             "post": {
                 "summary": "Restores a deleted initiative; a no-op if it is not deleted",
@@ -487,6 +653,266 @@
                     },
                     "404": {
                         "description": "No archived or active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phases/{id}": {
+            "delete": {
+                "summary": "Deletes an active phase",
+                "operationId": "deletePhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Phase deleted"
+                    },
+                    "404": {
+                        "description": "No active phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Updates an active phase; absent fields stay",
+                "operationId": "updatePhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/merge-patch+json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePhaseRequest"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePhaseRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated phase",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Gets an active phase by id",
+                "operationId": "getPhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The phase",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phases/{id}/archive": {
+            "post": {
+                "summary": "Archives an active phase",
+                "operationId": "archivePhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The archived phase",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phases/{id}/restore": {
+            "post": {
+                "summary": "Restores a deleted phase; a no-op if it is not deleted",
+                "operationId": "restorePhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The phase",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/phases/{id}/unarchive": {
+            "post": {
+                "summary": "Unarchives a phase; a no-op if it is already active",
+                "operationId": "unarchivePhase",
+                "tags": [
+                    "Phases"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The phase",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Phase"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No archived or active phase with this id in an active initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
