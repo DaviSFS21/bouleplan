@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -35,7 +36,7 @@ public class Task extends PanacheEntityBase {
   @Id @GeneratedValue @UuidGenerator private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "phase_id", nullable = false, updatable = false)
+  @JoinColumn(name = "phase_id", nullable = false)
   private Phase phase;
 
   @Column(nullable = false, length = MAX_TITLE_LENGTH)
@@ -160,6 +161,25 @@ public class Task extends PanacheEntityBase {
   /** Sets or clears the blocked flag, which is independent of the status. */
   public void markBlocked(boolean isBlocked) {
     blocked = isBlocked;
+  }
+
+  /** Moves the task to another phase; the caller guarantees it belongs to the same initiative. */
+  public void moveToPhase(Phase newPhase) {
+    phase = newPhase;
+  }
+
+  /** Plans the task for the week starting on this Monday, or clears it with {@code null}. */
+  public void planWeek(LocalDate weekStart) {
+    if (weekStart != null
+        && (weekStart.getDayOfWeek() != DayOfWeek.MONDAY || !EntityText.hasValidYear(weekStart))) {
+      throw new InvalidTaskException(
+          "task.planned-week.invalid",
+          "Planned week must start on a Monday with a year between "
+              + EntityText.MIN_DEADLINE_YEAR
+              + " and "
+              + EntityText.MAX_DEADLINE_YEAR);
+    }
+    plannedWeekStart = weekStart;
   }
 
   /** Stamps {@code archivedAt}. */

@@ -6,7 +6,6 @@ import br.com.davisoares.bouleplan.application.port.in.RestoreTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UnarchiveTaskUseCase;
 import br.com.davisoares.bouleplan.domain.Task;
 import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -29,17 +28,20 @@ public class TaskLifecycleResource {
   private final UnarchiveTaskUseCase unarchiveTask;
   private final DeleteTaskUseCase deleteTask;
   private final RestoreTaskUseCase restoreTask;
+  private final TaskResponses responses;
 
   /** Wires the inbound ports. */
   public TaskLifecycleResource(
       ArchiveTaskUseCase archiveTask,
       UnarchiveTaskUseCase unarchiveTask,
       DeleteTaskUseCase deleteTask,
-      RestoreTaskUseCase restoreTask) {
+      RestoreTaskUseCase restoreTask,
+      TaskResponses responses) {
     this.archiveTask = archiveTask;
     this.unarchiveTask = unarchiveTask;
     this.deleteTask = deleteTask;
     this.restoreTask = restoreTask;
+    this.responses = responses;
   }
 
   /** Archives an active task. */
@@ -132,7 +134,7 @@ public class TaskLifecycleResource {
     return respond(restoreTask.restore(id));
   }
 
-  private static TaskResponse respond(Optional<Task> task) {
-    return task.map(TaskResponse::from).orElseThrow(NotFoundException::new);
+  private TaskResponse respond(Optional<Task> task) {
+    return responses.ofOrNotFound(task);
   }
 }

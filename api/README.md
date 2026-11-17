@@ -73,14 +73,19 @@ hexagonal architecture on the production classes:
 | `GET` | `/tasks` | 200, active tasks whose phase and initiative are active, by priority (P1 first), deadline (none last), creation, id |
 | `POST` | `/initiatives/{id}/tasks` | 201 with `Location: /tasks/{id}`; body `{"title": "...", "phaseId": "uuid" (optional, null = implicit), "status": "to_do" (optional)}`; 404 if the initiative is not active and the user's, or `phaseId` is not an active named phase of it |
 | `GET` | `/tasks/{id}` | 200 if the task, its phase and its initiative are active and the user's, else 404 |
-| `PATCH` | `/tasks/{id}` | 200; merge patch of `title`, `description`, `deadline`, `estimatedEffort`, `priority`, `status`, `isBlocked`: absent keeps, `null` clears `description`, `deadline` and `estimatedEffort`; `null` on the others is 400 `http.400`; active task only, else 404 |
+| `PATCH` | `/tasks/{id}` | 200; merge patch of `title`, `description`, `deadline`, `estimatedEffort`, `priority`, `status`, `isBlocked`, `phaseId`, `plannedWeekStart`: absent keeps, `null` clears `description`, `deadline`, `estimatedEffort` and `plannedWeekStart`, and moves the task to the implicit phase for `phaseId`; `null` on the others is 400 `http.400`; `phaseId` must be an active named phase of the task's initiative, else 404; `plannedWeekStart` must be a Monday; active task only, else 404 |
 | `POST` | `/tasks/{id}/archive` | 200; active task only, else 404 |
 | `POST` | `/tasks/{id}/unarchive` | 200; archived (or already active: no-op), else 404 |
 | `DELETE` | `/tasks/{id}` | 204 (soft delete); active task only, else 404 |
 | `POST` | `/tasks/{id}/restore` | 200; deleted (or not deleted: no-op), else 404 |
+| `PUT` | `/tasks/{blockingId}/blocks/{blockedId}` | 204, idempotent; 404 unless both tasks are active in an active phase and initiative of the user; 422 `task.blocker.self` or `task.blocker.cycle` |
+| `DELETE` | `/tasks/{blockingId}/blocks/{blockedId}` | 204, idempotent (also when there is no link); 404 unless both tasks are reachable |
 
 A task without `phaseId` goes to the initiative's implicit phase, created on demand and reused, even
-when the initiative has named phases; the task JSON shows it as `phaseId: null`. A task answers 404
+when the initiative has named phases; the task JSON shows it as `phaseId: null`. Every task JSON has `blocks` and
+`blockedBy`: the ids of the visible tasks it blocks and that block it, in the order of `GET /tasks`.
+Links to hidden tasks (archived, deleted, or in an archived or deleted phase or initiative) stay
+stored and reappear with them, and they still count when checking for cycles. A task answers 404
 whenever its phase or initiative is archived, deleted or not the user's; its own state is untouched
 and it returns with them.
 
@@ -95,7 +100,8 @@ Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid`, `task.planned-week.invalid` |
+| `/problems/rule-violation` | 422 | `task.blocker.self`, `task.blocker.cycle` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |
@@ -106,9 +112,16 @@ Deadlines must have a year from 1 to 9999.
 Writes to one initiative (update, archive, unarchive, delete, restore) load it with
 `select ... for update`, so concurrent writes are serialized and none is lost.
 
-Lock order: initiative, then phase, then task. Phase writes lock the owning initiative row first;
-task writes lock the initiative, the phase and the task (parent ids are read without loading the
-child). A task create locks the initiative, which serializes the creation of the implicit phase.
+Lock order: user, then initiative, then phase, then task. Phase writes lock the owning initiative
+row first; task writes lock the initiative, the phase and the task (parent ids are read without
+loading the child, and the task's phase is read again once the initiative is locked, because a move
+changes it). A task create locks the initiative, which serializes the creation of the implicit phase.
+A phase move locks the current and the target phase by id order, so opposite moves cannot deadlock.
+
+Blocker writes lock the user's `app_user` row first, so the cycle check and the insert of two
+concurrent writes never interleave (they may touch tasks of unrelated initiatives), and then both
+tasks by id order. A link is refused with 422 `task.blocker.cycle` when the blocked task already
+reaches the blocking one through stored links (a recursive query that includes hidden tasks).
 
 Concurrent creates are serialized per user: the use case locks the user's `app_user` row
 (`select ... for update`) before choosing a color.

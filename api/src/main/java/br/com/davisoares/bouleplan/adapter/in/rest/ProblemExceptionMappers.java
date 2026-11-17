@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.domain.DomainRuleViolation;
+import br.com.davisoares.bouleplan.domain.TaskBlockerException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import jakarta.ws.rs.Priorities;
@@ -20,6 +21,17 @@ public class ProblemExceptionMappers {
   public RestResponse<Problem> ruleViolation(DomainRuleViolation exception) {
     return problem(
         400,
+        "/problems/rule-violation",
+        "Rule violation",
+        exception.code(),
+        exception.getMessage());
+  }
+
+  /** A blocker link that is not allowed: well-formed, but it contradicts the existing links. */
+  @ServerExceptionMapper
+  public RestResponse<Problem> blockerRefused(TaskBlockerException exception) {
+    return problem(
+        422,
         "/problems/rule-violation",
         "Rule violation",
         exception.code(),

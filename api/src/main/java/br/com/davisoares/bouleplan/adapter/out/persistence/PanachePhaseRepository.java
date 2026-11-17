@@ -65,6 +65,17 @@ public class PanachePhaseRepository implements PhaseRepository, PanacheRepositor
   }
 
   @Override
+  public Optional<UUID> findImplicitIdByInitiative(UUID initiativeId) {
+    return getEntityManager()
+        .createQuery(
+            "select p.id from Phase p where p.initiativeId = ?1 and p.implicit = true", UUID.class)
+        .setParameter(1, initiativeId)
+        .getResultList()
+        .stream()
+        .findFirst();
+  }
+
+  @Override
   public Optional<Phase> findImplicitByInitiativeForUpdate(UUID initiativeId) {
     return find("initiativeId = ?1 and implicit = true", initiativeId)
         .withLock(LockModeType.PESSIMISTIC_WRITE)

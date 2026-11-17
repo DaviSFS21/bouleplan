@@ -111,8 +111,9 @@ class TaskPatchValidationResourceTest {
   @DisplayName("unknown and read-only fields, non-objects and broken JSON are malformed")
   void unknownFields() {
     String[] bodies = {
-      "{\"phaseId\": null}",
-      "{\"plannedWeekStart\": \"2026-11-16\"}",
+      "{\"initiativeId\": \"x\"}",
+      "{\"blocks\": []}",
+      "{\"blockedBy\": []}",
       "{\"id\": \"x\"}",
       "{\"archivedAt\": null}",
       "{\"origin\": \"native\"}",

@@ -32,6 +32,9 @@ public interface PhaseRepository {
    */
   Optional<Phase> findByIdAndInitiativeForUpdate(UUID id, UUID initiativeId);
 
+  /** The id of the implicit phase of an initiative, if it exists, read without locking it. */
+  Optional<UUID> findImplicitIdByInitiative(UUID initiativeId);
+
   /** The implicit phase of an initiative, if it exists, locked for update. */
   Optional<Phase> findImplicitByInitiativeForUpdate(UUID initiativeId);
 }

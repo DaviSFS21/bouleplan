@@ -3,6 +3,7 @@ package br.com.davisoares.bouleplan;
 import br.com.davisoares.bouleplan.domain.Initiative;
 import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
+import io.quarkus.hibernate.orm.panache.Panache;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
@@ -12,11 +13,12 @@ public final class TestData {
 
   private TestData() {}
 
-  /** Deletes every task, phase and then initiative, in a committed transaction. */
+  /** Deletes every blocker, task, phase and then initiative, in a committed transaction. */
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
     QuarkusTransaction.requiringNew()
         .run(() -> {
+          Panache.getEntityManager().createNativeQuery("delete from task_blocker").executeUpdate();
           Task.deleteAll();
           Phase.deleteAll();
           Initiative.deleteAll();

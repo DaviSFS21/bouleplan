@@ -6,7 +6,6 @@ import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -29,6 +28,7 @@ public class TaskResource {
   private final ListTasksUseCase listTasks;
   private final GetTaskUseCase getTask;
   private final UpdateTaskUseCase updateTask;
+  private final TaskResponses responses;
   private final ObjectMapper objectMapper;
 
   /** Wires the inbound ports. */
@@ -36,10 +36,12 @@ public class TaskResource {
       ListTasksUseCase listTasks,
       GetTaskUseCase getTask,
       UpdateTaskUseCase updateTask,
+      TaskResponses responses,
       ObjectMapper objectMapper) {
     this.listTasks = listTasks;
     this.getTask = getTask;
     this.updateTask = updateTask;
+    this.responses = responses;
     this.objectMapper = objectMapper;
   }
 
@@ -59,7 +61,7 @@ public class TaskResource {
               mediaType = MediaType.APPLICATION_JSON,
               schema = @Schema(implementation = TaskResponse[].class)))
   public List<TaskResponse> list() {
-    return listTasks.listActive().stream().map(TaskResponse::from).toList();
+    return responses.ofAll(listTasks.listActive());
   }
 
   /** Returns one active task. */
@@ -82,7 +84,7 @@ public class TaskResource {
               mediaType = Problem.MEDIA_TYPE,
               schema = @Schema(implementation = Problem.class)))
   public TaskResponse get(@PathParam("id") UUID id) {
-    return getTask.find(id).map(TaskResponse::from).orElseThrow(NotFoundException::new);
+    return responses.ofOrNotFound(getTask.find(id));
   }
 
   /** Partially updates an active task (JSON merge patch semantics). */
@@ -125,9 +127,7 @@ public class TaskResource {
               mediaType = Problem.MEDIA_TYPE,
               schema = @Schema(implementation = Problem.class)))
   public TaskResponse update(@PathParam("id") UUID id, String body) {
-    return updateTask
-        .update(id, UpdateTaskParser.parse(objectMapper, body))
-        .map(TaskResponse::from)
-        .orElseThrow(NotFoundException::new);
+    return responses.ofOrNotFound(
+        updateTask.update(id, UpdateTaskParser.parse(objectMapper, body)));
   }
 }

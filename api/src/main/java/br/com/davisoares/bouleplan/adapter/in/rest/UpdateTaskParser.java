@@ -12,7 +12,15 @@ final class UpdateTaskParser {
 
   private static final Set<String> FIELDS =
       Set.of(
-          "title", "description", "deadline", "estimatedEffort", "priority", "status", "isBlocked");
+          "title",
+          "description",
+          "deadline",
+          "estimatedEffort",
+          "priority",
+          "status",
+          "isBlocked",
+          "phaseId",
+          "plannedWeekStart");
 
   private UpdateTaskParser() {}
 
@@ -25,6 +33,8 @@ final class UpdateTaskParser {
         JsonFields.number(root, "estimatedEffort"),
         JsonFields.required(JsonFields.token(root, "priority", TaskPriority::findByToken)),
         JsonFields.required(JsonFields.token(root, "status", TaskStatus::findByToken)),
-        JsonFields.required(JsonFields.bool(root, "isBlocked")));
+        JsonFields.required(JsonFields.bool(root, "isBlocked")),
+        JsonFields.uuid(root, "phaseId"),
+        JsonFields.date(root, "plannedWeekStart"));
   }
 }
