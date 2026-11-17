@@ -16,7 +16,8 @@ export const TOAST_DURATION_MS = 6000;
 
 export interface ToastOptions {
   message: string;
-  onUndo: () => void;
+  // Without it the toast is only a notice: no button and no Ctrl+Z.
+  onUndo?: () => void;
 }
 
 interface UndoToastProps extends ToastOptions {
@@ -62,20 +63,22 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
     undo.current = onUndo;
   }, [onUndo]);
 
+  const undoable = onUndo !== undefined;
   useEffect(() => {
+    if (!undoable) return;
     function undoWithShortcut(event: KeyboardEvent) {
       const isUndo =
         (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z';
       if (!isUndo || isTextField(event.target)) return;
       event.preventDefault();
-      undo.current();
+      undo.current?.();
       dismiss.current();
     }
     document.addEventListener('keydown', undoWithShortcut);
     return () => {
       document.removeEventListener('keydown', undoWithShortcut);
     };
-  }, []);
+  }, [undoable]);
 
   function handleBlur(event: FocusEvent<HTMLDivElement>) {
     if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
@@ -96,17 +99,21 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
       onBlur={handleBlur}
     >
       <span>{message}</span>
-      <span className={styles.hint}> (Ctrl+Z para desfazer)</span>
-      <button
-        type="button"
-        className={styles.undo}
-        onClick={() => {
-          onUndo();
-          onDismiss();
-        }}
-      >
-        Desfazer
-      </button>
+      {onUndo ? (
+        <>
+          <span className={styles.hint}> (Ctrl+Z para desfazer)</span>
+          <button
+            type="button"
+            className={styles.undo}
+            onClick={() => {
+              onUndo();
+              onDismiss();
+            }}
+          >
+            Desfazer
+          </button>
+        </>
+      ) : null}
       <span className={styles.time} aria-hidden="true" />
     </div>
   );

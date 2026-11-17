@@ -375,3 +375,17 @@ describe('a slow answer', () => {
     expect(field).toHaveValue('em curso');
   });
 });
+
+describe('an undo after the board was remounted', () => {
+  it('still tells that the undo failed', async () => {
+    const { backend, user } = await renderBoard();
+    await choose(user, 'Comprar tinta', 'menuitem', 'Arquivar');
+    await screen.findByText('Tarefa arquivada');
+
+    await user.click(screen.getByRole('button', { name: 'Todas as tarefas' }));
+    backend.failing.add('UNDO');
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }));
+
+    expect(await screen.findByText('Não foi possível desfazer. Tente de novo.')).toBeVisible();
+  });
+});

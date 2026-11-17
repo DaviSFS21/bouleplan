@@ -110,7 +110,8 @@
 }
 
 .row:hover .actions,
-.row:focus-within .actions {
+.row:focus-within .actions,
+.actions:has([aria-expanded='true']) {
   opacity: 1;
 }
 

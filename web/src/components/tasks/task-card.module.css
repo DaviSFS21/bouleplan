@@ -60,7 +60,8 @@
 }
 
 .card:hover .menu,
-.card:focus-within .menu {
+.card:focus-within .menu,
+.menu:has([aria-expanded='true']) {
   opacity: 1;
 }
 

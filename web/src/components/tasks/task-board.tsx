@@ -176,7 +176,7 @@ export function TaskBoard({
         updateTask
           .mutateAsync({ task: { ...task, status }, changes: { status: previous } })
           .catch(() => {
-            setError(UNDO_FAILED_MESSAGE);
+            toast.show({ message: UNDO_FAILED_MESSAGE });
           });
       },
     });
@@ -211,7 +211,7 @@ export function TaskBoard({
             requestFocus(task.id, task.status);
           },
           () => {
-            setError(UNDO_FAILED_MESSAGE);
+            toast.show({ message: UNDO_FAILED_MESSAGE });
           },
         );
       },

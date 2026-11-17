@@ -53,7 +53,8 @@
 }
 
 .row:hover .actions,
-.row:focus-within .actions {
+.row:focus-within .actions,
+.actions:has([aria-expanded='true']) {
   opacity: 1;
 }
 
@@ -91,6 +92,7 @@
 }
 
 .row:hover .count,
-.row:focus-within .count {
+.row:focus-within .count,
+.row:has([aria-expanded='true']) .count {
   opacity: 0;
 }

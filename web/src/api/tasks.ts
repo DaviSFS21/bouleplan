@@ -79,7 +79,7 @@ function runScoped<TVariables, TData>(
       onMutate: optimistic?.apply,
       onError: (_error, input) => {
         optimistic?.rollback(input);
-        if (!hasQueued(queryClient, scope)) refetchTasks(queryClient);
+        if (!hasQueued(queryClient, scope, tasksKey)) refetchTasks(queryClient);
       },
     },
   );
