@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { createQueryClient } from '@/components/providers/providers';
-import { initiative } from '@/test/fixtures';
+import { initiative, problemResponse } from '@/test/fixtures';
 import { server } from '@/test/server';
 import { ApiError } from './problem';
 import { useCreateInitiative, useInitiatives } from './initiatives';
@@ -29,21 +29,14 @@ describe('useInitiatives', () => {
   });
 
   it('fails with an ApiError for a problem response', async () => {
-    server.use(
-      http.get('*/api/initiatives', () =>
-        HttpResponse.json(
-          { type: '/problems/boom', title: 'Boom', status: 500, detail: 'Broken' },
-          { status: 500, headers: { 'Content-Type': 'application/problem+json' } },
-        ),
-      ),
-    );
+    server.use(http.get('*/api/initiatives', () => problemResponse('internal', 500)));
 
     const { result } = renderHook(() => useInitiatives(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.error).toBeInstanceOf(ApiError);
     });
-    expect(result.current.error).toMatchObject({ status: 500, detail: 'Broken' });
+    expect(result.current.error).toMatchObject({ status: 500, code: 'internal' });
   });
 });
 
@@ -81,28 +74,71 @@ describe('useCreateInitiative', () => {
     expect(result.current.list.data).toHaveLength(2);
   });
 
-  it('rejects with the problem detail on a 400', async () => {
-    server.use(
-      http.post('*/api/initiatives', () =>
-        HttpResponse.json(
-          {
-            type: '/problems/invalid-initiative',
-            title: 'Invalid initiative',
-            status: 400,
-            detail: 'Name must not be blank',
-          },
-          { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
-        ),
-      ),
-    );
+  it('rejects with the problem code on a 400', async () => {
+    server.use(http.post('*/api/initiatives', () => problemResponse('initiative.name.blank')));
 
     const { result } = renderHook(() => useCreateInitiative(), { wrapper });
 
     await act(async () => {
       await expect(result.current.mutateAsync('')).rejects.toMatchObject({
         status: 400,
-        detail: 'Name must not be blank',
+        code: 'initiative.name.blank',
       });
     });
+  });
+
+  it('keeps the created initiative in the list when the refetch fails', async () => {
+    const created = initiative({ id: '22222222-2222-4222-8222-222222222222', name: 'Horta' });
+    let gets = 0;
+    server.use(
+      http.get('*/api/initiatives', () => {
+        gets += 1;
+        return gets === 1 ? HttpResponse.json([initiative()]) : problemResponse('internal', 500);
+      }),
+      http.post('*/api/initiatives', () => HttpResponse.json(created, { status: 201 })),
+    );
+
+    const { result } = renderHook(
+      () => ({ list: useInitiatives(), create: useCreateInitiative() }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.list.data).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.create.mutateAsync('Horta');
+    });
+
+    await waitFor(() => {
+      expect(gets).toBe(2);
+    });
+    expect(result.current.list.data).toEqual([initiative(), created]);
+  });
+
+  it('does not duplicate an initiative the refetch already returned', async () => {
+    const created = initiative({ id: '22222222-2222-4222-8222-222222222222', name: 'Horta' });
+    const items = [initiative()];
+    server.use(
+      http.get('*/api/initiatives', () => HttpResponse.json(items)),
+      http.post('*/api/initiatives', () => {
+        if (!items.includes(created)) items.push(created);
+        return HttpResponse.json(created, { status: 201 });
+      }),
+    );
+
+    const { result } = renderHook(
+      () => ({ list: useInitiatives(), create: useCreateInitiative() }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.list.data).toHaveLength(1);
+    });
+    await act(async () => {
+      await result.current.create.mutateAsync('Horta');
+      await result.current.create.mutateAsync('Horta');
+    });
+
+    expect(result.current.list.data).toEqual([initiative(), created]);
   });
 });

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { Initiative } from '@/api/types';
 import { NewInitiativeField } from './new-initiative-field';
 import styles from './initiative-index.module.css';
@@ -7,7 +7,7 @@ type InitiativeIndexProps = Readonly<{
   initiatives: readonly Initiative[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
-  onCreate: (name: string) => Promise<void>;
+  onCreate: (name: string) => Promise<string>;
 }>;
 
 export function InitiativeIndex({
@@ -16,8 +16,20 @@ export function InitiativeIndex({
   onSelect,
   onCreate,
 }: InitiativeIndexProps) {
+  const nav = useRef<HTMLElement>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (focusId === null) return;
+    nav.current?.querySelector<HTMLElement>(`[data-initiative-id="${focusId}"]`)?.focus();
+  }, [focusId]);
+
+  async function create(name: string) {
+    setFocusId(await onCreate(name));
+  }
+
   return (
-    <nav className={styles.index} aria-label="Iniciativas">
+    <nav ref={nav} className={styles.index} aria-label="Iniciativas">
       <p className={styles.title}>Iniciativas</p>
       <ul className={styles.list}>
         <li>
@@ -37,6 +49,7 @@ export function InitiativeIndex({
             <button
               type="button"
               className={styles.item}
+              data-initiative-id={initiative.id}
               aria-current={selectedId === initiative.id ? 'true' : undefined}
               onClick={() => {
                 onSelect(initiative.id);
@@ -60,7 +73,7 @@ export function InitiativeIndex({
       {initiatives.length === 0 ? (
         <p className={styles.emptyNote}>Nenhuma iniciativa ainda.</p>
       ) : null}
-      <NewInitiativeField onCreate={onCreate} />
+      <NewInitiativeField onCreate={create} />
     </nav>
   );
 }

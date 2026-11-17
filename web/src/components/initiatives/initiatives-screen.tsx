@@ -11,9 +11,11 @@ const SELECTION_PARAM = 'iniciativa';
 
 export function InitiativesFallback() {
   return (
-    <div className={styles.status}>
-      <Loading />
-    </div>
+    <main className={styles.status}>
+      <div role="status" aria-label="Carregando iniciativas">
+        <Loading />
+      </div>
+    </main>
   );
 }
 
@@ -32,16 +34,19 @@ export function InitiativesScreen() {
     router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
 
-  async function create(name: string) {
+  async function create(name: string): Promise<string> {
     const created = await createInitiative.mutateAsync(name);
     select(created.id);
+    return created.id;
   }
 
   if (!data) {
     if (!isError || isFetching) return <InitiativesFallback />;
     return (
-      <div className={styles.status}>
-        <p className={styles.message}>Não foi possível carregar as iniciativas.</p>
+      <main className={styles.status}>
+        <p role="alert" className={styles.message}>
+          Não foi possível carregar as iniciativas.
+        </p>
         <button
           type="button"
           className={styles.retry}
@@ -51,7 +56,7 @@ export function InitiativesScreen() {
         >
           Tentar de novo
         </button>
-      </div>
+      </main>
     );
   }
 
@@ -59,7 +64,7 @@ export function InitiativesScreen() {
   const selected = data.find((initiative) => initiative.id === requestedId) ?? null;
 
   return (
-    <div className={styles.screen}>
+    <main className={styles.screen}>
       <InitiativeIndex
         initiatives={data}
         selectedId={selected?.id ?? null}
@@ -67,6 +72,6 @@ export function InitiativesScreen() {
         onCreate={create}
       />
       <InitiativeBoard initiative={selected} />
-    </div>
+    </main>
   );
 }

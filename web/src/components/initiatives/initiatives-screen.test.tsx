@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Initiative } from '@/api/types';
-import { initiative } from '@/test/fixtures';
+import { initiative, problemResponse } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
@@ -17,8 +17,6 @@ const horta = initiative({
   name: 'Horta',
   color: 'verde',
 });
-
-const problemHeaders = { 'Content-Type': 'application/problem+json' };
 
 function serveInitiatives(items: Initiative[]) {
   server.use(http.get('*/api/initiatives', () => HttpResponse.json(items)));
@@ -45,7 +43,9 @@ describe('InitiativesScreen loading and errors', () => {
     serveInitiatives([reforma]);
     renderScreen();
 
+    expect(screen.getByRole('status', { name: 'Carregando iniciativas' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Carregando' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toBeInTheDocument();
     await findIndex();
     expect(screen.queryByRole('img', { name: 'Carregando' })).not.toBeInTheDocument();
   });
@@ -58,7 +58,9 @@ describe('InitiativesScreen loading and errors', () => {
     );
     renderScreen();
 
-    expect(await screen.findByText('Não foi possível carregar as iniciativas.')).toBeVisible();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Não foi possível carregar as iniciativas.');
+    expect(screen.getByRole('main')).toContainElement(alert);
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
 
     expect(await screen.findByRole('button', { name: /Reforma/ })).toBeInTheDocument();
@@ -211,9 +213,10 @@ describe('InitiativesScreen quick create', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Viagem' })).toBeVisible();
     expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
     expect(screen.getByRole('button', { name: '+ Nova iniciativa' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Viagem/ })).toHaveFocus();
   });
 
-  it('disables the input while the request is pending', async () => {
+  it('makes the input read-only and busy, keeping focus, while the request is pending', async () => {
     const user = userEvent.setup();
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
@@ -234,7 +237,9 @@ describe('InitiativesScreen quick create', () => {
     const field = await openField(user);
     await user.type(field, 'Lenta{Enter}');
 
-    expect(field).toBeDisabled();
+    expect(field).toHaveAttribute('readonly');
+    expect(field).toHaveAttribute('aria-busy', 'true');
+    expect(field).toHaveFocus();
     release();
     await waitFor(() => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -250,7 +255,7 @@ describe('InitiativesScreen quick create', () => {
     await user.type(field, 'Rascunho{Escape}');
 
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '+ Nova iniciativa' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '+ Nova iniciativa' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: '+ Nova iniciativa' }));
     expect(screen.getByRole('textbox', { name: 'Nome da nova iniciativa' })).toHaveValue('');
   });
@@ -278,52 +283,121 @@ describe('InitiativesScreen quick create', () => {
     expect(screen.getByRole('textbox', { name: 'Nome da nova iniciativa' })).toHaveValue('Meio');
   });
 
-  it('shows the 400 detail in an alert, keeps the typed text and clears it on typing', async () => {
+  it('blocks a blank name client-side with the pt-BR message and no request', async () => {
     const user = userEvent.setup();
     serveInitiatives([reforma]);
+    const posted = vi.fn();
     server.use(
-      http.post('*/api/initiatives', () =>
-        HttpResponse.json(
-          {
-            type: '/problems/invalid-initiative',
-            title: 'Invalid initiative',
-            status: 400,
-            detail: 'O nome da iniciativa não pode ficar em branco.',
-          },
-          { status: 400, headers: problemHeaders },
-        ),
-      ),
+      http.post('*/api/initiatives', () => {
+        posted();
+        return problemResponse('initiative.name.blank');
+      }),
     );
     renderScreen();
 
     const field = await openField(user);
     await user.type(field, '   {Enter}');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'O nome da iniciativa não pode ficar em branco.',
+    expect(within(await findIndex()).getByRole('alert')).toHaveTextContent(
+      'Dê um nome à iniciativa.',
     );
-    expect(field).toBeEnabled();
+    expect(posted).not.toHaveBeenCalled();
     expect(field).toHaveFocus();
     expect(field).toHaveValue('   ');
     expect(field).toHaveAttribute('aria-invalid', 'true');
     expect(window.location.search).toBe('');
 
     await user.type(field, 'x');
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(await findIndex()).queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('shows a generic message when the failure is not a problem response', async () => {
+  it('limits the name to 200 characters', async () => {
     const user = userEvent.setup();
     serveInitiatives([reforma]);
-    server.use(http.post('*/api/initiatives', () => new HttpResponse(null, { status: 500 })));
+    renderScreen();
+
+    expect(await openField(user)).toHaveAttribute('maxlength', '200');
+  });
+
+  it('links the hint to the input, and the error too when there is one', async () => {
+    const user = userEvent.setup();
+    serveInitiatives([reforma]);
+    renderScreen();
+
+    const field = await openField(user);
+    expect(field).toHaveAccessibleDescription('Enter cria · Esc cancela');
+
+    await user.type(field, '{Enter}');
+    expect(field).toHaveAccessibleDescription('Dê um nome à iniciativa. Enter cria · Esc cancela');
+  });
+
+  it.each([
+    ['initiative.name.blank', 400, 'Dê um nome à iniciativa.'],
+    ['initiative.name.too-long', 400, 'Use no máximo 200 caracteres.'],
+    ['initiative.name.invalid-characters', 400, 'O nome tem caracteres inválidos.'],
+    ['http.400', 400, 'Não foi possível criar a iniciativa. Tente de novo.'],
+    ['internal', 500, 'Não foi possível criar a iniciativa. Tente de novo.'],
+  ])(
+    'shows the pt-BR message for server code %s, never the English detail, and keeps the text',
+    async (code, status, message) => {
+      const user = userEvent.setup();
+      serveInitiatives([reforma]);
+      server.use(
+        http.post('*/api/initiatives', () =>
+          problemResponse(code, status, 'English server detail'),
+        ),
+      );
+      renderScreen();
+
+      const field = await openField(user);
+      await user.type(field, 'Algo{Enter}');
+
+      const alert = within(await findIndex()).getByRole('alert');
+      expect(alert).toHaveTextContent(message);
+      expect(screen.queryByText(/English server detail/)).not.toBeInTheDocument();
+      expect(field).not.toHaveAttribute('readonly');
+      expect(field).toHaveFocus();
+      expect(field).toHaveValue('Algo');
+      expect(window.location.search).toBe('');
+    },
+  );
+
+  it('shows the generic message when the failure is not a problem response', async () => {
+    const user = userEvent.setup();
+    serveInitiatives([reforma]);
+    server.use(http.post('*/api/initiatives', () => new HttpResponse(null, { status: 502 })));
     renderScreen();
 
     const field = await openField(user);
     await user.type(field, 'Algo{Enter}');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(within(await findIndex()).getByRole('alert')).toHaveTextContent(
       'Não foi possível criar a iniciativa. Tente de novo.',
     );
     expect(field).toHaveValue('Algo');
+  });
+
+  it('keeps the new initiative in the index when the refetch after the POST fails', async () => {
+    const user = userEvent.setup();
+    const created = initiative({ id: '55555555-5555-4555-8555-555555555555', name: 'Viagem' });
+    let gets = 0;
+    server.use(
+      http.get('*/api/initiatives', () => {
+        gets += 1;
+        return gets === 1 ? HttpResponse.json([reforma]) : problemResponse('internal', 500);
+      }),
+      http.post('*/api/initiatives', () => HttpResponse.json(created, { status: 201 })),
+    );
+    renderScreen();
+
+    const field = await openField(user);
+    await user.type(field, 'Viagem{Enter}');
+
+    expect(await screen.findByRole('button', { name: /Viagem/ })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Viagem' })).toBeVisible();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

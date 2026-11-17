@@ -5,14 +5,16 @@ export class ApiError extends Error {
   readonly type: string;
   readonly title: string;
   readonly detail: string;
+  readonly code: string;
 
-  constructor({ status, type, title, detail }: Problem) {
+  constructor({ status, type, title, detail, code }: Problem) {
     super(detail);
     this.name = 'ApiError';
     this.status = status;
     this.type = type;
     this.title = title;
     this.detail = detail;
+    this.code = code;
   }
 }
 
@@ -23,7 +25,8 @@ function isProblem(body: unknown): body is Problem {
     typeof candidate.type === 'string' &&
     typeof candidate.title === 'string' &&
     typeof candidate.status === 'number' &&
-    typeof candidate.detail === 'string'
+    typeof candidate.detail === 'string' &&
+    typeof candidate.code === 'string'
   );
 }
 
@@ -34,5 +37,6 @@ export function toApiError(body: unknown, response: Response): ApiError {
     title: response.statusText,
     status: response.status,
     detail: `HTTP ${String(response.status)}`,
+    code: `http.${String(response.status)}`,
   });
 }

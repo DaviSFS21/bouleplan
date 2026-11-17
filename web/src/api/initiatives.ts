@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from './client';
+import type { Initiative } from './types';
 
 const initiativesKey = ['initiatives'] as const;
 
@@ -14,7 +15,11 @@ export function useCreateInitiative() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => unwrap(api.POST('/initiatives', { body: { name } })),
-    // Returning the promise keeps the mutation pending until the list holds the new item.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: initiativesKey }),
+    onSuccess: (created) => {
+      queryClient.setQueryData<Initiative[]>(initiativesKey, (current) =>
+        current && !current.some(({ id }) => id === created.id) ? [...current, created] : current,
+      );
+      return queryClient.invalidateQueries({ queryKey: initiativesKey });
+    },
   });
 }

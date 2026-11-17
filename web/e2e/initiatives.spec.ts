@@ -102,12 +102,12 @@ test('clears the selection with "Todas as tarefas"', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Todas as tarefas' })).toBeVisible();
 });
 
-test('shows the server error for a blank name and keeps the field', async ({ page }) => {
+test('shows the blank-name message and keeps the field', async ({ page }) => {
   await page.getByRole('button', { name: '+ Nova iniciativa' }).click();
   const field = page.getByLabel('Nome da nova iniciativa');
   await field.press('Enter');
 
-  await expect(index(page).getByRole('alert')).not.toBeEmpty();
+  await expect(index(page).getByRole('alert')).toHaveText('Dê um nome à iniciativa.');
   await expect(field).toBeVisible();
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expect(page).not.toHaveURL(/iniciativa=/);

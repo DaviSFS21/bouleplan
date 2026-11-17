@@ -19,6 +19,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/initiatives/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets an active initiative by id */
+        get: operations["getInitiative"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -44,9 +61,9 @@ export interface components {
          */
         OffsetDateTime: string;
         Problem: {
-            /** @example /problems/invalid-initiative */
+            /** @example /problems/rule-violation */
             type: string;
-            /** @example Invalid initiative */
+            /** @example Rule violation */
             title: string;
             /**
              * Format: int32
@@ -54,6 +71,11 @@ export interface components {
              */
             status: number;
             detail: string;
+            /**
+             * @description Stable code clients map to their own text: a domain code such as initiative.name.blank, http.<status> or internal
+             * @example initiative.name.blank
+             */
+            code: string;
         };
         /** Format: uuid */
         UUID: string;
@@ -110,8 +132,39 @@ export interface operations {
                     "application/json": components["schemas"]["Initiative"];
                 };
             };
-            /** @description Invalid initiative or malformed request */
+            /** @description Rule violation or malformed request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getInitiative: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The initiative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Initiative"];
+                };
+            };
+            /** @description No active initiative with this id */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

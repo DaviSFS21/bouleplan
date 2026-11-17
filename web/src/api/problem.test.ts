@@ -5,10 +5,11 @@ describe('toApiError', () => {
   it('carries the fields of a problem+json body', () => {
     const error = toApiError(
       {
-        type: '/problems/invalid-initiative',
-        title: 'Invalid initiative',
+        type: '/problems/rule-violation',
+        title: 'Rule violation',
         status: 400,
-        detail: 'Name must not be blank',
+        detail: 'Initiative name must not be blank',
+        code: 'initiative.name.blank',
       },
       new Response(null, { status: 400 }),
     );
@@ -16,22 +17,32 @@ describe('toApiError', () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({
       status: 400,
-      type: '/problems/invalid-initiative',
-      title: 'Invalid initiative',
-      detail: 'Name must not be blank',
-      message: 'Name must not be blank',
+      type: '/problems/rule-violation',
+      title: 'Rule violation',
+      detail: 'Initiative name must not be blank',
+      code: 'initiative.name.blank',
+      message: 'Initiative name must not be blank',
     });
   });
 
   it('falls back to the HTTP status when the body is not a problem', () => {
     const error = toApiError('<html>bad gateway</html>', new Response(null, { status: 502 }));
 
-    expect(error).toMatchObject({ status: 502, type: 'about:blank', detail: 'HTTP 502' });
+    expect(error).toMatchObject({
+      status: 502,
+      type: 'about:blank',
+      detail: 'HTTP 502',
+      code: 'http.502',
+    });
   });
 
-  it('ignores a body whose fields have the wrong types', () => {
-    const error = toApiError({ detail: 42 }, new Response(null, { status: 500 }));
-
-    expect(error.detail).toBe('HTTP 500');
+  it('ignores a body whose fields have the wrong types or lack a code', () => {
+    expect(toApiError({ detail: 42 }, new Response(null, { status: 500 })).code).toBe('http.500');
+    expect(
+      toApiError(
+        { type: 't', title: 'T', status: 400, detail: 'd' },
+        new Response(null, { status: 400 }),
+      ).code,
+    ).toBe('http.400');
   });
 });

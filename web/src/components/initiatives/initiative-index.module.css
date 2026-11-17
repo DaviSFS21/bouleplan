@@ -63,7 +63,7 @@
 }
 
 .name {
-  font: 500 16px/22px var(--font-body);
+  font: var(--type-titulo-tarefa);
 }
 
 .dot {
@@ -95,7 +95,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--tinta-muted);
-  font: 500 13px/16px var(--font-ui);
+  font: var(--type-rotulo);
   text-align: left;
   cursor: pointer;
 }
@@ -109,7 +109,7 @@
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   padding: 6px var(--space-3);
 }
 
@@ -143,7 +143,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  font: 500 13px/16px var(--font-ui);
+  font: var(--type-rotulo);
   color: var(--erro);
 }
 

@@ -1,3 +1,4 @@
+import { HttpResponse } from 'msw';
 import type { Initiative } from '@/api/types';
 
 export function initiative(overrides: Partial<Initiative> = {}): Initiative {
@@ -11,4 +12,12 @@ export function initiative(overrides: Partial<Initiative> = {}): Initiative {
     createdAt: '2026-01-01T10:00:00-03:00',
     ...overrides,
   };
+}
+
+export function problemResponse(code: string, status = 400, detail = 'Problem detail') {
+  const type = status === 400 ? '/problems/rule-violation' : 'about:blank';
+  return HttpResponse.json(
+    { type, title: 'Rule violation', status, detail, code },
+    { status, headers: { 'Content-Type': 'application/problem+json' } },
+  );
 }
