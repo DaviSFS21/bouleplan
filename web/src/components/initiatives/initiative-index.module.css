@@ -150,3 +150,30 @@
 .error svg {
   flex: none;
 }
+
+.row {
+  position: relative;
+}
+
+.row .item {
+  padding-right: 40px;
+}
+
+.actions {
+  position: absolute;
+  top: 8px;
+  right: var(--space-2);
+  opacity: 0;
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  opacity: 1;
+}
+
+.actionError {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-3);
+  font: var(--type-rotulo);
+  color: var(--erro);
+}

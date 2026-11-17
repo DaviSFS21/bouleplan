@@ -69,47 +69,78 @@ describe('DeadlineField', () => {
     expect(input).toHaveFocus();
   });
 
-  it('reports a chosen date as ISO', async () => {
+  it('keeps a local draft and reports the chosen date only on blur', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<DeadlineField value={null} onChange={onChange} today={TODAY} />);
     await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
 
     await user.type(screen.getByLabelText('Prazo'), '2026-12-24');
+    expect(onChange).not.toHaveBeenCalled();
+    await user.tab();
 
-    expect(onChange).toHaveBeenLastCalledWith('2026-12-24');
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('2026-12-24');
+    expect(screen.queryByLabelText('Prazo')).not.toBeInTheDocument();
   });
 
-  it('reports null when the native input is cleared', async () => {
+  it('commits on Enter once and returns focus to the button', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<DeadlineField value={null} onChange={onChange} today={TODAY} />);
+    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+
+    await user.type(screen.getByLabelText('Prazo'), '2026-12-24{Enter}');
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('2026-12-24');
+    expect(screen.getByRole('button', { name: /^Prazo:/ })).toHaveFocus();
+  });
+
+  it('reverts with Escape without committing', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<DeadlineField value="2026-12-18" onChange={onChange} today={TODAY} />);
+    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+
+    await user.type(screen.getByLabelText('Prazo'), '2026-12-24{Escape}');
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Prazo: sex, 18 dez' })).toHaveFocus();
+  });
+
+  it('does not commit when blurred unchanged', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<DeadlineField value="2026-12-18" onChange={onChange} today={TODAY} />);
+    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+
+    await user.tab();
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('reports null when the native input is cleared and blurred', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<DeadlineField value="2026-12-18" onChange={onChange} today={TODAY} />);
     await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
 
     await user.clear(screen.getByLabelText('Prazo'));
+    await user.tab();
 
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(null);
   });
 
-  it('closes the input on blur', async () => {
+  it('discards an incomplete date on blur', async () => {
     const user = userEvent.setup();
-    render(<DeadlineField value="2026-12-18" onChange={vi.fn()} today={TODAY} />);
+    const onChange = vi.fn();
+    render(<DeadlineField value="2026-12-18" onChange={onChange} today={TODAY} />);
     await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
+    const input = screen.getByLabelText<HTMLInputElement>('Prazo');
+    vi.spyOn(input, 'validity', 'get').mockReturnValue({ badInput: true } as ValidityState);
 
-    await user.click(document.body);
+    await user.tab();
 
-    expect(screen.queryByLabelText('Prazo')).not.toBeInTheDocument();
-  });
-
-  it.each(['{Escape}', '{Enter}'])('closes the input with %s and returns focus', async (key) => {
-    const user = userEvent.setup();
-    render(<DeadlineField value="2026-12-18" onChange={vi.fn()} today={TODAY} />);
-    await user.click(screen.getByRole('button', { name: /^Prazo:/ }));
-
-    await user.keyboard(key);
-
-    expect(screen.queryByLabelText('Prazo')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Prazo:/ })).toHaveFocus();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('ignores other keys while editing', async () => {

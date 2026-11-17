@@ -102,3 +102,18 @@ describe('ColorPicker', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('ColorPicker onChoose', () => {
+  it('fires on click but not on arrow selection', async () => {
+    const user = userEvent.setup();
+    const onChoose = vi.fn();
+    render(<ColorPicker label="Cor" value="azul" onChange={vi.fn()} onChoose={onChoose} />);
+    screen.getByRole('radio', { name: 'Azul' }).focus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(onChoose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('radio', { name: 'Rosa' }));
+    expect(onChoose).toHaveBeenCalledExactlyOnceWith('rosa');
+  });
+});

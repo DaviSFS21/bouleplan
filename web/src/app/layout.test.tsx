@@ -23,7 +23,7 @@ describe('RootLayout', () => {
     );
 
     expect(html).toMatch(/^<html lang="pt-BR" class="display-class body-class ui-class">/);
-    expect(html).toContain('<body><p>content</p></body>');
+    expect(html).toMatch(/<body><p>content<\/p><div role="status"[^>]*><\/div><\/body>/);
   });
 
   it('defines the app title and description', () => {

@@ -32,3 +32,27 @@
   font: var(--type-texto);
   color: var(--tinta-muted);
 }
+
+.titleButton {
+  max-width: 100%;
+  margin: 0 -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  overflow-wrap: anywhere;
+  text-align: left;
+  cursor: pointer;
+}
+
+.titleButton:hover {
+  background: var(--papel-elevado);
+}
+
+.titleButton:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}

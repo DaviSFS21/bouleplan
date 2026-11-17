@@ -2,6 +2,7 @@
 
 import { CircleAlert } from 'lucide-react';
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -21,6 +22,8 @@ interface InlineTextProps {
   maxLength?: number;
   placeholder?: string;
   error?: string | null;
+  validate?: (value: string) => string | null;
+  focusSignal?: number;
 }
 
 export function InlineText({
@@ -32,11 +35,22 @@ export function InlineText({
   maxLength,
   placeholder,
   error,
+  validate,
+  focusSignal = 0,
 }: Readonly<InlineTextProps>) {
   const [draft, setDraft] = useState(value);
   const [syncedValue, setSyncedValue] = useState(value);
   const reverting = useRef(false);
+  const [validation, setValidation] = useState<string | null>(null);
+  const field = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const errorId = useId();
+  const shownError = validation ?? error;
+
+  useEffect(() => {
+    if (focusSignal === 0) return;
+    field.current?.focus();
+    field.current?.select();
+  }, [focusSignal]);
 
   if (value !== syncedValue) {
     setSyncedValue(value);
@@ -45,6 +59,7 @@ export function InlineText({
 
   function handleChange(event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setDraft(event.target.value);
+    setValidation(null);
   }
 
   function handleBlur(event: FocusEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -52,7 +67,15 @@ export function InlineText({
       reverting.current = false;
       return;
     }
-    if (event.currentTarget.value !== value) onCommit(event.currentTarget.value);
+    const next = event.currentTarget.value;
+    if (next === value) return;
+    const message = validate?.(next) ?? null;
+    if (message) {
+      setValidation(message);
+      setDraft(value);
+      return;
+    }
+    onCommit(next);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -60,6 +83,7 @@ export function InlineText({
       event.stopPropagation();
       reverting.current = true;
       setDraft(value);
+      setValidation(null);
       event.currentTarget.blur();
     } else if (event.key === 'Enter' && !multiline && !event.nativeEvent.isComposing) {
       event.preventDefault();
@@ -68,10 +92,13 @@ export function InlineText({
   }
 
   const shared = {
+    ref: (element: HTMLInputElement | HTMLTextAreaElement | null) => {
+      field.current = element;
+    },
     className: [styles.field, styles[variant]].join(' '),
     'aria-label': label,
-    'aria-invalid': error ? true : undefined,
-    'aria-describedby': error ? errorId : undefined,
+    'aria-invalid': shownError ? true : undefined,
+    'aria-describedby': shownError ? errorId : undefined,
     value: draft,
     maxLength,
     placeholder,
@@ -83,10 +110,10 @@ export function InlineText({
   return (
     <div className={styles.wrapper}>
       {multiline ? <textarea {...shared} rows={3} /> : <input {...shared} type="text" />}
-      {error ? (
+      {shownError ? (
         <p id={errorId} role="alert" className={styles.error}>
           <Icon icon={CircleAlert} size={14} />
-          {error}
+          {shownError}
         </p>
       ) : null}
     </div>

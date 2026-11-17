@@ -26,6 +26,16 @@ function renderScreen() {
   return renderWithQuery(<InitiativesScreen />);
 }
 
+async function findItem(name: string) {
+  return within(await findIndex()).getByRole('button', { name: new RegExp(`^${name}`) });
+}
+
+function getItem(name: string) {
+  return within(screen.getByRole('navigation', { name: 'Iniciativas' })).getByRole('button', {
+    name: new RegExp(`^${name}`),
+  });
+}
+
 async function findIndex() {
   return screen.findByRole('navigation', { name: 'Iniciativas' });
 }
@@ -63,7 +73,7 @@ describe('InitiativesScreen loading and errors', () => {
     expect(screen.getByRole('main')).toContainElement(alert);
     await user.click(screen.getByRole('button', { name: 'Tentar de novo' }));
 
-    expect(await screen.findByRole('button', { name: /Reforma/ })).toBeInTheDocument();
+    expect(await findItem('Reforma')).toBeInTheDocument();
   });
 
   it('shows the empty note and keeps "+ Nova iniciativa" when there are no initiatives', async () => {
@@ -87,7 +97,9 @@ describe('InitiativesScreen index', () => {
     expect(buttons.map((button) => button.textContent)).toEqual([
       'Todas as tarefas',
       'Reformasem tarefas ainda',
+      '',
       'Hortasem tarefas ainda',
+      '',
       '+ Nova iniciativa',
     ]);
     expect(within(index).getAllByText('sem tarefas ainda')).toHaveLength(2);
@@ -95,7 +107,7 @@ describe('InitiativesScreen index', () => {
 
     const dot = buttons[1]?.querySelector<HTMLElement>('[style]');
     expect(dot?.style.getPropertyValue('--ini')).toBe('var(--ini-turquesa)');
-    const hortaDot = buttons[2]?.querySelector<HTMLElement>('[style]');
+    const hortaDot = buttons[3]?.querySelector<HTMLElement>('[style]');
     expect(hortaDot?.style.getPropertyValue('--ini')).toBe('var(--ini-verde)');
   });
 
@@ -118,11 +130,11 @@ describe('InitiativesScreen index', () => {
     serveInitiatives([reforma, horta]);
     renderScreen();
 
-    await user.click(await screen.findByRole('button', { name: /Horta/ }));
+    await user.click(await findItem('Horta'));
 
     expect(window.location.search).toBe(`?iniciativa=${horta.id}`);
-    expect(screen.getByRole('button', { name: /Horta/ })).toHaveAttribute('aria-current', 'true');
-    expect(screen.getByRole('button', { name: /Reforma/ })).not.toHaveAttribute('aria-current');
+    expect(getItem('Horta')).toHaveAttribute('aria-current', 'true');
+    expect(getItem('Reforma')).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('heading', { level: 1, name: 'Horta' })).toBeVisible();
     expect(screen.getByText('Iniciativa', { selector: 'p' })).toBeVisible();
     expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
@@ -149,7 +161,7 @@ describe('InitiativesScreen index', () => {
     renderScreen();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Horta' })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Horta/ })).toHaveAttribute('aria-current', 'true');
+    expect(getItem('Horta')).toHaveAttribute('aria-current', 'true');
   });
 
   it('falls back to "Todas as tarefas" when the URL names an unknown initiative', async () => {
@@ -209,11 +221,11 @@ describe('InitiativesScreen quick create', () => {
     });
     expect(body).toEqual({ name: 'Viagem' });
     expect(window.location.search).toBe(`?iniciativa=${created.id}`);
-    expect(screen.getByRole('button', { name: /Viagem/ })).toHaveAttribute('aria-current', 'true');
+    expect(getItem('Viagem')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('heading', { level: 1, name: 'Viagem' })).toBeVisible();
     expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
     expect(screen.getByRole('button', { name: '+ Nova iniciativa' })).toBeVisible();
-    expect(screen.getByRole('button', { name: /Viagem/ })).toHaveFocus();
+    expect(getItem('Viagem')).toHaveFocus();
   });
 
   it('makes the input read-only and busy, keeping focus, while the request is pending', async () => {
@@ -393,10 +405,7 @@ describe('InitiativesScreen quick create', () => {
     const field = await openField(user);
     await user.type(field, 'Viagem{Enter}');
 
-    expect(await screen.findByRole('button', { name: /Viagem/ })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(await findItem('Viagem')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('heading', { level: 1, name: 'Viagem' })).toBeVisible();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });

@@ -1,7 +1,14 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { Icon } from '@/components/icon/icon';
 import styles from './side-panel.module.css';
 
@@ -26,13 +33,17 @@ export function SidePanel({
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
 
-  useEffect(() => {
+  // Layout effects run before any child effect, so this still sees the opener, not a field a child focused.
+  useLayoutEffect(() => {
     const previous = opener?.current ?? document.activeElement;
-    panel.current?.focus();
     return () => {
       if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
     };
   }, [opener]);
+
+  useEffect(() => {
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
+  }, []);
 
   function handleKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') onClose();

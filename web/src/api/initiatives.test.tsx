@@ -7,7 +7,15 @@ import { createQueryClient } from '@/components/providers/providers';
 import { initiative, problemResponse } from '@/test/fixtures';
 import { server } from '@/test/server';
 import { ApiError } from './problem';
-import { useCreateInitiative, useInitiatives } from './initiatives';
+import {
+  useArchiveInitiative,
+  useCreateInitiative,
+  useDeleteInitiative,
+  useInitiatives,
+  useRestoreInitiative,
+  useUnarchiveInitiative,
+  useUpdateInitiative,
+} from './initiatives';
 
 function wrapper({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -140,5 +148,146 @@ describe('useCreateInitiative', () => {
     });
 
     expect(result.current.list.data).toEqual([initiative(), created]);
+  });
+});
+
+const HORTA_ID = '22222222-2222-4222-8222-222222222222';
+
+function useAllHooks() {
+  return {
+    list: useInitiatives(),
+    update: useUpdateInitiative(),
+    archive: useArchiveInitiative(),
+    unarchive: useUnarchiveInitiative(),
+    remove: useDeleteInitiative(),
+    restore: useRestoreInitiative(),
+  };
+}
+
+async function loaded(items: unknown[]) {
+  server.use(http.get('*/api/initiatives', () => HttpResponse.json(items)));
+  const rendered = renderHook(useAllHooks, { wrapper });
+  await waitFor(() => {
+    expect(rendered.result.current.list.data).toHaveLength(items.length);
+  });
+  return rendered;
+}
+
+describe('useUpdateInitiative', () => {
+  it('sends only the changed field as merge-patch JSON and updates the list', async () => {
+    const items = [initiative(), initiative({ id: HORTA_ID, name: 'Horta' })];
+    let contentType: string | null = null;
+    let body: unknown;
+    server.use(
+      http.patch('*/api/initiatives/:id', async ({ request, params }) => {
+        contentType = request.headers.get('content-type');
+        body = await request.json();
+        const updated = initiative({ id: String(params.id), name: 'Casa' });
+        items[0] = updated;
+        return HttpResponse.json(updated);
+      }),
+    );
+    const { result } = await loaded(items);
+
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        id: items[0]?.id ?? '',
+        changes: { name: 'Casa' },
+      });
+    });
+
+    expect(contentType).toBe('application/merge-patch+json');
+    expect(body).toEqual({ name: 'Casa' });
+    expect(result.current.list.data?.map(({ name }) => name)).toEqual(['Casa', 'Horta']);
+  });
+
+  it('sends null to clear a field', async () => {
+    let body: unknown;
+    server.use(
+      http.patch('*/api/initiatives/:id', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(initiative());
+      }),
+    );
+    const { result } = await loaded([initiative()]);
+
+    await act(async () => {
+      await result.current.update.mutateAsync({
+        id: initiative().id,
+        changes: { overallDeadline: null },
+      });
+    });
+
+    expect(body).toEqual({ overallDeadline: null });
+  });
+
+  it('rejects with the problem code', async () => {
+    server.use(
+      http.patch('*/api/initiatives/:id', () => problemResponse('initiative.description.too-long')),
+    );
+    const { result } = await loaded([initiative()]);
+
+    await act(async () => {
+      await expect(
+        result.current.update.mutateAsync({ id: initiative().id, changes: { description: 'x' } }),
+      ).rejects.toMatchObject({ code: 'initiative.description.too-long' });
+    });
+  });
+});
+
+describe('archive, delete and their undo', () => {
+  it.each([['archive'], ['remove']] as const)(
+    '%s removes the initiative from the list',
+    async (hook) => {
+      const items = [initiative(), initiative({ id: HORTA_ID, name: 'Horta' })];
+      server.use(
+        http.post('*/api/initiatives/:id/archive', ({ params }) => {
+          items.splice(0, items.length, ...items.filter(({ id }) => id !== params.id));
+          return HttpResponse.json(initiative({ id: String(params.id) }));
+        }),
+        http.delete('*/api/initiatives/:id', ({ params }) => {
+          items.splice(0, items.length, ...items.filter(({ id }) => id !== params.id));
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const { result } = await loaded(items);
+
+      await act(async () => {
+        await result.current[hook].mutateAsync(initiative().id);
+      });
+
+      expect(result.current.list.data?.map(({ id }) => id)).toEqual([HORTA_ID]);
+    },
+  );
+
+  it.each(['unarchive', 'restore'] as const)('%s brings the initiative back', async (hook) => {
+    const items: ReturnType<typeof initiative>[] = [initiative()];
+    const horta = initiative({ id: HORTA_ID, name: 'Horta' });
+    const back = () => {
+      items.push(horta);
+      return HttpResponse.json(horta);
+    };
+    server.use(
+      http.post('*/api/initiatives/:id/unarchive', back),
+      http.post('*/api/initiatives/:id/restore', back),
+    );
+    const { result } = await loaded(items);
+
+    await act(async () => {
+      await result.current[hook].mutateAsync(HORTA_ID);
+    });
+
+    expect(result.current.list.data).toEqual([initiative(), horta]);
+  });
+
+  it('rejects with the 404 problem', async () => {
+    server.use(http.post('*/api/initiatives/:id/archive', () => problemResponse('http.404', 404)));
+    const { result } = await loaded([initiative()]);
+
+    await act(async () => {
+      await expect(result.current.archive.mutateAsync(initiative().id)).rejects.toMatchObject({
+        status: 404,
+      });
+    });
   });
 });

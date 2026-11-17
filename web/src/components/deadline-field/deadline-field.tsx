@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
 import styles from './deadline-field.module.css';
 
 const FORMAT = new Intl.DateTimeFormat('pt-BR', {
@@ -39,9 +39,11 @@ export function DeadlineField({
   today = localToday(),
 }: Readonly<DeadlineFieldProps>) {
   const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const restoreFocus = useRef(false);
+  const finished = useRef(false);
   const overdue = value !== null && value < today;
   const text = value === null ? 'sem prazo' : formatDeadline(value);
 
@@ -56,13 +58,33 @@ export function DeadlineField({
     }
   }, [editing]);
 
+  function startEditing() {
+    finished.current = false;
+    setDraft(value ?? '');
+    setEditing(true);
+  }
+
+  function finish(next: string | null, returnFocus: boolean) {
+    finished.current = true;
+    restoreFocus.current = returnFocus;
+    setEditing(false);
+    if (next !== null && next !== (value ?? '')) onChange(next === '' ? null : next);
+  }
+
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Escape' || event.key === 'Enter') {
+    if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();
-      restoreFocus.current = true;
-      setEditing(false);
+      finish(null, true);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(event.currentTarget.value, true);
     }
+  }
+
+  function handleBlur(event: FocusEvent<HTMLInputElement>) {
+    if (finished.current) return;
+    finish(event.currentTarget.validity.badInput ? null : event.currentTarget.value, false);
   }
 
   return (
@@ -73,13 +95,11 @@ export function DeadlineField({
           type="date"
           className={styles.input}
           aria-label={label}
-          value={value ?? ''}
+          value={draft}
           onChange={(event) => {
-            onChange(event.target.value === '' ? null : event.target.value);
+            setDraft(event.target.value);
           }}
-          onBlur={() => {
-            setEditing(false);
-          }}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
         />
       ) : (
@@ -88,9 +108,7 @@ export function DeadlineField({
           type="button"
           className={[styles.value, overdue ? styles.overdue : ''].join(' ')}
           aria-label={`${label}: ${text}${overdue ? ', vencido' : ''}`}
-          onClick={() => {
-            setEditing(true);
-          }}
+          onClick={startEditing}
         >
           {text}
           {overdue ? <span className={styles.badge}>· vencido</span> : null}
@@ -101,6 +119,7 @@ export function DeadlineField({
           type="button"
           className={styles.remove}
           onClick={() => {
+            finished.current = true;
             restoreFocus.current = true;
             setEditing(false);
             onChange(null);

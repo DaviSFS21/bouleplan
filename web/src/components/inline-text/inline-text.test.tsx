@@ -138,3 +138,49 @@ describe('InlineText multiline', () => {
     expect(onCommit).toHaveBeenCalledExactlyOnceWith('a\nb');
   });
 });
+
+describe('InlineText validation and focus', () => {
+  it('shows the validation message, reverts the field and does not commit', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn();
+    const validate = (text: string) => (text.trim() === '' ? 'Dê um nome à iniciativa.' : null);
+    render(<InlineText label="Nome" value="Reforma" validate={validate} onCommit={onCommit} />);
+    const input = screen.getByRole('textbox', { name: 'Nome' });
+
+    await user.clear(input);
+    await user.tab();
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Dê um nome à iniciativa.');
+    expect(input).toHaveValue('Reforma');
+    expect(onCommit).not.toHaveBeenCalled();
+
+    await user.type(input, 'X');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('clears the validation message on Escape', async () => {
+    const user = userEvent.setup();
+    const validate = (text: string) => (text === '' ? 'Obrigatório' : null);
+    render(<InlineText label="Nome" value="Reforma" validate={validate} onCommit={vi.fn()} />);
+    const input = screen.getByRole('textbox', { name: 'Nome' });
+    await user.clear(input);
+    await user.tab();
+
+    await user.click(input);
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('focuses and selects the field when the focus signal changes', () => {
+    const { rerender } = render(
+      <InlineText label="Nome" value="Reforma" onCommit={vi.fn()} focusSignal={0} />,
+    );
+    const input = screen.getByRole('textbox', { name: 'Nome' });
+    expect(input).not.toHaveFocus();
+
+    rerender(<InlineText label="Nome" value="Reforma" onCommit={vi.fn()} focusSignal={1} />);
+
+    expect(input).toHaveFocus();
+  });
+});

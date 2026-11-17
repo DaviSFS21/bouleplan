@@ -42,9 +42,10 @@ interface ColorPickerProps {
   label: string;
   value: ColorToken;
   onChange: (token: ColorToken) => void;
+  onChoose?: (token: ColorToken) => void;
 }
 
-export function ColorPicker({ label, value, onChange }: Readonly<ColorPickerProps>) {
+export function ColorPicker({ label, value, onChange, onChoose }: Readonly<ColorPickerProps>) {
   const swatches = useRef(new Map<ColorToken, HTMLButtonElement>());
 
   function handleKeyDown(event: KeyboardEvent, token: ColorToken) {
@@ -76,6 +77,7 @@ export function ColorPicker({ label, value, onChange }: Readonly<ColorPickerProp
           style={{ '--swatch': `var(--ini-${token})` } as CSSProperties}
           onClick={() => {
             onChange(token);
+            onChoose?.(token);
           }}
           onKeyDown={(event) => {
             handleKeyDown(event, token);
