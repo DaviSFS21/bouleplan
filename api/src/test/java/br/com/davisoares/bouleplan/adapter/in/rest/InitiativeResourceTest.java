@@ -124,36 +124,34 @@ class InitiativeResourceTest {
     UUID otherUser = UUID.randomUUID();
     UUID foreignId = UUID.randomUUID();
     QuarkusTransaction.requiringNew()
-        .run(
-            () -> {
-              entityManager
-                  .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
-                  .setParameter(1, otherUser)
-                  .executeUpdate();
-              entityManager
-                  .createNativeQuery(
-                      "insert into initiative (id, user_id, name, color)"
-                          + " values (?1, ?2, 'Theirs', 'azul')")
-                  .setParameter(1, foreignId)
-                  .setParameter(2, otherUser)
-                  .executeUpdate();
-            });
+        .run(() -> {
+          entityManager
+              .createNativeQuery("insert into app_user (id, name) values (?1, 'Other')")
+              .setParameter(1, otherUser)
+              .executeUpdate();
+          entityManager
+              .createNativeQuery(
+                  "insert into initiative (id, user_id, name, color)"
+                      + " values (?1, ?2, 'Theirs', 'azul')")
+              .setParameter(1, foreignId)
+              .setParameter(2, otherUser)
+              .executeUpdate();
+        });
 
     try {
       given().when().get(InitiativeApi.PATH + "/" + foreignId).then().statusCode(404);
     } finally {
       QuarkusTransaction.requiringNew()
-          .run(
-              () -> {
-                entityManager
-                    .createNativeQuery("delete from initiative where user_id = ?1")
-                    .setParameter(1, otherUser)
-                    .executeUpdate();
-                entityManager
-                    .createNativeQuery("delete from app_user where id = ?1")
-                    .setParameter(1, otherUser)
-                    .executeUpdate();
-              });
+          .run(() -> {
+            entityManager
+                .createNativeQuery("delete from initiative where user_id = ?1")
+                .setParameter(1, otherUser)
+                .executeUpdate();
+            entityManager
+                .createNativeQuery("delete from app_user where id = ?1")
+                .setParameter(1, otherUser)
+                .executeUpdate();
+          });
     }
   }
 
@@ -163,12 +161,11 @@ class InitiativeResourceTest {
     String json = InitiativeApi.create("Gone");
     UUID id = UUID.fromString(JsonPath.from(json).getString("id"));
     QuarkusTransaction.requiringNew()
-        .run(
-            () ->
-                entityManager
-                    .createNativeQuery("update initiative set deleted_at = now() where id = ?1")
-                    .setParameter(1, id)
-                    .executeUpdate());
+        .run(() ->
+            entityManager
+                .createNativeQuery("update initiative set deleted_at = now() where id = ?1")
+                .setParameter(1, id)
+                .executeUpdate());
 
     given().when().get(InitiativeApi.PATH).then().body("$", Matchers.empty());
     given().when().get(InitiativeApi.PATH + "/" + id).then().statusCode(404);

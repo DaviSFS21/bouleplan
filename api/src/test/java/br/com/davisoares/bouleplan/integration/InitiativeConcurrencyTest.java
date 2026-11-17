@@ -42,11 +42,10 @@ class InitiativeConcurrencyTest {
         List<Future<Initiative>> futures = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
           futures.add(
-              executor.submit(
-                  () -> {
-                    start.await();
-                    return createInitiative.create("Parallel");
-                  }));
+              executor.submit(() -> {
+                start.await();
+                return createInitiative.create("Parallel");
+              }));
         }
         start.countDown();
 

@@ -12,9 +12,8 @@ public final class TestData {
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
     QuarkusTransaction.requiringNew()
-        .run(
-            () -> {
-              Initiative.deleteAll();
-            });
+        .run(() -> {
+          Initiative.deleteAll();
+        });
   }
 }
