@@ -1,12 +1,12 @@
 [versions]
-quarkus = "3.33.4.1"
+quarkus = "3.33.4.2"
 spotless = "8.10.4"
 google-java-format = "1.36.1"
 archunit = "1.5.1"
 assertj = "3.27.7"
 checkstyle = "14.3.0"
 pmd = "7.29.0"
-jacoco = "0.8.15"
+jacoco = "0.8.16"
 
 [libraries]
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
