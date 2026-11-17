@@ -1,0 +1,67 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.columns {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+  min-height: 24rem;
+  padding-bottom: var(--space-4);
+  overflow-x: auto;
+}
+
+.error {
+  margin: 0;
+  font: var(--type-rotulo);
+  color: var(--erro);
+}
+
+.status {
+  margin: 0;
+  font: var(--type-texto);
+  color: var(--tinta-muted);
+}
+
+.retry {
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--tinta-muted);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--tinta);
+  font: var(--type-botao);
+  cursor: pointer;
+}
+
+.retry:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.chooser {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+}
+
+.chooser select {
+  min-width: 0;
+  flex: 1;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--borda);
+  border-radius: var(--radius-sm);
+  background: var(--papel);
+  color: var(--tinta);
+  font: var(--type-meta);
+}
+
+.chooser select:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}

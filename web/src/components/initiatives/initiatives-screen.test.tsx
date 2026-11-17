@@ -21,6 +21,7 @@ const horta = initiative({
 function serveInitiatives(items: Initiative[]) {
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(items)),
+    http.get('*/api/tasks', () => HttpResponse.json([])),
     http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
   );
 }
@@ -96,6 +97,7 @@ describe('InitiativesScreen index', () => {
     renderScreen();
 
     const index = await findIndex();
+    await within(index).findAllByText('sem tarefas ainda');
     const buttons = within(index).getAllByRole('button');
     expect(buttons.map((button) => button.textContent)).toEqual([
       'Todas as tarefas',
@@ -125,7 +127,7 @@ describe('InitiativesScreen index', () => {
     );
     expect(screen.getByRole('heading', { level: 1, name: 'Todas as tarefas' })).toBeVisible();
     expect(screen.queryByText('Iniciativa', { selector: 'p' })).not.toBeInTheDocument();
-    expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'A fazer' })).toBeVisible();
   });
 
   it('selects an initiative: updates the URL, aria-current and the board header', async () => {
@@ -140,7 +142,7 @@ describe('InitiativesScreen index', () => {
     expect(getItem('Reforma')).not.toHaveAttribute('aria-current');
     expect(screen.getByRole('heading', { level: 1, name: 'Horta' })).toBeVisible();
     expect(screen.getByText('Iniciativa', { selector: 'p' })).toBeVisible();
-    expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'A fazer' })).toBeVisible();
   });
 
   it('goes back to "Todas as tarefas" by clearing the parameter', async () => {
@@ -208,6 +210,8 @@ describe('InitiativesScreen quick create', () => {
     let body: unknown;
     server.use(
       http.get('*/api/initiatives', () => HttpResponse.json(items)),
+      http.get('*/api/tasks', () => HttpResponse.json([])),
+      http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
       http.post('*/api/initiatives', async ({ request }) => {
         body = await request.json();
         items.push(created);
@@ -226,7 +230,7 @@ describe('InitiativesScreen quick create', () => {
     expect(window.location.search).toBe(`?iniciativa=${created.id}`);
     expect(getItem('Viagem')).toHaveAttribute('aria-current', 'true');
     expect(screen.getByRole('heading', { level: 1, name: 'Viagem' })).toBeVisible();
-    expect(screen.getByText('Nenhuma tarefa ainda.')).toBeVisible();
+    expect(await screen.findByRole('region', { name: 'A fazer' })).toBeVisible();
     expect(screen.getByRole('button', { name: '+ Nova iniciativa' })).toBeVisible();
     expect(getItem('Viagem')).toHaveFocus();
   });

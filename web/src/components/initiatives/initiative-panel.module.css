@@ -111,3 +111,22 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+.progress {
+  padding: 6px 0;
+}
+
+.phaseRow {
+  position: relative;
+}
+
+.phaseCount {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  pointer-events: none;
+}

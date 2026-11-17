@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
 import { runScoped as runScopedMutation } from './scoped-mutation';
+import { refetchTasks } from './tasks';
 import type { Initiative } from './types';
 
 const initiativesKey = ['initiatives'] as const;
@@ -107,6 +108,7 @@ export function useArchiveInitiative() {
             unwrap(api.POST('/initiatives/{id}/archive', { params: { path: { id: target } } })),
           (archived) => {
             setList(queryClient, (list) => removeFromList(list, archived.id));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -127,6 +129,7 @@ export function useUnarchiveInitiative() {
             unwrap(api.POST('/initiatives/{id}/unarchive', { params: { path: { id: target } } })),
           (restored) => {
             setList(queryClient, (list) => addToList(list, restored));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -149,6 +152,7 @@ export function useDeleteInitiative() {
           },
           (deleted) => {
             setList(queryClient, (list) => removeFromList(list, deleted));
+            refetchTasks(queryClient);
           },
         ),
     }),
@@ -169,6 +173,7 @@ export function useRestoreInitiative() {
             unwrap(api.POST('/initiatives/{id}/restore', { params: { path: { id: target } } })),
           (restored) => {
             setList(queryClient, (list) => addToList(list, restored));
+            refetchTasks(queryClient);
           },
         ),
     }),

@@ -83,3 +83,54 @@ export function phaseCountSuffix(count: number): string {
   if (count === 0) return '';
   return `, com ${String(count)} ${count === 1 ? 'fase' : 'fases'}`;
 }
+
+export const BLANK_TASK_TITLE_MESSAGE = 'Dê um título à tarefa.';
+
+const TASK_TITLE_MESSAGES: Readonly<Record<string, string>> = {
+  'task.title.blank': BLANK_TASK_TITLE_MESSAGE,
+  'task.title.too-long': 'Use no máximo 300 caracteres.',
+  'task.title.invalid-characters': 'O título tem caracteres inválidos.',
+};
+
+export const CREATE_TASK_FALLBACK_MESSAGE = 'Não foi possível criar a tarefa. Tente de novo.';
+export const ARCHIVE_TASK_FAILED_MESSAGE = 'Não foi possível arquivar a tarefa. Tente de novo.';
+export const DELETE_TASK_FAILED_MESSAGE = 'Não foi possível excluir a tarefa. Tente de novo.';
+
+export function createTaskMessage(error: unknown): string {
+  return error instanceof ApiError
+    ? (TASK_TITLE_MESSAGES[error.code] ?? CREATE_TASK_FALLBACK_MESSAGE)
+    : CREATE_TASK_FALLBACK_MESSAGE;
+}
+
+export type TaskField =
+  'title' | 'description' | 'deadline' | 'estimatedEffort' | 'priority' | 'status' | 'isBlocked';
+
+const UPDATE_TASK_MESSAGES: Readonly<Record<TaskField, Readonly<Record<string, string>>>> = {
+  title: TASK_TITLE_MESSAGES,
+  description: {
+    'task.description.too-long': 'Use no máximo 10.000 caracteres.',
+    'task.description.invalid-characters': 'A descrição tem caracteres inválidos.',
+  },
+  deadline: { 'task.deadline.invalid': 'Use uma data válida.' },
+  estimatedEffort: { 'task.effort.invalid': 'Use de 0,01 a 999 horas, com até 2 casas decimais.' },
+  priority: {},
+  status: {},
+  isBlocked: {},
+};
+
+const UPDATE_TASK_FALLBACK_MESSAGES: Readonly<Record<TaskField, string>> = {
+  title: 'Não foi possível salvar o título. Tente de novo.',
+  description: 'Não foi possível salvar a descrição. Tente de novo.',
+  deadline: 'Não foi possível salvar o prazo. Tente de novo.',
+  estimatedEffort: 'Não foi possível salvar o esforço. Tente de novo.',
+  priority: 'Não foi possível mudar a prioridade. Tente de novo.',
+  status: 'Não foi possível mover a tarefa. Tente de novo.',
+  isBlocked: 'Não foi possível atualizar o bloqueio. Tente de novo.',
+};
+
+export function updateTaskMessage(error: unknown, field: TaskField): string {
+  const fallback = UPDATE_TASK_FALLBACK_MESSAGES[field];
+  return error instanceof ApiError
+    ? (UPDATE_TASK_MESSAGES[field][error.code] ?? fallback)
+    : fallback;
+}

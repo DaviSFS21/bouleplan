@@ -68,17 +68,34 @@ hexagonal architecture on the production classes:
 | `DELETE` | `/phases/{id}` | 204 (soft delete); active phase only, else 404 |
 | `POST` | `/phases/{id}/restore` | 200; deleted (or not deleted: no-op, so an archived phase stays archived while the body looks active), else 404 |
 
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/tasks` | 200, active tasks whose phase and initiative are active, by priority (P1 first), deadline (none last), creation, id |
+| `POST` | `/initiatives/{id}/tasks` | 201 with `Location: /tasks/{id}`; body `{"title": "...", "phaseId": "uuid" (optional, null = implicit), "status": "to_do" (optional)}`; 404 if the initiative is not active and the user's, or `phaseId` is not an active named phase of it |
+| `GET` | `/tasks/{id}` | 200 if the task, its phase and its initiative are active and the user's, else 404 |
+| `PATCH` | `/tasks/{id}` | 200; merge patch of `title`, `description`, `deadline`, `estimatedEffort`, `priority`, `status`, `isBlocked`: absent keeps, `null` clears `description`, `deadline` and `estimatedEffort`; `null` on the others is 400 `http.400`; active task only, else 404 |
+| `POST` | `/tasks/{id}/archive` | 200; active task only, else 404 |
+| `POST` | `/tasks/{id}/unarchive` | 200; archived (or already active: no-op), else 404 |
+| `DELETE` | `/tasks/{id}` | 204 (soft delete); active task only, else 404 |
+| `POST` | `/tasks/{id}/restore` | 200; deleted (or not deleted: no-op), else 404 |
+
+A task without `phaseId` goes to the initiative's implicit phase, created on demand and reused, even
+when the initiative has named phases; the task JSON shows it as `phaseId: null`. A task answers 404
+whenever its phase or initiative is archived, deleted or not the user's; its own state is untouched
+and it returns with them.
+
 Implicit phases are never exposed. A phase answers 404 whenever its initiative is archived, deleted
 or not the user's; its own state is untouched and it returns with the initiative.
 
-Create and patch bodies are strict: unknown fields and non-string values are 400 `http.400`.
+Create and patch bodies are strict: unknown fields, mistyped values, unknown enum values, malformed
+dates and duplicate keys are 400 `http.400`.
 
 Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail` and `code`.
 Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |
@@ -89,7 +106,9 @@ Deadlines must have a year from 1 to 9999.
 Writes to one initiative (update, archive, unarchive, delete, restore) load it with
 `select ... for update`, so concurrent writes are serialized and none is lost.
 
-Lock order: initiative, then phase, then task. Phase writes lock the owning initiative row first.
+Lock order: initiative, then phase, then task. Phase writes lock the owning initiative row first;
+task writes lock the initiative, the phase and the task (parent ids are read without loading the
+child). A task create locks the initiative, which serializes the creation of the implicit phase.
 
 Concurrent creates are serialized per user: the use case locks the user's `app_user` row
 (`select ... for update`) before choosing a color.

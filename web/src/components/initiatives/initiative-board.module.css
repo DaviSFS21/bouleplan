@@ -27,12 +27,6 @@
   overflow-wrap: anywhere;
 }
 
-.empty {
-  margin: 0;
-  font: var(--type-texto);
-  color: var(--tinta-muted);
-}
-
 .overlineButton,
 .titleButton {
   max-width: 100%;

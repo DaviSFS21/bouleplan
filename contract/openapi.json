@@ -26,6 +26,35 @@
                     }
                 }
             },
+            "CreateTaskRequest": {
+                "type": "object",
+                "required": [
+                    "title"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 300
+                    },
+                    "phaseId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "An active named phase of the initiative; absent or null means the implicit phase",
+                        "format": "uuid"
+                    },
+                    "status": {
+                        "type": "string",
+                        "default": "to_do",
+                        "enum": [
+                            "to_do",
+                            "in_progress",
+                            "done"
+                        ]
+                    }
+                }
+            },
             "Initiative": {
                 "required": [
                     "id",
@@ -167,6 +196,96 @@
                     }
                 }
             },
+            "Task": {
+                "required": [
+                    "id",
+                    "initiativeId",
+                    "phaseId",
+                    "title",
+                    "description",
+                    "deadline",
+                    "estimatedEffort",
+                    "priority",
+                    "status",
+                    "isBlocked",
+                    "plannedWeekStart",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "initiativeId": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "phaseId": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null when the task is in the implicit phase",
+                        "format": "uuid"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "deadline": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "estimatedEffort": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "format": "double",
+                        "description": "Hours"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "P1",
+                            "P2",
+                            "P3"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "to_do",
+                            "in_progress",
+                            "done"
+                        ]
+                    },
+                    "isBlocked": {
+                        "type": "boolean"
+                    },
+                    "plannedWeekStart": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "createdAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    },
+                    "updatedAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    }
+                }
+            },
             "UUID": {
                 "type": "string",
                 "format": "uuid",
@@ -216,6 +335,57 @@
                         "maxLength": 200
                     }
                 }
+            },
+            "UpdateTaskRequest": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 300
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 10000
+                    },
+                    "deadline": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date"
+                    },
+                    "estimatedEffort": {
+                        "type": [
+                            "number",
+                            "null"
+                        ],
+                        "maximum": 999,
+                        "exclusiveMinimum": 0,
+                        "description": "Hours: above 0, at most 999, at most 2 decimals"
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "P1",
+                            "P2",
+                            "P3"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "to_do",
+                            "in_progress",
+                            "done"
+                        ]
+                    },
+                    "isBlocked": {
+                        "type": "boolean"
+                    }
+                }
             }
         }
     },
@@ -225,6 +395,9 @@
         },
         {
             "name": "Phases"
+        },
+        {
+            "name": "Tasks"
         }
     ],
     "paths": {
@@ -623,6 +796,72 @@
                 }
             }
         },
+        "/initiatives/{id}/tasks": {
+            "post": {
+                "summary": "Creates a task in an active initiative; without phaseId it goes to the implicit phase",
+                "operationId": "createTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Task created",
+                        "headers": {
+                            "Location": {
+                                "description": "URI of the created task"
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active initiative with this id, or phaseId is not an active named phase of it",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/initiatives/{id}/unarchive": {
             "post": {
                 "summary": "Unarchives an initiative; a no-op if it is already active",
@@ -913,6 +1152,290 @@
                     },
                     "404": {
                         "description": "No archived or active phase with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks": {
+            "get": {
+                "summary": "Lists the active tasks whose phase and initiative are active, by priority, deadline and creation",
+                "operationId": "listTasks",
+                "tags": [
+                    "Tasks"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Visible tasks",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/Task"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}": {
+            "delete": {
+                "summary": "Deletes an active task",
+                "operationId": "deleteTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Task deleted"
+                    },
+                    "404": {
+                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Updates an active task; absent fields stay, null clears where allowed",
+                "operationId": "updateTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/merge-patch+json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTaskRequest"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Gets an active task by id",
+                "operationId": "getTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/archive": {
+            "post": {
+                "summary": "Archives an active task",
+                "operationId": "archiveTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The archived task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/restore": {
+            "post": {
+                "summary": "Restores a deleted task; a no-op if it is not deleted",
+                "operationId": "restoreTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No task with this id in an active phase and initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{id}/unarchive": {
+            "post": {
+                "summary": "Unarchives a task; a no-op if it is already active",
+                "operationId": "unarchiveTask",
+                "tags": [
+                    "Tasks"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Task"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No archived or active task with this id in an active phase and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

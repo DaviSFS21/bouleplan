@@ -149,7 +149,7 @@ for (const [action, message] of [
     await panel(page).getByRole('button', { name: 'Ações da iniciativa' }).click();
     await page.getByRole('menuitem', { name: action }).click();
 
-    await expect(page.getByRole('status')).toContainText(message);
+    await expect(page.getByRole('status', { name: 'Avisos' })).toContainText(message);
     await expect(panel(page)).toBeHidden();
     await expect(initiativeItem(page, 'Horta')).toBeHidden();
     await expect(page.getByRole('heading', { level: 1, name: 'Todas as tarefas' })).toBeVisible();
@@ -158,7 +158,7 @@ for (const [action, message] of [
 
     await expect(initiativeItem(page, 'Horta')).toHaveAttribute('aria-current', 'true');
     await expect(page.getByRole('heading', { level: 1, name: 'Horta' })).toBeVisible();
-    await expect(page.getByRole('status')).not.toContainText(message);
+    await expect(page.getByRole('status', { name: 'Avisos' })).not.toContainText(message);
   });
 }
 
@@ -241,7 +241,7 @@ for (const [action, message] of [
     await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
     await page.getByRole('menuitem', { name: action }).click();
 
-    await expect(page.getByRole('status')).toContainText(message);
+    await expect(page.getByRole('status', { name: 'Avisos' })).toContainText(message);
     await expect(initiativeItem(page, 'Horta')).toBeHidden();
     await expect(page).toHaveURL(url);
     await expect(page.getByRole('heading', { level: 1, name: 'Casa' })).toBeVisible();
@@ -261,7 +261,7 @@ test('moves focus to a stable item after archiving', async ({ page }) => {
   await page.getByRole('button', { name: 'Ações de Horta', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
 
-  await expect(page.getByRole('status')).toContainText('Iniciativa arquivada');
+  await expect(page.getByRole('status', { name: 'Avisos' })).toContainText('Iniciativa arquivada');
   await expect(initiativeItem(page, 'Casa')).toBeFocused();
 });
 
@@ -270,11 +270,13 @@ test('undoes an archive with Ctrl+Z', async ({ page }) => {
   await openPanel(page, 'Horta');
   await panel(page).getByRole('button', { name: 'Ações da iniciativa' }).click();
   await page.getByRole('menuitem', { name: 'Arquivar' }).click();
-  await expect(page.getByRole('status')).toContainText('Iniciativa arquivada');
+  await expect(page.getByRole('status', { name: 'Avisos' })).toContainText('Iniciativa arquivada');
   await expect(initiativeItem(page, 'Horta')).toBeHidden();
 
   await page.keyboard.press('Control+z');
 
   await expect(initiativeItem(page, 'Horta')).toHaveAttribute('aria-current', 'true');
-  await expect(page.getByRole('status')).not.toContainText('Iniciativa arquivada');
+  await expect(page.getByRole('status', { name: 'Avisos' })).not.toContainText(
+    'Iniciativa arquivada',
+  );
 });

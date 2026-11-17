@@ -1,0 +1,189 @@
+package br.com.davisoares.bouleplan.application.service;
+
+import br.com.davisoares.bouleplan.application.port.in.ArchiveTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.CreateTaskCommand;
+import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.DeleteTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.GetTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.ListTasksUseCase;
+import br.com.davisoares.bouleplan.application.port.in.RestoreTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.UnarchiveTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.in.UpdateTaskCommand;
+import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
+import br.com.davisoares.bouleplan.application.port.out.CurrentUser;
+import br.com.davisoares.bouleplan.application.port.out.InitiativeRepository;
+import br.com.davisoares.bouleplan.application.port.out.PhaseRepository;
+import br.com.davisoares.bouleplan.application.port.out.TaskRepository;
+import br.com.davisoares.bouleplan.domain.Initiative;
+import br.com.davisoares.bouleplan.domain.Phase;
+import br.com.davisoares.bouleplan.domain.Task;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/** Use cases for tasks. */
+@SuppressWarnings("PMD.TooManyMethods") // one method per use case plus the lock helpers
+@ApplicationScoped
+public class TaskService
+    implements ListTasksUseCase,
+        CreateTaskUseCase,
+        GetTaskUseCase,
+        UpdateTaskUseCase,
+        ArchiveTaskUseCase,
+        UnarchiveTaskUseCase,
+        DeleteTaskUseCase,
+        RestoreTaskUseCase {
+
+  private final TaskRepository tasks;
+  private final PhaseRepository phases;
+  private final InitiativeRepository initiatives;
+  private final CurrentUser currentUser;
+
+  /** Wires the outbound ports. */
+  public TaskService(
+      TaskRepository tasks,
+      PhaseRepository phases,
+      InitiativeRepository initiatives,
+      CurrentUser currentUser) {
+    this.tasks = tasks;
+    this.phases = phases;
+    this.initiatives = initiatives;
+    this.currentUser = currentUser;
+  }
+
+  @Override
+  public List<Task> listActive() {
+    return tasks.findVisibleByUser(currentUser.id());
+  }
+
+  // Locking the initiative serializes the creation of the implicit phase.
+  @Override
+  @Transactional
+  public Optional<Task> create(UUID initiativeId, CreateTaskCommand command) {
+    return initiatives
+        .findByIdAndUserForUpdate(initiativeId, currentUser.id())
+        .filter(Initiative::isActive)
+        .flatMap(initiative -> phaseFor(initiative, command.phaseId()))
+        .map(phase -> {
+          Task task = Task.create(phase, command.title(), command.status());
+          tasks.save(task);
+          return task;
+        });
+  }
+
+  @Override
+  public Optional<Task> find(UUID id) {
+    return tasks.findVisibleByIdAndUser(id, currentUser.id());
+  }
+
+  @Override
+  @Transactional
+  public Optional<Task> update(UUID id, UpdateTaskCommand command) {
+    return findActiveForUpdate(id)
+        .map(task -> {
+          if (command.title().present()) {
+            task.rename(command.title().value());
+          }
+          if (command.description().present()) {
+            task.describe(command.description().value());
+          }
+          if (command.deadline().present()) {
+            task.scheduleDeadline(command.deadline().value());
+          }
+          if (command.estimatedEffort().present()) {
+            task.estimate(command.estimatedEffort().value());
+          }
+          if (command.priority().present()) {
+            task.prioritize(command.priority().value());
+          }
+          if (command.status().present()) {
+            task.moveTo(command.status().value());
+          }
+          if (command.blocked().present()) {
+            task.markBlocked(command.blocked().value());
+          }
+          return task;
+        });
+  }
+
+  @Override
+  @Transactional
+  public Optional<Task> archive(UUID id) {
+    return findActiveForUpdate(id)
+        .map(task -> {
+          task.archive();
+          return task;
+        });
+  }
+
+  @Override
+  @Transactional
+  public Optional<Task> unarchive(UUID id) {
+    return lockForWrite(id)
+        .filter(task -> !task.isDeleted())
+        .map(task -> {
+          task.unarchive();
+          return task;
+        });
+  }
+
+  @Override
+  @Transactional
+  public Optional<Task> delete(UUID id) {
+    return findActiveForUpdate(id)
+        .map(task -> {
+          task.softDelete();
+          return task;
+        });
+  }
+
+  @Override
+  @Transactional
+  public Optional<Task> restore(UUID id) {
+    return lockForWrite(id)
+        .map(task -> {
+          task.restore();
+          return task;
+        });
+  }
+
+  private Optional<Phase> phaseFor(Initiative initiative, UUID phaseId) {
+    return phaseId == null
+        ? Optional.of(implicitPhaseOf(initiative.getId()))
+        : phases
+            .findByIdAndInitiativeForUpdate(phaseId, initiative.getId())
+            .filter(phase -> !phase.isImplicit() && phase.isActive());
+  }
+
+  private Phase implicitPhaseOf(UUID initiativeId) {
+    return phases
+        .findImplicitByInitiativeForUpdate(initiativeId)
+        .orElseGet(() -> {
+          Phase phase = Phase.createImplicit(initiativeId);
+          phases.save(phase);
+          return phase;
+        });
+  }
+
+  private Optional<Task> findActiveForUpdate(UUID id) {
+    return lockForWrite(id).filter(Task::isActive);
+  }
+
+  // Lock order: initiative, then phase, then task. Nothing is loaded before its parent is locked.
+  private Optional<Task> lockForWrite(UUID id) {
+    UUID userId = currentUser.id();
+    return tasks
+        .findLocation(id)
+        .flatMap(location ->
+            initiatives
+                .findByIdAndUserForUpdate(location.initiativeId(), userId)
+                .filter(Initiative::isActive)
+                .flatMap(initiative ->
+                    phases.findByIdAndInitiativeForUpdate(
+                        location.phaseId(), location.initiativeId()))
+                .filter(Phase::isActive)
+                .flatMap(phase -> tasks.findByIdForUpdate(id)));
+  }
+}

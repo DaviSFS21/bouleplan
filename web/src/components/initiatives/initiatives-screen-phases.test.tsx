@@ -60,6 +60,7 @@ function serve(initiatives: Initiative[], phases: Phase[]): Backend {
   };
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(backend.initiatives)),
+    http.get('*/api/tasks', () => HttpResponse.json([])),
     http.post('*/api/initiatives/:id/archive', ({ params }) =>
       HttpResponse.json(backend.initiatives.find((item) => item.id === params.id)),
     ),

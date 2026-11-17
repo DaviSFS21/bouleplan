@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Persistence port for phases. Implicit phases are never returned. */
+/** Persistence port for phases. Only the task use cases reach implicit phases. */
 public interface PhaseRepository {
 
   /** Persists a new phase. */
@@ -25,4 +25,13 @@ public interface PhaseRepository {
    * until the transaction ends.
    */
   Optional<Phase> findNamedByIdAndUserForUpdate(UUID id, UUID userId);
+
+  /**
+   * A phase of any kind and state of the given initiative, locked for update until the transaction
+   * ends.
+   */
+  Optional<Phase> findByIdAndInitiativeForUpdate(UUID id, UUID initiativeId);
+
+  /** The implicit phase of an initiative, if it exists, locked for update. */
+  Optional<Phase> findImplicitByInitiativeForUpdate(UUID initiativeId);
 }

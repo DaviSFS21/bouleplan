@@ -42,7 +42,9 @@ describe('Toast', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Iniciativa arquivada');
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
+      'Iniciativa arquivada',
+    );
     expect(screen.getByRole('button', { name: 'Desfazer' })).toBeInTheDocument();
   });
 
@@ -148,7 +150,7 @@ describe('Toast', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent(
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
       'Iniciativa arquivada (Ctrl+Z para desfazer)',
     );
   });
@@ -202,5 +204,35 @@ describe('Toast', () => {
     expect(() => render(<Trigger options={{ message: 'x', onUndo: vi.fn() }} />)).toThrow(
       'useToast must be used inside a ToastProvider',
     );
+  });
+});
+
+describe('Toast as a plain notice', () => {
+  it('has no undo button or hint and ignores Ctrl+Z, but still goes away', () => {
+    const outside = vi.fn();
+    document.addEventListener('keydown', outside);
+    setup({ message: 'Não foi possível desfazer.' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mostrar' }));
+    const event = new KeyboardEvent('keydown', {
+      key: 'z',
+      ctrlKey: true,
+      cancelable: true,
+      bubbles: true,
+    });
+    document.dispatchEvent(event);
+
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent(
+      'Não foi possível desfazer.',
+    );
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ctrl\+Z/)).not.toBeInTheDocument();
+    expect(event.defaultPrevented).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(6000);
+    });
+    expect(screen.queryByText('Não foi possível desfazer.')).not.toBeInTheDocument();
+    document.removeEventListener('keydown', outside);
   });
 });

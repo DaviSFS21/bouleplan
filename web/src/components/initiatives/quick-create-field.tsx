@@ -1,11 +1,11 @@
 'use client';
 
 import { CircleAlert } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Icon } from '@/components/icon/icon';
 import styles from './quick-create-field.module.css';
 
-const NAME_MAX_LENGTH = 200;
+const DEFAULT_MAX_LENGTH = 200;
 
 interface QuickCreateFieldProps {
   triggerLabel: string;
@@ -17,6 +17,11 @@ interface QuickCreateFieldProps {
   keepOpen?: boolean;
   // Each new positive value opens the field and focuses it.
   openSignal?: number;
+  variant?: 'index' | 'task';
+  maxLength?: number;
+  // Extra controls shown under the input, inside the same field.
+  children?: ReactNode;
+  triggerData?: string;
 }
 
 export function QuickCreateField({
@@ -28,6 +33,10 @@ export function QuickCreateField({
   onCreate,
   keepOpen = false,
   openSignal = 0,
+  variant = 'index',
+  maxLength = DEFAULT_MAX_LENGTH,
+  children,
+  triggerData,
 }: Readonly<QuickCreateFieldProps>) {
   const [open, setOpen] = useState(false);
   const [handledSignal, setHandledSignal] = useState(0);
@@ -37,6 +46,7 @@ export function QuickCreateField({
   const restoreFocus = useRef(false);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const field = useRef<HTMLDivElement>(null);
   const errorId = useId();
   const hintId = useId();
 
@@ -81,9 +91,9 @@ export function QuickCreateField({
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (pending) return;
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+    if (event.key === 'Enter' && event.target === input.current && !event.nativeEvent.isComposing) {
       event.preventDefault();
       void submit();
     } else if (event.key === 'Escape') {
@@ -98,7 +108,8 @@ export function QuickCreateField({
       <button
         ref={trigger}
         type="button"
-        className={styles.new}
+        className={[styles.new, styles[variant]].join(' ')}
+        data-quick-create={triggerData}
         onClick={() => {
           setOpen(true);
         }}
@@ -109,12 +120,20 @@ export function QuickCreateField({
   }
 
   return (
-    <div className={styles.field}>
+    <div
+      ref={field}
+      className={[styles.field, styles[variant]].join(' ')}
+      onKeyDown={handleKeyDown}
+      onBlur={(event) => {
+        const leaving = !field.current?.contains(event.relatedTarget);
+        if (leaving && !pending && name === '') close();
+      }}
+    >
       <input
         ref={input}
         className={error ? [styles.input, styles.inputError].join(' ') : styles.input}
         type="text"
-        maxLength={NAME_MAX_LENGTH}
+        maxLength={maxLength}
         placeholder={placeholder}
         aria-label={inputLabel}
         aria-invalid={error ? true : undefined}
@@ -126,10 +145,6 @@ export function QuickCreateField({
           setName(event.target.value);
           setError(null);
         }}
-        onKeyDown={handleKeyDown}
-        onBlur={() => {
-          if (!pending && name === '') close();
-        }}
       />
       {error ? (
         <p id={errorId} role="alert" className={styles.error}>
@@ -137,6 +152,7 @@ export function QuickCreateField({
           {error}
         </p>
       ) : null}
+      {children}
       <span id={hintId} className={styles.meta}>
         Enter cria · Esc cancela
       </span>

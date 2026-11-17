@@ -4,6 +4,9 @@ import {
   RENAME_PHASE_FALLBACK_MESSAGE,
   createInitiativeMessage,
   createPhaseMessage,
+  createTaskMessage,
+  CREATE_TASK_FALLBACK_MESSAGE,
+  updateTaskMessage,
   phaseCountSuffix,
   renamePhaseMessage,
   updateInitiativeMessage,
@@ -94,5 +97,42 @@ describe('phase messages', () => {
     [3, ', com 3 fases'],
   ])('suffixes %s phases as "%s"', (count, suffix) => {
     expect(phaseCountSuffix(count)).toBe(suffix);
+  });
+});
+
+describe('task messages', () => {
+  it.each([
+    ['task.title.blank', 'Dê um título à tarefa.'],
+    ['task.title.too-long', 'Use no máximo 300 caracteres.'],
+    ['task.title.invalid-characters', 'O título tem caracteres inválidos.'],
+    ['http.404', CREATE_TASK_FALLBACK_MESSAGE],
+  ])('maps %s when creating', (code, message) => {
+    expect(createTaskMessage(failure(code))).toBe(message);
+  });
+
+  it.each([
+    ['title', 'task.title.blank', 'Dê um título à tarefa.'],
+    ['title', 'internal', 'Não foi possível salvar o título. Tente de novo.'],
+    ['priority', 'task.title.blank', 'Não foi possível mudar a prioridade. Tente de novo.'],
+    ['status', 'internal', 'Não foi possível mover a tarefa. Tente de novo.'],
+    ['description', 'task.description.too-long', 'Use no máximo 10.000 caracteres.'],
+    ['description', 'task.description.invalid-characters', 'A descrição tem caracteres inválidos.'],
+    ['deadline', 'task.deadline.invalid', 'Use uma data válida.'],
+    [
+      'estimatedEffort',
+      'task.effort.invalid',
+      'Use de 0,01 a 999 horas, com até 2 casas decimais.',
+    ],
+    ['deadline', 'internal', 'Não foi possível salvar o prazo. Tente de novo.'],
+    ['isBlocked', 'internal', 'Não foi possível atualizar o bloqueio. Tente de novo.'],
+  ] as const)('maps %s failures with %s when updating', (field, code, message) => {
+    expect(updateTaskMessage(failure(code), field)).toBe(message);
+  });
+
+  it('uses the fallbacks for errors that are not ApiError', () => {
+    expect(createTaskMessage(new TypeError('x'))).toBe(CREATE_TASK_FALLBACK_MESSAGE);
+    expect(updateTaskMessage(new TypeError('x'), 'title')).toBe(
+      'Não foi possível salvar o título. Tente de novo.',
+    );
   });
 });

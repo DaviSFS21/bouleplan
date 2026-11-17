@@ -1,5 +1,5 @@
 import { HttpResponse } from 'msw';
-import type { Initiative, Phase } from '@/api/types';
+import type { Initiative, Phase, Task } from '@/api/types';
 
 export function initiative(overrides: Partial<Initiative> = {}): Initiative {
   return {
@@ -51,4 +51,23 @@ export function problemResponse(code: string, status = 400, detail = 'Problem de
     { ...problemKind(code), status, detail, code },
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
+}
+
+export function task(overrides: Partial<Task> = {}): Task {
+  return {
+    id: 'a1a1a1a1-0000-4000-8000-000000000001',
+    initiativeId: '11111111-1111-4111-8111-111111111111',
+    phaseId: null,
+    title: 'Comprar tinta',
+    description: null,
+    deadline: null,
+    estimatedEffort: null,
+    priority: 'P2',
+    status: 'to_do',
+    isBlocked: false,
+    plannedWeekStart: null,
+    createdAt: '2026-01-01T10:00:00-03:00',
+    updatedAt: '2026-01-01T10:00:00-03:00',
+    ...overrides,
+  };
 }
