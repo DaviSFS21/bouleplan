@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 class PhaseWriteConcurrencyTest {
 
   private static final int ROUNDS = 25;
+  private static final String STUDY = "Study";
   private static final String RENAMED = "Renamed";
   private static final String ORIGINAL = "Original";
   private static final String ROUND_MESSAGE = "round %d";
@@ -89,7 +90,7 @@ class PhaseWriteConcurrencyTest {
   @Test
   @DisplayName("a rename racing an archive of the same phase ends archived, never active")
   void renameAndArchive() throws ExecutionException, InterruptedException {
-    UUID initiativeId = createInitiative.create("Study").getId();
+    UUID initiativeId = createInitiative.create(STUDY).getId();
     for (int round = 0; round < ROUNDS; round++) {
       UUID id = createPhase.create(initiativeId, ORIGINAL).orElseThrow().getId();
 
@@ -105,7 +106,7 @@ class PhaseWriteConcurrencyTest {
   @Test
   @DisplayName("two archives of the same phase have exactly one winner")
   void parallelArchives() throws ExecutionException, InterruptedException {
-    UUID initiativeId = createInitiative.create("Study").getId();
+    UUID initiativeId = createInitiative.create(STUDY).getId();
     for (int round = 0; round < ROUNDS; round++) {
       UUID id = createPhase.create(initiativeId, ORIGINAL).orElseThrow().getId();
       List<Boolean> outcomes = newOutcomes();
@@ -120,10 +121,26 @@ class PhaseWriteConcurrencyTest {
   }
 
   @Test
+  @DisplayName("a rename racing an initiative archive is either applied first or refused")
+  void renameAndArchiveInitiative() throws ExecutionException, InterruptedException {
+    UUID initiativeId = createInitiative.create(STUDY).getId();
+    for (int round = 0; round < ROUNDS; round++) {
+      UUID id = createPhase.create(initiativeId, ORIGINAL + round).orElseThrow().getId();
+
+      race(
+          () -> updatePhase.update(id, renameTo(RENAMED)),
+          () -> archiveInitiative.archive(initiativeId));
+
+      assertThat(reload(id).getName()).as(ROUND_MESSAGE, round).isIn(ORIGINAL + round, RENAMED);
+      TestData.unarchiveInitiative(entityManager, initiativeId);
+    }
+  }
+
+  @Test
   @DisplayName("a phase created while its initiative is archived is either stored or refused")
   void createAndArchiveInitiative() throws ExecutionException, InterruptedException {
     for (int round = 0; round < ROUNDS; round++) {
-      UUID initiativeId = createInitiative.create("Study " + round).getId();
+      UUID initiativeId = createInitiative.create(STUDY + round).getId();
       List<Boolean> created = newOutcomes();
 
       race(

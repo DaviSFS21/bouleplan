@@ -94,8 +94,7 @@ public class PhaseService
   @Override
   @Transactional
   public Optional<Phase> unarchive(UUID id) {
-    return phases
-        .findNamedByIdAndUserForUpdate(id, currentUser.id())
+    return lockForWrite(id)
         .filter(phase -> !phase.isDeleted())
         .map(phase -> {
           phase.unarchive();
@@ -116,8 +115,7 @@ public class PhaseService
   @Override
   @Transactional
   public Optional<Phase> restore(UUID id) {
-    return phases
-        .findNamedByIdAndUserForUpdate(id, currentUser.id())
+    return lockForWrite(id)
         .map(phase -> {
           phase.restore();
           return phase;
@@ -125,6 +123,16 @@ public class PhaseService
   }
 
   private Optional<Phase> findActiveForUpdate(UUID id) {
-    return phases.findNamedByIdAndUserForUpdate(id, currentUser.id()).filter(Phase::isActive);
+    return lockForWrite(id).filter(Phase::isActive);
+  }
+
+  // Lock order: initiative, then phase. The phase is not loaded before its initiative is locked.
+  private Optional<Phase> lockForWrite(UUID id) {
+    UUID userId = currentUser.id();
+    return phases
+        .findInitiativeIdOfNamed(id)
+        .flatMap(initiativeId -> initiatives.findByIdAndUserForUpdate(initiativeId, userId))
+        .filter(Initiative::isActive)
+        .flatMap(initiative -> phases.findNamedByIdAndUserForUpdate(id, userId));
   }
 }

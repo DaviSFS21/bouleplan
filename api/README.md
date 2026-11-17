@@ -57,12 +57,28 @@ hexagonal architecture on the production classes:
 | `DELETE` | `/initiatives/{id}` | 204 (soft delete); active only, else 404 |
 | `POST` | `/initiatives/{id}/restore` | 200; deleted (or not deleted: no-op), else 404 |
 
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/initiatives/{id}/phases` | 200, active named phases in creation order; 404 if the initiative is not active and the user's |
+| `POST` | `/initiatives/{id}/phases` | 201 with `Location: /phases/{id}`; body `{"name": "..."}`; 404 as above |
+| `GET` | `/phases/{id}` | 200 if the phase is named, active and in an active initiative of the user, else 404 |
+| `PATCH` | `/phases/{id}` | 200; merge patch of `name`; active phase only, else 404 |
+| `POST` | `/phases/{id}/archive` | 200; active phase only, else 404 |
+| `POST` | `/phases/{id}/unarchive` | 200; archived (or already active: no-op), else 404 |
+| `DELETE` | `/phases/{id}` | 204 (soft delete); active phase only, else 404 |
+| `POST` | `/phases/{id}/restore` | 200; deleted (or not deleted: no-op, so an archived phase stays archived while the body looks active), else 404 |
+
+Implicit phases are never exposed. A phase answers 404 whenever its initiative is archived, deleted
+or not the user's; its own state is untouched and it returns with the initiative.
+
+Create and patch bodies are strict: unknown fields and non-string values are 400 `http.400`.
+
 Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status`, `detail` and `code`.
 Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |
@@ -72,6 +88,8 @@ Deadlines must have a year from 1 to 9999.
 
 Writes to one initiative (update, archive, unarchive, delete, restore) load it with
 `select ... for update`, so concurrent writes are serialized and none is lost.
+
+Lock order: initiative, then phase, then task. Phase writes lock the owning initiative row first.
 
 Concurrent creates are serialized per user: the use case locks the user's `app_user` row
 (`select ... for update`) before choosing a color.

@@ -40,6 +40,17 @@ public class PanachePhaseRepository implements PhaseRepository, PanacheRepositor
   }
 
   @Override
+  public Optional<UUID> findInitiativeIdOfNamed(UUID id) {
+    return getEntityManager()
+        .createQuery(
+            "select p.initiativeId from Phase p where p.id = ?1 and p.implicit = false", UUID.class)
+        .setParameter(1, id)
+        .getResultList()
+        .stream()
+        .findFirst();
+  }
+
+  @Override
   public Optional<Phase> findNamedByIdAndUserForUpdate(UUID id, UUID userId) {
     return find(IN_ACTIVE_INITIATIVE_OF_USER, id, userId)
         .withLock(LockModeType.PESSIMISTIC_WRITE)

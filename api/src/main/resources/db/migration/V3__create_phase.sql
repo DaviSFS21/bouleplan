@@ -10,7 +10,8 @@ create table phase (
     deleted_at    timestamptz,
     created_at    timestamptz  not null default now(),
     updated_at    timestamptz  not null default now(),
-    constraint phase_named_has_name check (is_implicit or btrim(name) <> '')
+    constraint phase_name_matches_kind check (
+        (is_implicit and name is null) or (not is_implicit and name is not null and btrim(name) <> ''))
 );
 
 create index phase_initiative_id_idx on phase (initiative_id);

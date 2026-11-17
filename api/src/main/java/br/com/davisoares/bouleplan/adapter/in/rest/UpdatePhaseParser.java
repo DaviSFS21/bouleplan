@@ -13,7 +13,7 @@ final class UpdatePhaseParser {
   private UpdatePhaseParser() {}
 
   static UpdatePhaseCommand parse(ObjectMapper mapper, String body) {
-    JsonNode root = UpdateInitiativeParser.readObject(mapper, body, FIELDS);
-    return new UpdatePhaseCommand(UpdateInitiativeParser.text(root, "name"));
+    JsonNode root = JsonBodies.readObject(mapper, body, FIELDS);
+    return new UpdatePhaseCommand(JsonBodies.text(root, "name"));
   }
 }

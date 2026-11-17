@@ -92,4 +92,15 @@ public final class TestData {
         });
     return phaseId.toString();
   }
+
+  /** Clears {@code archived_at} of an initiative straight in the database. */
+  public static void unarchiveInitiative(EntityManager entityManager, UUID id) {
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery("update initiative set archived_at = null where id = ?1")
+              .setParameter(1, id)
+              .executeUpdate();
+        });
+  }
 }

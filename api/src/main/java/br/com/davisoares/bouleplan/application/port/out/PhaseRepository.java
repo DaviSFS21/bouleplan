@@ -17,6 +17,9 @@ public interface PhaseRepository {
   /** An active named phase by id, if its initiative is active and the user's. */
   Optional<Phase> findActiveNamedByIdAndUser(UUID id, UUID userId);
 
+  /** The owning initiative of a named phase in any state, read without loading the phase. */
+  Optional<UUID> findInitiativeIdOfNamed(UUID id);
+
   /**
    * A named phase in any state by id, if its initiative is active and the user's, locked for update
    * until the transaction ends.

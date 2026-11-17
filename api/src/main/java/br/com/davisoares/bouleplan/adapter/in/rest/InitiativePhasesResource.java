@@ -3,6 +3,7 @@ package br.com.davisoares.bouleplan.adapter.in.rest;
 import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.ListPhasesUseCase;
 import br.com.davisoares.bouleplan.domain.Phase;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.NotFoundException;
@@ -18,6 +19,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.headers.Header;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
+import org.eclipse.microprofile.openapi.annotations.parameters.RequestBody;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.jboss.resteasy.reactive.RestResponse;
@@ -29,11 +31,14 @@ public class InitiativePhasesResource {
 
   private final ListPhasesUseCase listPhases;
   private final CreatePhaseUseCase createPhase;
+  private final ObjectMapper objectMapper;
 
   /** Wires the inbound ports. */
-  public InitiativePhasesResource(ListPhasesUseCase listPhases, CreatePhaseUseCase createPhase) {
+  public InitiativePhasesResource(
+      ListPhasesUseCase listPhases, CreatePhaseUseCase createPhase, ObjectMapper objectMapper) {
     this.listPhases = listPhases;
     this.createPhase = createPhase;
+    this.objectMapper = objectMapper;
   }
 
   /** Lists the active named phases of an active initiative, oldest first. */
@@ -67,6 +72,12 @@ public class InitiativePhasesResource {
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(operationId = "createPhase", summary = "Creates a phase in an active initiative")
+  @RequestBody(
+      required = true,
+      content =
+          @Content(
+              mediaType = MediaType.APPLICATION_JSON,
+              schema = @Schema(implementation = CreatePhaseRequest.class)))
   @APIResponse(
       responseCode = "201",
       description = "Phase created",
@@ -89,13 +100,11 @@ public class InitiativePhasesResource {
           @Content(
               mediaType = Problem.MEDIA_TYPE,
               schema = @Schema(implementation = Problem.class)))
-  public RestResponse<PhaseResponse> create(
-      @PathParam("id") UUID initiativeId, CreatePhaseRequest request) {
-    if (request == null) {
-      throw new MalformedRequestException();
-    }
+  public RestResponse<PhaseResponse> create(@PathParam("id") UUID initiativeId, String body) {
     Phase created =
-        createPhase.create(initiativeId, request.name()).orElseThrow(NotFoundException::new);
+        createPhase
+            .create(initiativeId, JsonBodies.createName(objectMapper, body))
+            .orElseThrow(NotFoundException::new);
     return RestResponse.ResponseBuilder.<PhaseResponse>created(
             URI.create("/phases/" + created.getId()))
         .entity(PhaseResponse.from(created))
