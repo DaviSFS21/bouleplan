@@ -14,10 +14,10 @@ import {
 import { useIsMutating } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useInitiatives } from '@/api/initiatives';
 import { DUPLICATE_ITEM_MESSAGE, LOAD_PLANNER_FAILED_MESSAGE } from '@/api/messages';
-import { usePlanner } from '@/api/planner';
+import { resolveId, usePlanner } from '@/api/planner';
 import { useTasks } from '@/api/tasks';
 import type { CalendarEvent } from '@/api/types';
 import { localToday } from '@/components/deadline-field/deadline-field';
@@ -31,6 +31,7 @@ import {
 import { Loading } from '@/components/loading/loading';
 import { StatusStrip } from '@/components/status-strip/status-strip';
 import { TaskPanel } from '@/components/tasks/task-panel';
+import { useTaskActions } from '@/components/tasks/use-task-actions';
 import type { TaskPanelControl } from '@/components/tasks/task-board';
 import {
   currentWeekStart,
@@ -62,11 +63,11 @@ import { RISK_FILTER, atRiskTasks, trayTasks } from './planner-tasks';
 import { Tray, TrayPreview } from './tray';
 import { usePlannerActions } from './use-planner-actions';
 import { useAddToToday } from './use-add-to-today';
-import { useWeekTaskActions } from './use-week-task-actions';
 import { WeekGrid } from './week-grid';
 import styles from './planner-screen.module.css';
 
 const DRAG_ACTIVATION_DISTANCE = 6;
+const TRAY = '[aria-label="Para planejar"]';
 
 function isWeekStart(value: string | null): value is string {
   return value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && weekStartOf(value) === value;
@@ -101,7 +102,9 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [overStrip, setOverStrip] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [popover, setPopover] = useState<{ id: string; anchor: HTMLElement } | null>(null);
+  const [popover, setPopover] = useState<{ id: string } | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+  const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
   );
@@ -224,18 +227,48 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     actions: taskActions,
     panelFocus,
     focusPanel,
-  } = useWeekTaskActions({
+  } = useTaskActions({
     panel: taskPanel,
     report: setError,
-    addToToday: (task) => {
-      void todayList.add(task);
+    extra: {
+      onAddToToday: (task) => {
+        void todayList.add(task);
+      },
+      isInTodayList: todayList.isInToday,
     },
-    isInToday: todayList.isInToday,
+    focus: {
+      leaving: (task) => {
+        const position = bandeja.findIndex(({ id }) => id === task.id);
+        const neighbour = bandeja[position + 1] ?? bandeja[position - 1];
+        return () => {
+          requestFocus(() =>
+            document.querySelector<HTMLElement>(
+              neighbour ? `${TRAY} [data-task-id="${neighbour.id}"]` : TRAY,
+            ),
+          );
+        };
+      },
+    },
   });
 
   const openedEvent = popover
-    ? plannerQuery.data?.events.find(({ id }) => id === popover.id)
+    ? plannerQuery.data?.events.find(({ id }) => id === resolveId(popover.id))
     : undefined;
+
+  // The removed thing is already gone, so focus is lost; it goes to what is next to it.
+  useEffect(() => {
+    const finder = pendingFocus.current;
+    if (!finder) return;
+    pendingFocus.current = null;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    const target = finder();
+    if (target && lost) target.focus();
+  }, [focusTick]);
+
+  function requestFocus(finder: () => HTMLElement | null) {
+    pendingFocus.current = finder;
+    setFocusTick((tick) => tick + 1);
+  }
 
   function dayOf(date: string) {
     return days.find((day) => day.date === date);
@@ -319,16 +352,49 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     if (task) taskActions.onOpen(task, viaKeyboard);
   }
 
-  function removeEntry(entry: EntryModel) {
-    void planner.removeEntry(entry.item);
+  function nextTo<T>(list: readonly T[], found: (candidate: T) => boolean): T | undefined {
+    const position = list.findIndex(found);
+    return list[position + 1] ?? list[position - 1];
   }
 
-  function removeBlock(block: BlockModel) {
-    void planner.removeBlock(block.item);
+  async function removeEntry(entry: EntryModel) {
+    const date = entry.item.date;
+    const next = nextTo(dayOf(date)?.entries ?? [], ({ item }) => item.id === entry.item.id);
+    if (await planner.removeEntry(entry.item)) {
+      requestFocus(() =>
+        document.querySelector<HTMLElement>(
+          next ? `[data-ficha-id="${next.item.id}"]` : `[data-strip="${date}"]`,
+        ),
+      );
+    }
   }
 
-  function openEvent(event: CalendarEvent, anchor: HTMLElement) {
-    setPopover({ id: event.id, anchor });
+  async function removeBlock(block: BlockModel) {
+    const date = block.item.date;
+    const next = nextTo(dayOf(date)?.blocks ?? [], ({ item }) => item.id === block.item.id);
+    if (await planner.removeBlock(block.item)) {
+      requestFocus(() =>
+        document.querySelector<HTMLElement>(
+          next ? `[data-block-id="${next.item.id}"]` : `[data-day="${date}"]`,
+        ),
+      );
+    }
+  }
+
+  async function removeEvent(event: CalendarEvent) {
+    const next = nextTo(dayOf(event.date)?.events ?? [], ({ id }) => id === event.id);
+    setPopover(null);
+    if (await planner.deleteEvent(event)) {
+      requestFocus(() =>
+        document.querySelector<HTMLElement>(
+          next ? `[data-event-id="${next.id}"]` : `[data-day="${event.date}"]`,
+        ),
+      );
+    }
+  }
+
+  function openEvent(event: CalendarEvent) {
+    setPopover({ id: event.id });
   }
 
   function commitDraft(title: string) {
@@ -409,22 +475,25 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
           </button>
         </div>
       </header>
-      {atRisk.length > 0 ? (
-        <StatusStrip
-          tone="atencao"
-          title="Prazos sem tempo reservado."
-          action={{
-            label: 'Mostrar na bandeja',
-            onClick: () => {
-              setFilter(RISK_FILTER);
-            },
-          }}
-        >
-          {atRisk.length === 1
-            ? '1 tarefa vence nesta semana com tempo a reservar.'
-            : `${String(atRisk.length)} tarefas vencem nesta semana com tempo a reservar.`}
-        </StatusStrip>
-      ) : null}
+      <div role="status" aria-label="Alertas da semana">
+        {atRisk.length > 0 ? (
+          <StatusStrip
+            tone="atencao"
+            title="Prazos sem tempo reservado."
+            announce={false}
+            action={{
+              label: 'Mostrar na bandeja',
+              onClick: () => {
+                setFilter(RISK_FILTER);
+              },
+            }}
+          >
+            {atRisk.length === 1
+              ? '1 tarefa vence nesta semana com tempo a reservar.'
+              : `${String(atRisk.length)} tarefas vencem nesta semana com tempo a reservar.`}
+          </StatusStrip>
+        ) : null}
+      </div>
       {error ? (
         <p role="alert" className={styles.error}>
           {error}
@@ -469,8 +538,12 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
             dragging={dragging}
             overStrip={overStrip}
             onOpenTask={openFromPlanner}
-            onRemoveEntry={removeEntry}
-            onRemoveBlock={removeBlock}
+            onRemoveEntry={(entry) => {
+              void removeEntry(entry);
+            }}
+            onRemoveBlock={(block) => {
+              void removeBlock(block);
+            }}
             onOpenEvent={openEvent}
             onDraw={setDraft}
             onCommitDraft={commitDraft}
@@ -493,7 +566,6 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
       {popover && openedEvent ? (
         <EventPopover
           event={openedEvent}
-          anchor={popover.anchor}
           onClose={() => {
             setPopover(null);
           }}
@@ -501,8 +573,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
             void planner.renameEvent(openedEvent, title);
           }}
           onDelete={() => {
-            setPopover(null);
-            void planner.deleteEvent(openedEvent);
+            void removeEvent(openedEvent);
           }}
         />
       ) : null}
@@ -519,7 +590,9 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
           focusSignal={panelFocus}
           onSelectPath={taskPanel.selectPath}
           fallbackFocus={() =>
-            document.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`)
+            document.querySelector<HTMLElement>(
+              `[data-task-id="${openTask.id}"], [data-block-task-id="${openTask.id}"]`,
+            )
           }
           now={now}
         />

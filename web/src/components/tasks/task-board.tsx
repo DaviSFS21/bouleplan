@@ -12,27 +12,10 @@ import {
 } from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useManyPhases } from '@/api/phases';
-import {
-  ARCHIVE_TASK_FAILED_MESSAGE,
-  BLANK_TASK_TITLE_MESSAGE,
-  DELETE_TASK_FAILED_MESSAGE,
-  UNDO_FAILED_MESSAGE,
-  createTaskMessage,
-  updateTaskMessage,
-  type TaskField,
-} from '@/api/messages';
-import {
-  compareTasks,
-  useArchiveTask,
-  useCreateTask,
-  useDeleteTask,
-  useRestoreTask,
-  useUnarchiveTask,
-  useUpdateTask,
-} from '@/api/tasks';
-import type { Initiative, Phase, Task, TaskChanges, TaskStatus } from '@/api/types';
+import { BLANK_TASK_TITLE_MESSAGE, createTaskMessage } from '@/api/messages';
+import { compareTasks, useCreateTask } from '@/api/tasks';
+import type { Initiative, Phase, Task, TaskStatus } from '@/api/types';
 import { Loading } from '@/components/loading/loading';
-import { useToast } from '@/components/toast/toast';
 import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
@@ -40,7 +23,7 @@ import { useAddToToday } from '@/components/planner/use-add-to-today';
 import { localToday } from '@/components/deadline-field/deadline-field';
 import { useClock } from './use-clock';
 import { TaskCardPreview } from './task-card';
-import type { TaskActions } from './task-menu';
+import { useTaskActions } from './use-task-actions';
 import { TaskColumn } from './task-column';
 import { TaskPanel } from './task-panel';
 import {
@@ -52,7 +35,7 @@ import {
   landingIndex,
   screenReaderInstructions,
 } from './task-dnd';
-import { STATUSES, statusTitle, tasksIn, visibleTasks } from './task-filter';
+import { STATUSES, tasksIn, visibleTasks } from './task-filter';
 import styles from './task-board.module.css';
 
 export interface TaskPanelControl {
@@ -92,21 +75,13 @@ export function TaskBoard({
   taskPanel,
   now,
 }: Readonly<TaskBoardProps>) {
-  const toast = useToast();
   const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
-  const archiveTask = useArchiveTask();
-  const unarchiveTask = useUnarchiveTask();
-  const deleteTask = useDeleteTask();
-  const restoreTask = useRestoreTask();
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ task: Task; over: TaskStatus | null } | null>(null);
   const [rememberedId, setRememberedId] = useState(rememberedInitiativeId);
   const [focusTick, setFocusTick] = useState(0);
-  const [panelFocus, setPanelFocus] = useState(0);
   const pendingFocus = useRef<FocusRequest | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const busy = useRef(new Set<string>());
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
     useSensor(KeyboardSensor, {
@@ -176,118 +151,27 @@ export function TaskBoard({
     return label ? `${name} › ${label}` : name;
   }
 
-  async function change(task: Task, changes: TaskChanges, field: TaskField): Promise<boolean> {
-    setError(null);
-    try {
-      await updateTask.mutateAsync({ task, changes });
-      return true;
-    } catch (failure) {
-      setError(updateTaskMessage(failure, field));
-      return false;
-    }
-  }
-
-  async function move(task: Task, status: TaskStatus) {
-    if (task.status === status) return;
-    const previous = task.status;
-    requestFocus(task.id, status);
-    if (!(await change(task, { status }, 'status'))) {
-      requestFocus(task.id, previous);
-      return;
-    }
-    toast.show({
-      message: `Tarefa movida para ${statusTitle(status)}`,
-      onUndo: () => {
-        requestFocus(task.id, previous);
-        updateTask
-          .mutateAsync({ task: { ...task, status }, changes: { status: previous } })
-          .catch(() => {
-            toast.show({ message: UNDO_FAILED_MESSAGE });
-          });
+  const { actions, panelFocus, focusPanel } = useTaskActions({
+    panel: taskPanel,
+    report: setError,
+    extra: { onAddToToday: (task) => void todayList.add(task), isInTodayList: todayList.isInToday },
+    focus: {
+      moved: (task, status) => {
+        requestFocus(task.id, status);
       },
-    });
-  }
-
-  async function leave(
-    task: Task,
-    action: (task: Task) => Promise<unknown>,
-    undo: (task: Task) => Promise<unknown>,
-    messages: { done: string; failed: string },
-  ) {
-    if (busy.current.has(task.id)) return;
-    busy.current.add(task.id);
-    const wasOpen = taskPanel.openId === task.id;
-    const column = tasksIn(visible, task.status);
-    const position = column.findIndex(({ id }) => id === task.id);
-    const neighbour = column[position + 1] ?? column[position - 1];
-    setError(null);
-    try {
-      await action(task);
-    } catch {
-      setError(messages.failed);
-      return;
-    } finally {
-      busy.current.delete(task.id);
-    }
-    if (wasOpen) taskPanel.close(task.id);
-    requestFocus(neighbour?.id ?? null, task.status);
-    toast.show({
-      message: messages.done,
-      onUndo: () => {
-        undo(task).then(
-          () => {
-            requestFocus(task.id, task.status);
-            if (wasOpen) taskPanel.reopen(task.id);
-          },
-          () => {
-            toast.show({ message: UNDO_FAILED_MESSAGE });
-          },
-        );
+      leaving: (task) => {
+        const column = tasksIn(visible, task.status);
+        const position = column.findIndex(({ id }) => id === task.id);
+        const neighbour = column[position + 1] ?? column[position - 1];
+        return () => {
+          requestFocus(neighbour?.id ?? null, task.status);
+        };
       },
-    });
-  }
-
-  const actions: TaskActions = {
-    onOpen: (task, viaKeyboard = false) => {
-      taskPanel.open(task.id);
-      if (viaKeyboard) setPanelFocus((signal) => signal + 1);
+      restored: (task) => {
+        requestFocus(task.id, task.status);
+      },
     },
-    onClose: () => {
-      taskPanel.close();
-    },
-    onRename: (task, title) => {
-      if (title === '') {
-        setError(BLANK_TASK_TITLE_MESSAGE);
-        return;
-      }
-      void change(task, { title }, 'title');
-    },
-    onPriority: (task, priority) => {
-      if (task.priority !== priority) void change(task, { priority }, 'priority');
-    },
-    onMove: (task, status) => {
-      void move(task, status);
-    },
-    onToggleBlocked: (task) => {
-      void change(task, { isBlocked: !task.isBlocked }, 'isBlocked');
-    },
-    onArchive: (task) => {
-      void leave(task, archiveTask.mutateAsync, unarchiveTask.mutateAsync, {
-        done: 'Tarefa arquivada',
-        failed: ARCHIVE_TASK_FAILED_MESSAGE,
-      });
-    },
-    onDelete: (task) => {
-      void leave(task, deleteTask.mutateAsync, restoreTask.mutateAsync, {
-        done: 'Tarefa excluída',
-        failed: DELETE_TASK_FAILED_MESSAGE,
-      });
-    },
-    onAddToToday: (task) => {
-      void todayList.add(task);
-    },
-    isInTodayList: todayList.isInToday,
-  };
+  });
 
   function handleDragStart({ active }: DragStartEvent) {
     const task = visible.find(({ id }) => id === active.id);
@@ -297,7 +181,7 @@ export function TaskBoard({
   function handleDragEnd({ active, over }: DragEndEvent) {
     setDragging(null);
     const task = visible.find(({ id }) => id === active.id);
-    if (task && over && over.id !== task.status) void move(task, over.id as TaskStatus);
+    if (task && over && over.id !== task.status) actions.onMove(task, over.id as TaskStatus);
   }
 
   function chooseInitiative(id: string) {
@@ -431,7 +315,7 @@ export function TaskBoard({
           actions={actions}
           onOpenTask={(id) => {
             taskPanel.open(id);
-            setPanelFocus((signal) => signal + 1);
+            focusPanel();
           }}
           focusSignal={panelFocus}
           onSelectPath={taskPanel.selectPath}

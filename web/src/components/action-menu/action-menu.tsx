@@ -19,6 +19,7 @@ export interface ActionMenuItem {
   label: string;
   onSelect: () => void;
   shortcut?: string;
+  disabled?: boolean;
 }
 
 export interface ActionMenuRadio {
@@ -215,6 +216,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
                     type="button"
                     role="menuitem"
                     tabIndex={-1}
+                    disabled={entry.disabled}
                     className={styles.item}
                     aria-keyshortcuts={entry.shortcut}
                     onClick={() => {

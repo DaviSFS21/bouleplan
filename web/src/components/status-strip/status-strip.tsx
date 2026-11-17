@@ -17,12 +17,20 @@ interface StatusStripProps {
   title: string;
   children: ReactNode;
   action?: { label: string; onClick: () => void };
+  // False inside a live region of its own, which announces it instead.
+  announce?: boolean;
 }
 
-export function StatusStrip({ tone, title, children, action }: Readonly<StatusStripProps>) {
+export function StatusStrip({
+  tone,
+  title,
+  children,
+  action,
+  announce = true,
+}: Readonly<StatusStripProps>) {
   return (
     <div
-      role={tone === 'erro' ? 'alert' : 'status'}
+      role={announce ? (tone === 'erro' ? 'alert' : 'status') : undefined}
       className={[styles.strip, styles[tone]].join(' ')}
     >
       <span className={styles.icon}>

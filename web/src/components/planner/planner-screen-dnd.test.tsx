@@ -197,10 +197,10 @@ describe('dragging from the tray', () => {
     expect(document.querySelector('[data-preview]')).not.toBeInTheDocument();
   });
 
-  it('turns the alert off at once when the whole estimate is reserved before the deadline', async () => {
+  it('drops a task from the alert at once, before the server answers, when its estimate is reserved', async () => {
     const { backend } = await renderWeek();
     backend.latencyMs = 300;
-    expect(screen.getByText('Prazos sem tempo reservado.')).toBeVisible();
+    expect(screen.getByText(/2 tarefas vencem/)).toBeVisible();
 
     await drag(trayItem('Comprar tinta'), at('2026-11-17', 9));
 
@@ -795,5 +795,267 @@ describe('menu alternatives', () => {
     await user.click(screen.getByRole('button', { name: 'Desfazer' }));
 
     expect(await screen.findByText('Não foi possível desfazer. Tente de novo.')).toBeVisible();
+  });
+});
+
+describe('overlapping blocks', () => {
+  it('render side by side and neither hides the other', async () => {
+    await renderWeek({
+      items: [
+        block(),
+        block({
+          id: 'e0000000-0000-4000-8000-0000000000b2',
+          taskId: smash.id,
+          startTime: '10:00',
+          endTime: '12:00',
+        }),
+      ],
+    });
+
+    const first = screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' });
+    const second = screen.getByRole('group', { name: 'Quebrar piso, 10:00 – 12:00' });
+
+    expect(first).toBeVisible();
+    expect(second).toBeVisible();
+    expect(first.style.left).not.toBe(second.style.left);
+    expect(first.style.left).toContain('/ 2');
+    expect(second.style.right).toContain('* 0 / 2');
+  });
+
+  it('still refuses a drop into a slot taken by any of them', async () => {
+    const { backend } = await renderWeek({
+      items: [
+        block(),
+        block({
+          id: 'e0000000-0000-4000-8000-0000000000b2',
+          taskId: smash.id,
+          startTime: '10:00',
+          endTime: '12:00',
+        }),
+      ],
+    });
+
+    await drag(trayItem('Lixar parede'), at('2026-11-17', 11.5));
+
+    expect(backend.calls).toEqual([]);
+  });
+});
+
+describe('things that still have a temporary id', () => {
+  it('cannot be removed before the server answers, and the popover stays open for the saved event', async () => {
+    const { backend, user } = await renderWeek();
+    backend.latencyMs = 400;
+
+    await user.click(
+      within(trayItem('Lixar parede')).getByRole('button', {
+        name: 'Ações da tarefa Lixar parede',
+      }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Pôr na lista de hoje' }));
+    const remove = await screen.findByRole('button', {
+      name: 'Tirar Lixar parede da lista do dia',
+    });
+    expect(remove).toBeDisabled();
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'Tirar Lixar parede da lista do dia' }),
+      ).toBeEnabled();
+    });
+    expect(backend.calls).toEqual(['POST item']);
+  });
+
+  it('keeps an event popover open, read-only, until its id arrives', async () => {
+    const { backend, user } = await renderWeek();
+    backend.latencyMs = 400;
+
+    press(agenda('2026-11-18'), at('2026-11-18', 9));
+    moveTo(at('2026-11-18', 10));
+    await release(at('2026-11-18', 10));
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Título do compromisso' }),
+      'Reunião{Enter}',
+    );
+
+    await user.click(await screen.findByRole('button', { name: /^Reunião, / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Compromisso' });
+    expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Excluir' })).toBeDisabled();
+
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('dialog', { name: 'Compromisso' })).getByRole('textbox', {
+          name: 'Título do compromisso',
+        }),
+      ).toBeVisible();
+    });
+    expect(screen.getByRole('button', { name: 'Excluir' })).toBeEnabled();
+  });
+
+  it('cannot take a new block off the agenda before the server answers', async () => {
+    const { backend, user } = await renderWeek();
+    backend.latencyMs = 400;
+
+    await drag(trayItem('Comprar tinta'), at('2026-11-17', 11));
+    await user.click(
+      await screen.findByRole('button', { name: 'Ações do tempo de Comprar tinta' }),
+    );
+
+    expect(screen.getByRole('menuitem', { name: 'Tirar da agenda' })).toBeDisabled();
+    await user.keyboard('{Escape}');
+  });
+});
+
+describe('queued changes', () => {
+  it('runs a second resize of the same block after the first, on what it left', async () => {
+    const { backend } = await renderWeek({ items: [block()] });
+    backend.latencyMs = 200;
+    const handle = () =>
+      must(document.querySelector<HTMLElement>(`[data-resize-handle="${block().id}"]`));
+
+    await drag(handle(), { x: 5, y: 5 + 24 });
+    await drag(handle(), { x: 5, y: 5 + 24 });
+
+    await waitFor(() => {
+      expect(backend.bodies).toEqual([{ endTime: '11:30' }, { endTime: '12:00' }]);
+    });
+  });
+});
+
+describe('focus after a removal', () => {
+  it('goes to the next ficha, or the list of the day when it was the last', async () => {
+    const { user } = await renderWeek({
+      items: [
+        entry({ id: 'e1', sortOrder: 0 }),
+        entry({ id: 'e2', taskId: smash.id, sortOrder: 1 }),
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Tirar Lixar parede da lista do dia' }));
+    await waitFor(() => {
+      expect(
+        within(strip('2026-11-18')).getByRole('article', { name: 'Quebrar piso' }),
+      ).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Tirar Quebrar piso da lista do dia' }));
+    await waitFor(() => {
+      expect(strip('2026-11-18')).toHaveFocus();
+    });
+  });
+
+  it('goes to the next block, or the day when it was the last', async () => {
+    const { user } = await renderWeek({
+      items: [
+        block(),
+        block({
+          id: 'e0000000-0000-4000-8000-0000000000b2',
+          taskId: smash.id,
+          startTime: '13:00',
+          endTime: '14:00',
+        }),
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Comprar tinta' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Quebrar piso, 13:00 – 14:00' })).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Quebrar piso' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+    await waitFor(() => {
+      expect(agenda('2026-11-17')).toHaveFocus();
+    });
+  });
+
+  it('goes to the next event, or the day, after deleting from the popover', async () => {
+    const { user } = await renderWeek({
+      events: [
+        daily,
+        {
+          ...daily,
+          id: 'f0000000-0000-4000-8000-0000000000d2',
+          title: 'Retro',
+          startTime: '14:00',
+          endTime: '15:00',
+        },
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Daily, 9:00 – 9:30' }));
+    await user.click(await screen.findByRole('button', { name: 'Excluir' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Retro, 14:00 – 15:00' })).toHaveFocus();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Retro, 14:00 – 15:00' }));
+    await user.click(await screen.findByRole('button', { name: 'Excluir' }));
+    await waitFor(() => {
+      expect(agenda('2026-11-17')).toHaveFocus();
+    });
+  });
+
+  it('goes to the next tray item after archiving from the panel', async () => {
+    navigateTo(`/semana?tarefa=${sand.id}`);
+    const { user } = await renderWeek();
+    const panel = await screen.findByRole('complementary', { name: 'Tarefa' });
+
+    await user.click(within(panel).getByRole('button', { name: 'Ações da tarefa' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('complementary', { name: 'Tarefa' })).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(document.activeElement?.closest('[aria-label="Para planejar"]')).not.toBeNull();
+    });
+  });
+
+  it('finds the block of the task when the panel closes', async () => {
+    const { user } = await renderWeek({ items: [block({ taskId: sand.id })] });
+
+    await user.click(screen.getByRole('group', { name: /^Lixar parede, / }));
+    await screen.findByRole('complementary', { name: 'Tarefa' });
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => {
+      expect(
+        document.activeElement?.getAttribute('data-task-id') ??
+          document.activeElement?.getAttribute('data-block-task-id'),
+      ).toBe(sand.id);
+    });
+  });
+});
+
+describe('the event popover', () => {
+  it('follows its event when the page scrolls, and closes when focus leaves it', async () => {
+    const { user } = await renderWeek({ events: [daily] });
+    let top = 100;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element,
+    ) {
+      if (this.hasAttribute('data-event-id')) return new DOMRect(10, top, 80, 20);
+      return new DOMRect(0, 0, 100, 20);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Daily, 9:00 – 9:30' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Compromisso' });
+    const before = dialog.style.top;
+
+    top = 300;
+    act(() => {
+      fireEvent.scroll(window);
+    });
+    await waitFor(() => {
+      expect(dialog.style.top).not.toBe(before);
+    });
+
+    await user.click(
+      within(trayItem('Lixar parede')).getByRole('button', {
+        name: 'Ações da tarefa Lixar parede',
+      }),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

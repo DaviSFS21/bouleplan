@@ -24,7 +24,7 @@ interface WeekGridProps {
   onOpenTask: (taskId: string, viaKeyboard?: boolean) => void;
   onRemoveEntry: (entry: EntryModel) => void;
   onRemoveBlock: (block: BlockModel) => void;
-  onOpenEvent: (event: CalendarEvent, anchor: HTMLElement) => void;
+  onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
   onCommitDraft: (title: string) => void;
   onCancelDraft: () => void;

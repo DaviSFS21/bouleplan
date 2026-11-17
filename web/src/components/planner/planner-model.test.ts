@@ -62,6 +62,29 @@ describe('buildDays', () => {
     expect(monday?.entries.map(({ item }) => item.id)).toEqual(['z', 'b', 'a', 'c']);
   });
 
+  it('breaks a tie in the list order by creation, then id', () => {
+    const entry = (id: string, createdAt: string) =>
+      scheduledItem({
+        id,
+        taskId: 'p',
+        date: MON,
+        startTime: null,
+        endTime: null,
+        sortOrder: 1,
+        createdAt,
+      });
+
+    const [monday] = build({
+      items: [
+        entry('a', '2026-11-16T12:00:00-03:00'),
+        entry('c', '2026-11-16T10:00:00-03:00'),
+        entry('b', '2026-11-16T10:00:00-03:00'),
+      ],
+    });
+
+    expect(monday?.entries.map(({ item }) => item.id)).toEqual(['b', 'c', 'a']);
+  });
+
   it('leaves out the items of tasks that are not on screen', () => {
     const hidden = scheduledItem({ taskId: 'gone', date: MON });
     const hiddenEntry = scheduledItem({

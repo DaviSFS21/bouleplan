@@ -133,6 +133,16 @@ describe('creating a scheduled item', () => {
     expect(reserved(rendered)?.reservedMinutes).toBe(0);
   });
 
+  it('starts the order of a day list at zero', async () => {
+    const rendered = await loaded();
+
+    await act(async () => {
+      await rendered.result.current.createItem.mutateAsync({ taskId: paint.id, date: DAY });
+    });
+
+    expect(items(rendered)[0]?.sortOrder).toBe(0);
+  });
+
   it('does not count a block after the deadline by the deadline', async () => {
     const rendered = await loaded();
 

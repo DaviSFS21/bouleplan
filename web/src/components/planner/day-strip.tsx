@@ -64,6 +64,7 @@ function Ficha({ entry, moving, onOpen, onRemove }: Readonly<FichaProps>) {
         <button
           type="button"
           className={styles.remove}
+          disabled={isPending(item.id)}
           aria-label={`Tirar ${task.title} da lista do dia`}
           onClick={() => {
             onRemove(entry);
@@ -103,6 +104,7 @@ export function DayStrip({
       aria-label={`Lista de ${dayLabel(date)}`}
       className={[styles.strip, targeted ? styles.target : ''].join(' ').trim()}
       data-strip={date}
+      tabIndex={-1}
     >
       <div className={styles.total}>
         {total.text}

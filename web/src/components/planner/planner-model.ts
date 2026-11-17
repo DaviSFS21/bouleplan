@@ -46,6 +46,15 @@ export function deadlineText(task: Task, atRisk: boolean): string {
   return atRisk ? `prazo · ${task.title} · ${riskLabel(task)}` : `prazo · ${task.title}`;
 }
 
+// The order of the API: list order, then creation, then id.
+function compareEntries(a: EntryModel, b: EntryModel): number {
+  return (
+    (a.item.sortOrder ?? 0) - (b.item.sortOrder ?? 0) ||
+    Date.parse(a.item.createdAt) - Date.parse(b.item.createdAt) ||
+    a.item.id.localeCompare(b.item.id)
+  );
+}
+
 // Items of tasks that are not on screen (hidden ones) are left out.
 export function buildDays({ dates, events, items, tasks, colors, atRisk }: ModelInput): DayModel[] {
   return dates.map((date) => {
@@ -64,10 +73,7 @@ export function buildDays({ dates, events, items, tasks, colors, atRisk }: Model
         const task = tasks.get(item.taskId);
         return task ? [{ item, task, color: colorOf(task) }] : [];
       })
-      .sort(
-        (a, b) =>
-          (a.item.sortOrder ?? 0) - (b.item.sortOrder ?? 0) || a.item.id.localeCompare(b.item.id),
-      );
+      .sort(compareEntries);
     const deadlines = [...tasks.values()]
       .filter((task) => task.deadline === date && task.status !== 'done')
       .sort((a, b) => a.title.localeCompare(b.title))

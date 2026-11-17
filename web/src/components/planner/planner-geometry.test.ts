@@ -6,6 +6,7 @@ import {
   quarterAt,
   findOverlap,
   fitSpan,
+  layoutLanes,
   moveStart,
   overlaps,
   resizeEnd,
@@ -170,5 +171,46 @@ describe('drawing a span', () => {
     expect(drawnSpan(540, 540)).toEqual({ start: 540, end: 555 });
     expect(drawnSpan(540, 585)).toEqual({ start: 540, end: 600 });
     expect(drawnSpan(585, 540)).toEqual({ start: 540, end: 600 });
+  });
+});
+
+describe('layoutLanes', () => {
+  it('gives a lone block the whole width', () => {
+    expect(layoutLanes([{ id: 'a', start: 540, end: 600 }]).get('a')).toEqual({
+      column: 0,
+      columns: 1,
+    });
+  });
+
+  it('puts blocks that only touch in their own full width', () => {
+    const lanes = layoutLanes([
+      { id: 'a', start: 540, end: 600 },
+      { id: 'b', start: 600, end: 660 },
+    ]);
+    expect(lanes.get('a')?.columns).toBe(1);
+    expect(lanes.get('b')).toEqual({ column: 0, columns: 1 });
+  });
+
+  it('splits the width between blocks that overlap', () => {
+    const lanes = layoutLanes([
+      { id: 'a', start: 540, end: 660 },
+      { id: 'b', start: 600, end: 720 },
+    ]);
+    expect(lanes.get('a')).toEqual({ column: 0, columns: 2 });
+    expect(lanes.get('b')).toEqual({ column: 1, columns: 2 });
+  });
+
+  it('reuses a free column inside a group and sizes every block of the group alike', () => {
+    const lanes = layoutLanes([
+      { id: 'a', start: 540, end: 600 },
+      { id: 'b', start: 570, end: 720 },
+      { id: 'c', start: 610, end: 660 },
+    ]);
+    expect(lanes.get('c')).toEqual({ column: 0, columns: 2 });
+    expect(lanes.get('a')?.columns).toBe(2);
+  });
+
+  it('handles no blocks', () => {
+    expect(layoutLanes([]).size).toBe(0);
   });
 });

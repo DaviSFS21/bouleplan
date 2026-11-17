@@ -28,7 +28,7 @@ const MONTHS = [
 ];
 
 function parts(iso: string): { day: number; month: number; offset: number } {
-  const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
+  const [year = 0, month = 1, day = 1] = iso.split('-').map((part) => Number(part));
   // Days since Monday.
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);

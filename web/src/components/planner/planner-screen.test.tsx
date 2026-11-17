@@ -567,6 +567,22 @@ describe('the deadline-without-reserved-time alert', () => {
   });
 });
 
+describe('the alert region', () => {
+  it('is mounted and empty without an alert', async () => {
+    await renderWeek({}, { tasks: [sand, smash] });
+
+    expect(screen.getByRole('status', { name: 'Alertas da semana' })).toBeEmptyDOMElement();
+  });
+
+  it('is filled when the alert appears', async () => {
+    await renderWeek();
+
+    expect(screen.getByRole('status', { name: 'Alertas da semana' })).toHaveTextContent(
+      'Prazos sem tempo reservado.',
+    );
+  });
+});
+
 describe('the task panel on the week page', () => {
   it('opens from the deep link, with its dedicated time listed', async () => {
     navigateTo(`/semana?tarefa=${paint.id}`);

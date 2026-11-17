@@ -154,6 +154,17 @@ function runPlanner<TVariables, TData>(
 // Items and events show under a temporary id until the server answers.
 export const isPending = (id: string) => id.startsWith('pending-');
 
+const realIds = new Map<string, string>();
+
+// The id the server gave to something that was shown under a temporary one.
+export function resolveId(id: string): string {
+  return realIds.get(id) ?? id;
+}
+
+export function findScheduledItem(queryClient: QueryClient, id: string): ScheduledItem | undefined {
+  return findItem(queryClient, id);
+}
+
 let temporary = 0;
 
 function temporaryId(): string {
@@ -171,7 +182,7 @@ function nextSortOrder(queryClient: QueryClient, date: string): number {
   const orders = (week?.items ?? [])
     .filter((item) => item.date === date && item.startTime === null)
     .map((item) => item.sortOrder ?? 0);
-  return Math.max(0, ...orders) + 1;
+  return Math.max(-1, ...orders) + 1;
 }
 
 function insertItem(queryClient: QueryClient, item: ScheduledItem) {
@@ -224,6 +235,68 @@ function optimisticItem(
   return merged;
 }
 
+type EventKey = keyof UpdateCalendarEventRequest;
+
+function applyEventChanges(queryClient: QueryClient, id: string, body: UpdateCalendarEventRequest) {
+  replaceEvent(queryClient, id, (current) => ({ ...current, ...body }));
+}
+
+function mergeSaved(queryClient: QueryClient, id: string, saved: ScheduledItem, keys: ItemKey[]) {
+  replaceItem(queryClient, id, (current) => {
+    const merged = { ...current, updatedAt: saved.updatedAt };
+    for (const key of [...keys, 'sortOrder'] as ItemKey[]) {
+      Object.assign(merged, { [key]: saved[key] });
+    }
+    return merged;
+  });
+}
+
+function restoreFields(
+  queryClient: QueryClient,
+  id: string,
+  keys: ItemKey[],
+  applied: ScheduledItem,
+  before: ScheduledItem,
+) {
+  replaceItem(queryClient, id, (current) => {
+    const restored = { ...current };
+    for (const key of [...keys, 'sortOrder'] as ItemKey[]) {
+      // A later queued change may own the field by now.
+      if (current[key] === applied[key]) Object.assign(restored, { [key]: before[key] });
+    }
+    return restored;
+  });
+}
+
+function mergeSavedEvent(
+  queryClient: QueryClient,
+  id: string,
+  saved: CalendarEvent,
+  keys: EventKey[],
+) {
+  replaceEvent(queryClient, id, (current) => {
+    const merged = { ...current, updatedAt: saved.updatedAt };
+    for (const key of keys) Object.assign(merged, { [key]: saved[key] });
+    return merged;
+  });
+}
+
+function restoreEventFields(
+  queryClient: QueryClient,
+  id: string,
+  keys: EventKey[],
+  body: UpdateCalendarEventRequest,
+  before: CalendarEvent,
+) {
+  replaceEvent(queryClient, id, (current) => {
+    const restored = { ...current };
+    for (const key of keys) {
+      if (current[key] === body[key]) Object.assign(restored, { [key]: before[key] });
+    }
+    return restored;
+  });
+}
+
 export function useCreateItem() {
   const queryClient = useQueryClient();
   return useMemo(
@@ -247,6 +320,7 @@ export function useCreateItem() {
           (input) => unwrap(api.POST('/scheduled-items', { body: input })),
           (created) => {
             const placeholder = findItem(queryClient, id);
+            realIds.set(id, created.id);
             dropItem(queryClient, id);
             insertItem(queryClient, created);
             if (!placeholder) adjustReservation(queryClient, created.taskId, null, created);
@@ -296,13 +370,7 @@ export function useUpdateItem() {
               }),
             ),
           (updated) => {
-            replaceItem(queryClient, item.id, (current) => {
-              const merged = { ...current, updatedAt: updated.updatedAt };
-              for (const key of [...keys, 'sortOrder'] as ItemKey[]) {
-                Object.assign(merged, { [key]: updated[key] });
-              }
-              return merged;
-            });
+            mergeSaved(queryClient, item.id, updated, keys);
           },
           {
             apply: (body) => {
@@ -312,15 +380,7 @@ export function useUpdateItem() {
               adjustReservation(queryClient, item.taskId, before, applied);
             },
             rollback: () => {
-              replaceItem(queryClient, item.id, (current) => {
-                const restored = { ...current };
-                for (const key of [...keys, 'sortOrder'] as ItemKey[]) {
-                  // A later queued change may own the field by now.
-                  if (current[key] === applied[key])
-                    Object.assign(restored, { [key]: before[key] });
-                }
-                return restored;
-              });
+              restoreFields(queryClient, item.id, keys, applied, before);
               adjustReservation(queryClient, item.taskId, applied, before);
             },
           },
@@ -403,6 +463,7 @@ export function useCreateEvent() {
           body,
           (input) => unwrap(api.POST('/calendar-events', { body: input })),
           (created) => {
+            realIds.set(id, created.id);
             dropEvent(queryClient, id);
             insertEvent(queryClient, created);
           },
@@ -420,8 +481,6 @@ export function useCreateEvent() {
     [queryClient],
   );
 }
-
-type EventKey = keyof UpdateCalendarEventRequest;
 
 export function useUpdateEvent() {
   const queryClient = useQueryClient();
@@ -448,24 +507,14 @@ export function useUpdateEvent() {
               }),
             ),
           (updated) => {
-            replaceEvent(queryClient, event.id, (current) => {
-              const merged = { ...current, updatedAt: updated.updatedAt };
-              for (const key of keys) Object.assign(merged, { [key]: updated[key] });
-              return merged;
-            });
+            mergeSavedEvent(queryClient, event.id, updated, keys);
           },
           {
             apply: (body) => {
-              replaceEvent(queryClient, event.id, (current) => ({ ...current, ...body }));
+              applyEventChanges(queryClient, event.id, body);
             },
             rollback: (body) => {
-              replaceEvent(queryClient, event.id, (current) => {
-                const restored = { ...current };
-                for (const key of keys) {
-                  if (current[key] === body[key]) Object.assign(restored, { [key]: before[key] });
-                }
-                return restored;
-              });
+              restoreEventFields(queryClient, event.id, keys, body, before);
             },
           },
         );

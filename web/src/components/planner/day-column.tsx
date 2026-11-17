@@ -15,8 +15,14 @@ import {
 import { dayLabel } from './planner-dates';
 import type { Preview } from './planner-drop';
 import { HOUR_HEIGHT, formatClock } from './planner-time';
-import { drawnSpan, pixelsFromMinutes, quarterAt, type Span } from './planner-geometry';
-import type { BlockModel, DayModel } from './planner-model';
+import {
+  drawnSpan,
+  layoutLanes,
+  pixelsFromMinutes,
+  quarterAt,
+  type Span,
+} from './planner-geometry';
+import { blockSpans, type BlockModel, type DayModel } from './planner-model';
 import styles from './day-column.module.css';
 
 export interface Draft {
@@ -33,7 +39,7 @@ interface DayColumnProps {
   draft: Draft | null;
   onOpenTask: (taskId: string) => void;
   onRemoveBlock: (block: BlockModel) => void;
-  onOpenEvent: (event: CalendarEvent, anchor: HTMLElement) => void;
+  onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
   onCommitDraft: (title: string) => void;
   onCancelDraft: () => void;
@@ -104,6 +110,7 @@ export function DayColumn({
   }
 
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+  const lanes = layoutLanes(blockSpans(day));
   const resizing = preview?.resizing === true ? preview : null;
   const here = preview?.date === day.date ? preview : null;
 
@@ -118,6 +125,7 @@ export function DayColumn({
       className={[styles.agenda, isOver ? styles.over : ''].join(' ').trim()}
       style={{ height: (endHour - startHour) * HOUR_HEIGHT }}
       data-day={day.date}
+      tabIndex={-1}
       onPointerDown={startDrawing}
     >
       {hours.slice(0, -1).map((hour) => (
@@ -135,6 +143,7 @@ export function DayColumn({
           key={block.item.id}
           model={block}
           startHour={startHour}
+          lane={lanes.get(block.item.id) ?? { column: 0, columns: 1 }}
           span={resizing?.sourceId === block.item.id ? resizing.span : undefined}
           moving={preview?.sourceId === block.item.id && !preview.resizing}
           onOpen={onOpenTask}

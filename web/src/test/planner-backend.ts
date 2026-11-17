@@ -139,6 +139,9 @@ export function servePlannerApi(world: World, tasks?: TaskBackend): PlannerBacke
       backend.calls.push(`DELETE event ${String(params.id)}`);
       await wait();
       if (backend.failing.has('EVENT-DELETE')) return problemResponse('internal', 500);
+      if (!backend.events.some((event) => event.id === params.id)) {
+        return problemResponse('http.404', 404);
+      }
       backend.events = backend.events.filter((event) => event.id !== params.id);
       return new HttpResponse(null, { status: 204 });
     }),
@@ -166,7 +169,7 @@ export function servePlannerApi(world: World, tasks?: TaskBackend): PlannerBacke
         date: body.date,
         startTime: body.startTime ?? null,
         endTime: body.endTime ?? null,
-        sortOrder: isBlock ? null : Math.max(0, ...lists.map((entry) => entry.sortOrder ?? 0)) + 1,
+        sortOrder: isBlock ? null : Math.max(-1, ...lists.map((entry) => entry.sortOrder ?? 0)) + 1,
         createdAt: STAMP,
         updatedAt: STAMP,
       };
@@ -185,13 +188,16 @@ export function servePlannerApi(world: World, tasks?: TaskBackend): PlannerBacke
       const index = backend.items.findIndex((item) => item.id === params.id);
       const current = backend.items[index];
       if (!current) return problemResponse('http.404', 404);
+      if (tasks?.tasks.find((task) => task.id === current.taskId)?.status === 'done') {
+        return problemResponse('scheduled-item.task-done', 422);
+      }
       const updated: ScheduledItem = { ...current, ...body };
       if (updated.startTime !== null) updated.sortOrder = null;
       else if (body.sortOrder === undefined && (current.startTime !== null || body.date)) {
         const lists = backend.items.filter(
           (item) => item.date === updated.date && item.startTime === null,
         );
-        updated.sortOrder = Math.max(0, ...lists.map((entry) => entry.sortOrder ?? 0)) + 1;
+        updated.sortOrder = Math.max(-1, ...lists.map((entry) => entry.sortOrder ?? 0)) + 1;
       }
       const refused = conflict(updated);
       if (refused) return refused;
@@ -203,6 +209,9 @@ export function servePlannerApi(world: World, tasks?: TaskBackend): PlannerBacke
       backend.calls.push(`DELETE item ${String(params.id)}`);
       await wait();
       if (backend.failing.has('DELETE')) return problemResponse('internal', 500);
+      if (!backend.items.some((item) => item.id === params.id)) {
+        return problemResponse('http.404', 404);
+      }
       backend.items = backend.items.filter((item) => item.id !== params.id);
       refreshReservations();
       return new HttpResponse(null, { status: 204 });

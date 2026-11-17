@@ -8,7 +8,7 @@ import type { CalendarEvent } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { PrioritySelo } from '@/components/selo/selo';
 import type { DragData } from './planner-drop';
-import { blockStyle, type Span } from './planner-geometry';
+import { blockStyle, type Lane, type Span } from './planner-geometry';
 import type { BlockModel, DeadlineModel } from './planner-model';
 import { formatRange, parseTime } from './planner-time';
 import styles from './blocks.module.css';
@@ -17,7 +17,15 @@ import styles from './blocks.module.css';
 const INTERACTIVE = 'button, input, a, [role="menu"]';
 
 function join(...names: (string | false | undefined)[]): string {
-  return names.filter(Boolean).join(' ');
+  return names.filter((name) => Boolean(name)).join(' ');
+}
+
+function laneStyle({ column, columns }: Lane): CSSProperties {
+  const room = '(100% - 2 * var(--space-1))';
+  return {
+    left: `calc(var(--space-1) + ${room} * ${String(column)} / ${String(columns)})`,
+    right: `calc(var(--space-1) + ${room} * ${String(columns - column - 1)} / ${String(columns)})`,
+  };
 }
 
 interface DedicatedBlockProps {
@@ -25,6 +33,7 @@ interface DedicatedBlockProps {
   startHour: number;
   // Replaces the stored span while the bottom edge is being dragged.
   span?: Span;
+  lane: Lane;
   moving: boolean;
   onOpen: (taskId: string) => void;
   onRemove: (block: BlockModel) => void;
@@ -34,6 +43,7 @@ export function DedicatedBlock({
   model,
   startHour,
   span,
+  lane,
   moving,
   onOpen,
   onRemove,
@@ -77,8 +87,15 @@ export function DedicatedBlock({
       tabIndex={0}
       aria-label={`${task.title}, ${range}`}
       className={join(styles.event, styles.dedicated, moving && styles.source)}
-      style={{ ...blockStyle(shown, startHour), '--ini': `var(--ini-${color})` } as CSSProperties}
+      style={
+        {
+          ...blockStyle(shown, startHour),
+          ...laneStyle(lane),
+          '--ini': `var(--ini-${color})`,
+        } as CSSProperties
+      }
       data-block-id={item.id}
+      data-block-task-id={task.id}
       onKeyDown={handleKeyDown}
       onClick={handleClick}
     >
@@ -98,6 +115,7 @@ export function DedicatedBlock({
             },
             {
               label: 'Tirar da agenda',
+              disabled,
               onSelect: () => {
                 onRemove(model);
               },
@@ -144,7 +162,7 @@ export function PreviewBlock({ title, span, startHour, blocked }: Readonly<Previ
 interface FixedBlockProps {
   event: CalendarEvent;
   startHour: number;
-  onOpen: (event: CalendarEvent, anchor: HTMLElement) => void;
+  onOpen: (event: CalendarEvent) => void;
 }
 
 export function FixedBlock({ event, startHour, onOpen }: Readonly<FixedBlockProps>) {
@@ -157,8 +175,8 @@ export function FixedBlock({ event, startHour, onOpen }: Readonly<FixedBlockProp
       aria-label={`${event.title}, ${formatRange(span.start, span.end, true)}`}
       aria-haspopup="dialog"
       data-event-id={event.id}
-      onClick={(click) => {
-        onOpen(event, click.currentTarget);
+      onClick={() => {
+        onOpen(event);
       }}
     >
       <span className={styles.title}>

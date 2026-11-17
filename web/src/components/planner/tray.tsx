@@ -110,7 +110,7 @@ function TrayItem({
           dragging ? styles.source : '',
           isOpen ? styles.open : '',
         ]
-          .filter(Boolean)
+          .filter((name) => name !== '')
           .join(' ')}
         style={{ '--ini': `var(--ini-${color})` } as CSSProperties}
         data-task-id={task.id}
@@ -174,7 +174,7 @@ export function Tray({
 }: Readonly<TrayProps>) {
   const colors = new Map(initiatives.map(({ id, color }) => [id, color]));
   return (
-    <aside aria-label="Para planejar" className={styles.tray}>
+    <aside aria-label="Para planejar" tabIndex={-1} className={styles.tray}>
       <h2 className={styles.heading}>Para planejar</h2>
       <div role="group" aria-label="Filtrar por iniciativa" className={styles.filter}>
         <button

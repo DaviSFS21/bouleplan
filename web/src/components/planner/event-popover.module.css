@@ -43,3 +43,13 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+.title {
+  margin: 0;
+  font: var(--type-titulo-tarefa);
+}
+
+.delete:disabled {
+  color: var(--tinta-muted);
+  cursor: not-allowed;
+}

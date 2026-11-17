@@ -3,21 +3,18 @@ import { resetDatabase } from './reset-database';
 
 const HOUR_PX = 48;
 
+// A fixed Wednesday morning in a fixed zone: the agenda shows 8h to 18h and every target is derived from it.
+const NOW = '2026-11-18T10:30:00-03:00';
+const TODAY = '2026-11-18';
+const FIRST_HOUR = 8;
+
+test.use({ timezoneId: 'America/Sao_Paulo', viewport: { width: 1280, height: 900 } });
+
 test.beforeEach(async ({ page }) => {
   await resetDatabase();
+  await page.clock.setFixedTime(new Date(NOW));
   await page.goto('/');
 });
-
-function isoDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${String(date.getFullYear())}-${month}-${day}`;
-}
-
-const TODAY = isoDate(new Date());
-
-// The agenda shows 8h to 18h, widened to hold the now line.
-const FIRST_HOUR = Math.min(8, new Date().getHours());
 
 function today(page: Page): Locator {
   return page.locator(`[data-day="${TODAY}"]`);
@@ -103,6 +100,7 @@ async function dragTo(page: Page, source: Locator, x: number, y: number) {
 
 // A point in today's column, at the given hour of the day.
 async function atHour(page: Page, hour: number): Promise<{ x: number; y: number }> {
+  await today(page).scrollIntoViewIfNeeded();
   const box = await today(page).boundingBox();
   if (!box) throw new Error('Today must be on screen.');
   return { x: box.x + box.width / 2, y: box.y + (hour - FIRST_HOUR) * HOUR_PX + 4 };
@@ -241,7 +239,7 @@ test('warns about a deadline without reserved time until the effort is reserved'
   await seed(page, [{ title: 'Comprar tinta', effort: '2', deadline: TODAY }]);
   await openWeek(page);
 
-  const notice = page.getByRole('status').filter({ hasText: 'Prazos sem tempo reservado.' });
+  const notice = page.getByRole('status', { name: 'Alertas da semana', exact: true });
   await expect(notice).toContainText('1 tarefa vence nesta semana com tempo a reservar.');
   await expect(trayItem(page, 'Comprar tinta')).toContainText('faltam 2h');
   await expect(

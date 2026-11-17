@@ -8,8 +8,9 @@ import {
   type IdentifiedSpan,
   type Span,
 } from './planner-geometry';
+import { itemSpan } from './planner-model';
 import { remainingMinutes } from './planner-tasks';
-import { durationFor, parseTime } from './planner-time';
+import { durationFor } from './planner-time';
 
 export type DragData =
   | { kind: 'tray'; task: Task }
@@ -66,16 +67,12 @@ function onStrip(data: DragData, date: string, context: DropContext): DropIntent
     : { type: 'move-entry', item: data.item, date };
 }
 
-function spanOf(item: ScheduledItem): Span {
-  return { start: parseTime(item.startTime ?? '0:00'), end: parseTime(item.endTime ?? '0:00') };
-}
-
 function onResize(
   data: Extract<DragData, { kind: 'resize' }>,
   deltaY: number,
   context: DropContext,
 ): Resolution {
-  const span = spanOf(data.item);
+  const span = itemSpan(data.item);
   const end = resizeEnd(span, deltaY, context.blocksOf(data.item.date));
   const preview: Preview = {
     date: data.item.date,
@@ -100,10 +97,10 @@ function onDay(
 ): Resolution {
   const moving = data.kind === 'block';
   const duration = moving
-    ? spanOf(data.item).end - spanOf(data.item).start
+    ? itemSpan(data.item).end - itemSpan(data.item).start
     : durationFor(remainingMinutes(data.task));
   const span = moving
-    ? fitSpan(moveStart(spanOf(data.item).start, deltaY), duration)
+    ? fitSpan(moveStart(itemSpan(data.item).start, deltaY), duration)
     : dropStartFromPointer(pointerY, target.top, context.startHour, duration);
   const blocked =
     findOverlap(span, context.blocksOf(target.date), moving ? data.item.id : undefined) !==
@@ -126,7 +123,7 @@ function onDay(
       preview,
     };
   }
-  const origin = spanOf(data.item);
+  const origin = itemSpan(data.item);
   const unchanged =
     target.date === data.item.date && span.start === origin.start && span.end === origin.end;
   return {

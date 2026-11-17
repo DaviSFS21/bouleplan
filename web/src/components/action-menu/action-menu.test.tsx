@@ -386,3 +386,19 @@ describe('ActionMenu with its own trigger', () => {
     expect(trigger).toHaveFocus();
   });
 });
+
+describe('a disabled item', () => {
+  it('cannot be chosen', async () => {
+    const onSelect = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ActionMenu label="Ações" items={[{ label: 'Tirar da agenda', onSelect, disabled: true }]} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ações' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Tirar da agenda' })).toBeDisabled();
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+});

@@ -4,7 +4,7 @@ export const MAX_END = 23 * 60 + 45;
 export const DEFAULT_BLOCK = 60;
 
 export function parseTime(text: string): number {
-  const [hours = 0, minutes = 0] = text.split(':').map(Number);
+  const [hours = 0, minutes = 0] = text.split(':').map((part) => Number(part));
   return hours * 60 + minutes;
 }
 

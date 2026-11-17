@@ -96,3 +96,35 @@ export function blockStyle(span: Span, startHour: number): { top: number; height
 export function pixelsFromMinutes(minutes: number): number {
   return (minutes / 60) * HOUR_HEIGHT;
 }
+
+export interface Lane {
+  column: number;
+  columns: number;
+}
+
+// Blocks that overlap share the width of the day, like a calendar.
+export function layoutLanes(spans: readonly IdentifiedSpan[]): Map<string, Lane> {
+  const sorted = [...spans].sort((a, b) => a.start - b.start || a.end - b.end);
+  const lanes = new Map<string, Lane>();
+  let group: { id: string; column: number }[] = [];
+  let groupEnd = 0;
+  const close = () => {
+    const columns = Math.max(1, ...group.map(({ column }) => column + 1));
+    for (const { id, column } of group) lanes.set(id, { column, columns });
+    group = [];
+  };
+  const ends: number[] = [];
+  for (const span of sorted) {
+    if (group.length > 0 && span.start >= groupEnd) {
+      close();
+      ends.length = 0;
+    }
+    let column = ends.findIndex((end) => end <= span.start);
+    if (column < 0) column = ends.length;
+    ends[column] = span.end;
+    group.push({ id: span.id, column });
+    groupEnd = Math.max(groupEnd, span.end);
+  }
+  close();
+  return lanes;
+}
