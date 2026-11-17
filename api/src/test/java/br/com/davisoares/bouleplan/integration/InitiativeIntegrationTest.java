@@ -3,6 +3,7 @@ package br.com.davisoares.bouleplan.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.davisoares.bouleplan.TestData;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
 import br.com.davisoares.bouleplan.application.port.in.ListInitiativesUseCase;
 import br.com.davisoares.bouleplan.domain.Initiative;
@@ -14,6 +15,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +28,11 @@ class InitiativeIntegrationTest {
   @Inject CreateInitiativeUseCase createInitiative;
   @Inject ListInitiativesUseCase listInitiatives;
   @Inject EntityManager entityManager;
+
+  @BeforeEach
+  void cleanDatabase() {
+    TestData.deleteAllInitiatives();
+  }
 
   @Test
   @DisplayName("creating persists the initiative with the suggested color")

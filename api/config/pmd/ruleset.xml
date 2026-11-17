@@ -40,6 +40,8 @@
   </rule>
 
   <rule ref="category/java/errorprone.xml">
+    <!-- JAX-RS RestResponse is AutoCloseable, but one built in memory (mapper tests) holds nothing to release. -->
+    <exclude name="CloseResource"/>
     <!-- ArchUnit tests are static @ArchTest fields run by the ArchUnit engine, not @Test methods,
          so the rule wrongly reports ArchitectureTest as a test class without test cases. -->
     <exclude name="TestClassWithoutTestCases"/>

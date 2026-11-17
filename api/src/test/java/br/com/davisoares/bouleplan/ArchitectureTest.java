@@ -13,10 +13,6 @@ import com.tngtech.archunit.lang.ArchRule;
  *
  * <p>Plain JUnit 5 (no {@code @QuarkusTest}) so that it stays fast: it only inspects the compiled
  * production classes.
- *
- * <p>{@code adapter.in} has no classes yet, so the two rules whose subject is that package opt in
- * with {@code allowEmptyShould(true)} per rule (not the global {@code archRule.failOnEmptyShould}),
- * so a mistyped pattern in any other rule still fails. Remove them when the REST adapter lands.
  */
 @AnalyzeClasses(
     packages = "br.com.davisoares.bouleplan",
@@ -61,7 +57,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage(ADAPTER_OUT)
-          .allowEmptyShould(true)
           .because("adapters are independent of each other and are wired through the application");
 
   @ArchTest
@@ -82,7 +77,6 @@ final class ArchitectureTest {
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage(APPLICATION_SERVICE, APPLICATION_PORT_OUT)
-          .allowEmptyShould(true)
           .because("inbound adapters must reach the application only through inbound ports");
 
   @ArchTest

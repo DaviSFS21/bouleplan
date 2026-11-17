@@ -44,8 +44,27 @@ hexagonal architecture on the production classes:
    `org.jboss.resteasy`). JPA and Panache are allowed, because entities carry the business rules.
 6. No dependency cycles between the top-level slices `domain`, `application` and `adapter`.
 
-Only the two rules whose subject is `adapter.in` (still empty) opt in to `allowEmptyShould(true)`; the
-comment in `ArchitectureTest` says why it is per rule and not global.
+## REST API
+
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/initiatives` | 200, active initiatives in creation order |
+| `POST` | `/initiatives` | 201 with `Location: /initiatives/{id}`; body `{"name": "..."}` |
+
+Errors are RFC 9457 `application/problem+json` with `type`, `title`, `status` and `detail`:
+`/problems/invalid-initiative` (400), `/problems/malformed-request` (400), `/problems/http-error`
+(framework errors such as 404/405/415, keeping their status) and `/problems/internal` (500, message
+logged and never returned).
+
+## API contract
+
+The OpenAPI schema is committed at `contract/openapi.json` (repository root) and is the source for
+the frontend client. The build generates it with `quarkus-smallrye-openapi`.
+
+```bash
+./gradlew checkContract    # fails if contract/openapi.json differs from the code (part of check)
+./gradlew updateContract   # rewrites contract/openapi.json; commit the result
+```
 
 ## Dependency versions
 
