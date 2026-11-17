@@ -16,6 +16,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -52,7 +53,7 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
         .map(task -> {
           requireSchedulable(task);
           ScheduledItem item =
-              command.startTime() == null && command.endTime() == null
+              Objects.isNull(command.startTime()) && Objects.isNull(command.endTime())
                   ? newDayListEntry(task.getId(), command.date())
                   : newBlock(task.getId(), command);
           items.save(item);
@@ -108,7 +109,7 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
     LocalTime start =
         command.startTime().present() ? command.startTime().value() : item.getStartTime();
     LocalTime end = command.endTime().present() ? command.endTime().value() : item.getEndTime();
-    if (start == null && end == null) {
+    if (Objects.isNull(start) && Objects.isNull(end)) {
       moveInDayList(item, date, command);
     } else {
       moveAsBlock(item, date, start, end, command);
@@ -120,7 +121,7 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
       ScheduledItem item, LocalDate date, UpdateScheduledItemCommand command) {
     boolean sameList = !item.isBlock() && date.equals(item.getDate());
     int order;
-    if (command.sortOrder().present() && command.sortOrder().value() != null) {
+    if (command.sortOrder().present() && Objects.nonNull(command.sortOrder().value())) {
       order = command.sortOrder().value();
     } else if (sameList && !command.sortOrder().present()) {
       order = item.getSortOrder();
@@ -129,7 +130,7 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
     }
     ScheduledItem.requireDayListEntry(date, order);
     requireNoDuplicate(item.getTaskId(), date, item.getId());
-    if (command.sortOrder().present() && command.sortOrder().value() != null) {
+    if (command.sortOrder().present() && Objects.nonNull(command.sortOrder().value())) {
       makeRoom(item, date, order, sameList);
     }
     item.placeInDayList(date, order);
@@ -164,7 +165,7 @@ public class ScheduledItemService implements ManageScheduledItemsUseCase {
       LocalTime start,
       LocalTime end,
       UpdateScheduledItemCommand command) {
-    if (command.sortOrder().present() && command.sortOrder().value() != null) {
+    if (command.sortOrder().present() && Objects.nonNull(command.sortOrder().value())) {
       throw new InvalidScheduleException(
           "scheduled-item.time.invalid", "A dedicated block has no day-list order");
     }
