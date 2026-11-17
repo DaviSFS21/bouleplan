@@ -17,6 +17,7 @@ export default defineConfig({
       reporter: ['text', ['lcov', { projectRoot: '..' }]],
       reportsDirectory: 'coverage',
       include: ['src/**'],
+      exclude: ['src/test/**'],
     },
   },
 });

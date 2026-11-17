@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier/flat';
 
 export default defineConfig([
-  globalIgnores(['.next/**', 'out/**', 'coverage/**', 'next-env.d.ts']),
+  globalIgnores(['.next/**', 'out/**', 'coverage/**', 'next-env.d.ts', 'src/api/schema.d.ts']),
   ...nextVitals,
   ...nextTs,
   {

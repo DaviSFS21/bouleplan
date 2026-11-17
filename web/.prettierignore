@@ -6,3 +6,4 @@ pnpm-lock.yaml
 next-env.d.ts
 *.tsbuildinfo
 src/styles/tokens.css
+src/api/schema.d.ts

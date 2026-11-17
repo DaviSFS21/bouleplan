@@ -1,10 +1,13 @@
-import styles from './page.module.css';
+import { Suspense } from 'react';
+import {
+  InitiativesFallback,
+  InitiativesScreen,
+} from '@/components/initiatives/initiatives-screen';
 
 export default function Home() {
   return (
-    <main className={styles.main}>
-      <h1 className={styles.title}>Bouléplan</h1>
-      <p className={styles.subtitle}>Gerenciador pessoal de iniciativas e tarefas.</p>
-    </main>
+    <Suspense fallback={<InitiativesFallback />}>
+      <InitiativesScreen />
+    </Suspense>
   );
 }

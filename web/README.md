@@ -37,6 +37,12 @@ Opens at <http://localhost:3000>.
 - Icons: use the `Icon` component (`@/components/icon/icon`), which fixes the Lucide stroke at 1.5 and sizes at 14, 16, 18 or 20.
 - Server state: TanStack Query, provided by `Providers` in the root layout.
 
+## API client
+
+- `src/api/schema.d.ts` is generated from `../contract/openapi.json`; never edit it by hand. `pnpm api:types` regenerates it (committed); a test fails when it is stale.
+- `src/api/client.ts` is a typed `openapi-fetch` client on `/api`. Problem responses (`application/problem+json`) become an `ApiError` carrying `detail`.
+- Tests mock HTTP with `msw` (`src/test/server.ts`, started in `vitest.setup.ts`); unmocked requests fail the test.
+
 ## Checks
 
 | Command              | What it does                                                   |
@@ -46,6 +52,7 @@ Opens at <http://localhost:3000>.
 | `pnpm format`        | Formats the project with Prettier                              |
 | `pnpm format:check`  | Checks formatting (used in CI)                                 |
 | `pnpm tokens`        | Regenerates `src/styles/tokens.css` from the design tokens     |
+| `pnpm api:types`     | Regenerates `src/api/schema.d.ts` from the OpenAPI contract    |
 | `pnpm test`          | Runs the Vitest suite                                          |
 | `pnpm test:watch`    | Runs tests in watch mode                                       |
 | `pnpm test:coverage` | Runs tests with coverage (`coverage/lcov.info`, read by Sonar) |

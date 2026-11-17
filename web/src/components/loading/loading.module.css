@@ -1,0 +1,121 @@
+.loading {
+  display: block;
+}
+
+.ink {
+  stroke: var(--terracota);
+}
+
+.track {
+  stroke: var(--borda);
+}
+
+.ring {
+  transform-origin: 12px 8.05px;
+  animation: spin 1.6s linear infinite;
+}
+
+.fill {
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: 3s ease-in-out infinite;
+}
+
+.fillA {
+  animation-name: fill-a;
+}
+
+.fillB {
+  animation-name: fill-b;
+}
+
+.fillC {
+  animation-name: fill-c;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fill-a {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  1% {
+    opacity: 1;
+  }
+  12% {
+    stroke-dashoffset: 0;
+  }
+  78% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes fill-b {
+  0%,
+  12% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  13% {
+    opacity: 1;
+  }
+  38% {
+    stroke-dashoffset: 0;
+  }
+  78% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes fill-c {
+  0%,
+  38% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  39% {
+    opacity: 1;
+  }
+  70% {
+    stroke-dashoffset: 0;
+  }
+  78% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  94%,
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring,
+  .fill {
+    animation: none;
+  }
+
+  .fill {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
