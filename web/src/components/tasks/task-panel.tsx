@@ -2,7 +2,7 @@
 
 import { ChevronDown } from 'lucide-react';
 import { useState, type MouseEvent, type ReactNode } from 'react';
-import { usePhases } from '@/api/phases';
+import { useEpics } from '@/api/epics';
 import {
   INVALID_EFFORT_MESSAGE,
   BLANK_TASK_TITLE_MESSAGE,
@@ -16,8 +16,8 @@ import { DeadlineField, localToday } from '@/components/deadline-field/deadline-
 import { Icon } from '@/components/icon/icon';
 import { InlineText } from '@/components/inline-text/inline-text';
 import { formatDate, formatElapsed } from '@/components/initiatives/initiative-dates';
-import { phaseLabel } from '@/components/initiatives/phase-label';
-import { PHASE_PARAM, SELECTION_PARAM } from '@/components/initiatives/url-params';
+import { epicLabel } from '@/components/initiatives/epic-label';
+import { EPIC_PARAM, SELECTION_PARAM } from '@/components/initiatives/url-params';
 import { BlockedSelo } from '@/components/selo/selo';
 import { SidePanel } from '@/components/side-panel/side-panel';
 import { useToast } from '@/components/toast/toast';
@@ -44,7 +44,7 @@ interface TaskPanelProps {
   actions: TaskActions;
   onOpenTask: (id: string) => void;
   focusSignal: number;
-  onSelectPath: (initiativeId: string, phaseId: string | null) => void;
+  onSelectPath: (initiativeId: string, epicId: string | null) => void;
   fallbackFocus: () => HTMLElement | null;
   now?: Date;
 }
@@ -79,8 +79,8 @@ export function TaskPanel({
   const update = useUpdateTask();
   const addBlocker = useAddBlocker();
   const removeBlocker = useRemoveBlocker();
-  const phasesQuery = usePhases(task.initiativeId);
-  const phases = phasesQuery.data;
+  const epicsQuery = useEpics(task.initiativeId);
+  const epics = epicsQuery.data;
   const clock = useMinuteClock(now);
   const [errors, setErrors] = useState<Errors>({});
   const [boundId, setBoundId] = useState(task.id);
@@ -116,9 +116,9 @@ export function TaskPanel({
     }
   }
 
-  const phase = phases?.find(({ id }) => id === task.phaseId);
-  const phasePosition = phases?.findIndex(({ id }) => id === task.phaseId) ?? -1;
-  const phaseText = phase ? phaseLabel(phasePosition, phase.name) : null;
+  const epic = epics?.find(({ id }) => id === task.epicId);
+  const epicPosition = epics?.findIndex(({ id }) => id === task.epicId) ?? -1;
+  const epicText = epic ? epicLabel(epicPosition, epic.name) : null;
   const initiativeName = initiativeNames.get(task.initiativeId) ?? '';
   const deadline = deadlineLabel(task.deadline, clock, task.status === 'done');
 
@@ -134,18 +134,18 @@ export function TaskPanel({
       >
         {initiativeName}
       </a>
-      {phase && phaseText ? (
+      {epic && epicText ? (
         <>
           {' › '}
           <a
-            href={`?${SELECTION_PARAM}=${task.initiativeId}&${PHASE_PARAM}=${phase.id}`}
+            href={`?${SELECTION_PARAM}=${task.initiativeId}&${EPIC_PARAM}=${epic.id}`}
             onClick={(event) => {
               if (!isPlainClick(event)) return;
               event.preventDefault();
-              onSelectPath(task.initiativeId, phase.id);
+              onSelectPath(task.initiativeId, epic.id);
             }}
           >
-            {phaseText}
+            {epicText}
           </a>
         </>
       ) : null}
@@ -198,32 +198,32 @@ export function TaskPanel({
     />
   );
 
-  const phaseMenu = (
+  const epicMenu = (
     <ActionMenu
-      label={`Fase: ${phaseText ?? (task.phaseId === null ? 'Sem fase' : 'Carregando')}`}
+      label={`Épico: ${epicText ?? (task.epicId === null ? 'Sem épico' : 'Carregando')}`}
       trigger={{
         className: styles.valueButton ?? '',
         children: (
           <>
-            {phaseText ?? (task.phaseId === null ? 'Sem fase' : 'Carregando…')}
+            {epicText ?? (task.epicId === null ? 'Sem épico' : 'Carregando…')}
             <Icon icon={ChevronDown} size={14} aria-hidden="true" />
           </>
         ),
       }}
       items={[
         {
-          group: 'Fase',
+          group: 'Épico',
           items: [
-            { name: 'Sem fase', target: null },
-            ...(phases ?? []).map((item, position) => ({
-              name: phaseLabel(position, item.name),
+            { name: 'Sem épico', target: null },
+            ...(epics ?? []).map((item, position) => ({
+              name: epicLabel(position, item.name),
               target: item.id,
             })),
           ].map(({ name, target }) => ({
             label: name,
-            checked: task.phaseId === target,
+            checked: task.epicId === target,
             onSelect: () => {
-              if (task.phaseId !== target) void save('phaseId', { phaseId: target });
+              if (task.epicId !== target) void save('epicId', { epicId: target });
             },
           })),
         },
@@ -301,8 +301,8 @@ export function TaskPanel({
           />
         </Row>
         {errorLine('priority')}
-        <Row label="Fase">{phaseMenu}</Row>
-        {errorLine('phaseId')}
+        <Row label="Épico">{epicMenu}</Row>
+        {errorLine('epicId')}
         <Row label="Prazo">
           <DeadlineField
             key={`deadline-${task.id}`}

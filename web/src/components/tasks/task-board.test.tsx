@@ -58,7 +58,7 @@ describe('columns and filters', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Feito · 0' })).toBeVisible();
   });
 
-  it('filters by initiative, including every phase and the implicit one', async () => {
+  it('filters by initiative, including every epic and the implicit one', async () => {
     const user = userEvent.setup();
     await renderBoard();
 
@@ -73,7 +73,7 @@ describe('columns and filters', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Feito · 1' })).toBeVisible();
   });
 
-  it('shows all the tasks of one initiative with its implicit-phase ones', async () => {
+  it('shows all the tasks of one initiative with its implicit-epic ones', async () => {
     await renderBoard(`/?iniciativa=${reforma.id}`);
 
     expect(titles('A fazer')).toEqual(['Comprar tinta', 'Quebrar piso', 'Pedir orçamento']);
@@ -81,17 +81,17 @@ describe('columns and filters', () => {
     expect(titles('Feito')).toEqual([]);
   });
 
-  it('filters by one phase and goes back to the initiative on a second click', async () => {
+  it('filters by one epic and goes back to the initiative on a second click', async () => {
     const user = userEvent.setup();
     await renderBoard(`/?iniciativa=${reforma.id}`);
-    const phaseButton = await screen.findByRole('button', { name: 'Fase 2 · Piso' });
+    const epicButton = await screen.findByRole('button', { name: 'Épico 2 · Piso' });
 
-    await user.click(phaseButton);
+    await user.click(epicButton);
 
     expect(titles('A fazer')).toEqual(['Comprar tinta']);
     expect(titles('Em andamento')).toEqual([]);
 
-    await user.click(screen.getByRole('button', { name: 'Fase 2 · Piso' }));
+    await user.click(screen.getByRole('button', { name: 'Épico 2 · Piso' }));
 
     expect(titles('Em andamento')).toEqual(['Lixar parede']);
   });
@@ -118,7 +118,7 @@ describe('columns and filters', () => {
 describe('card anatomy', () => {
   it('shows priority, title, description, path and deadline', async () => {
     await renderBoard();
-    await within(card('Comprar tinta')).findByText('Reforma › Fase 2 · Piso');
+    await within(card('Comprar tinta')).findByText('Reforma › Épico 2 · Piso');
     const paintCard = within(card('Comprar tinta'));
 
     expect(paintCard.getByText('P1')).toBeVisible();
@@ -127,15 +127,15 @@ describe('card anatomy', () => {
     expect(paintCard.getByText('vence amanhã')).toBeVisible();
   });
 
-  it('shows only the initiative for a task in the implicit phase', async () => {
+  it('shows only the initiative for a task in the implicit epic', async () => {
     await renderBoard();
 
     expect(within(card('Lixar parede')).getByText('Reforma')).toBeVisible();
     expect(within(card('Lixar parede')).getByText('sem prazo')).toBeVisible();
   });
 
-  it('hides the path when an initiative or a phase is selected', async () => {
-    await renderBoard(`/?iniciativa=${reforma.id}&fase=${piso.id}`);
+  it('hides the path when an initiative or an epic is selected', async () => {
+    await renderBoard(`/?iniciativa=${reforma.id}&epico=${piso.id}`);
 
     expect(within(card('Comprar tinta')).queryByText(/Reforma/)).not.toBeInTheDocument();
   });
@@ -196,9 +196,9 @@ describe('quick create', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Em andamento · 2' })).toBeVisible();
   });
 
-  it('creates in the filtered phase', async () => {
+  it('creates in the filtered epic', async () => {
     const user = userEvent.setup();
-    const backend = await renderBoard(`/?iniciativa=${reforma.id}&fase=${piso.id}`);
+    const backend = await renderBoard(`/?iniciativa=${reforma.id}&epico=${piso.id}`);
     await screen.findByRole('heading', { level: 1, name: 'Piso' });
 
     await user.click(within(column('Feito')).getByRole('button', { name: '+ Nova tarefa' }));
@@ -208,7 +208,7 @@ describe('quick create', () => {
     );
 
     await within(column('Feito')).findByRole('article', { name: 'Rejuntar' });
-    expect(backend.bodies).toEqual([{ title: 'Rejuntar', status: 'done', phaseId: piso.id }]);
+    expect(backend.bodies).toEqual([{ title: 'Rejuntar', status: 'done', epicId: piso.id }]);
   });
 
   it('cancels with Esc without reaching the page and closes when blurred empty', async () => {
@@ -365,13 +365,13 @@ describe('changing the selection', () => {
     expect(backend.bodies).toEqual([]);
   });
 
-  it('drops a draft typed for one phase when another is selected', async () => {
+  it('drops a draft typed for one epic when another is selected', async () => {
     const user = userEvent.setup();
-    await renderBoard(`/?iniciativa=${reforma.id}&fase=${piso.id}`);
+    await renderBoard(`/?iniciativa=${reforma.id}&epico=${piso.id}`);
     await screen.findByRole('heading', { level: 1, name: 'Piso' });
     await startDraft(user);
 
-    await user.click(screen.getByRole('button', { name: 'Fase 1 · Demolição' }));
+    await user.click(screen.getByRole('button', { name: 'Épico 1 · Demolição' }));
 
     await screen.findByRole('heading', { level: 1, name: 'Demolição' });
     noDraft();

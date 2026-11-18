@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CREATE_PHASE_FALLBACK_MESSAGE,
-  RENAME_PHASE_FALLBACK_MESSAGE,
+  CREATE_EPIC_FALLBACK_MESSAGE,
+  RENAME_EPIC_FALLBACK_MESSAGE,
   createInitiativeMessage,
-  createPhaseMessage,
+  createEpicMessage,
   createTaskMessage,
   CREATE_TASK_FALLBACK_MESSAGE,
   updateTaskMessage,
-  phaseCountSuffix,
-  renamePhaseMessage,
+  epicCountSuffix,
+  renameEpicMessage,
   updateInitiativeMessage,
   blockerMessage,
   plannerMessage,
@@ -72,34 +72,34 @@ describe('updateInitiativeMessage', () => {
   });
 });
 
-describe('phase messages', () => {
+describe('epic messages', () => {
   it.each([
-    ['phase.name.blank', 'Dê um nome à fase.'],
-    ['phase.name.too-long', 'Use no máximo 200 caracteres.'],
-    ['phase.name.invalid-characters', 'O nome tem caracteres inválidos.'],
-    ['http.500', 'Não foi possível criar a fase. Tente de novo.'],
+    ['epic.name.blank', 'Dê um nome ao épico.'],
+    ['epic.name.too-long', 'Use no máximo 200 caracteres.'],
+    ['epic.name.invalid-characters', 'O nome tem caracteres inválidos.'],
+    ['http.500', 'Não foi possível criar o épico. Tente de novo.'],
   ])('maps %s when creating', (code, message) => {
-    expect(createPhaseMessage(failure(code))).toBe(message);
+    expect(createEpicMessage(failure(code))).toBe(message);
   });
 
   it.each([
-    ['phase.name.blank', 'Dê um nome à fase.'],
+    ['epic.name.blank', 'Dê um nome ao épico.'],
     ['internal', 'Não foi possível salvar o nome. Tente de novo.'],
   ])('maps %s when renaming', (code, message) => {
-    expect(renamePhaseMessage(failure(code))).toBe(message);
+    expect(renameEpicMessage(failure(code))).toBe(message);
   });
 
   it('uses the fallbacks for errors that are not ApiError', () => {
-    expect(createPhaseMessage(new TypeError('x'))).toBe(CREATE_PHASE_FALLBACK_MESSAGE);
-    expect(renamePhaseMessage(new TypeError('x'))).toBe(RENAME_PHASE_FALLBACK_MESSAGE);
+    expect(createEpicMessage(new TypeError('x'))).toBe(CREATE_EPIC_FALLBACK_MESSAGE);
+    expect(renameEpicMessage(new TypeError('x'))).toBe(RENAME_EPIC_FALLBACK_MESSAGE);
   });
 
   it.each([
     [0, ''],
-    [1, ', com 1 fase'],
-    [3, ', com 3 fases'],
-  ])('suffixes %s phases as "%s"', (count, suffix) => {
-    expect(phaseCountSuffix(count)).toBe(suffix);
+    [1, ', com 1 épico'],
+    [3, ', com 3 épicos'],
+  ])('suffixes %s epics as "%s"', (count, suffix) => {
+    expect(epicCountSuffix(count)).toBe(suffix);
   });
 });
 
@@ -128,8 +128,8 @@ describe('task messages', () => {
     ],
     ['deadline', 'internal', 'Não foi possível salvar o prazo. Tente de novo.'],
     ['isBlocked', 'internal', 'Não foi possível atualizar o bloqueio. Tente de novo.'],
-    ['phaseId', 'http.404', 'Essa fase não existe mais.'],
-    ['phaseId', 'internal', 'Não foi possível mudar a fase. Tente de novo.'],
+    ['epicId', 'http.404', 'Esse épico não existe mais.'],
+    ['epicId', 'internal', 'Não foi possível mudar o épico. Tente de novo.'],
     ['plannedWeekStart', 'task.planned-week.invalid', 'Escolha uma semana válida.'],
     ['plannedWeekStart', 'internal', 'Não foi possível salvar a semana. Tente de novo.'],
   ] as const)('maps %s failures with %s when updating', (field, code, message) => {

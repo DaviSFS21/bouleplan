@@ -1,6 +1,6 @@
 # Bouléplan
 
-Personal planner for initiatives and tasks: a kanban of initiatives, phases and tasks, plus a weekly planner with three visual layers (fixed commitments, dedicated time and deadlines).
+Personal planner for initiatives and tasks: a kanban of initiatives, epics and tasks, plus a weekly planner with three visual layers (fixed commitments, dedicated time and deadlines).
 
 The name comes from the Boulé, the council of ancient Athens that prepared the agenda without deciding for anyone: the app organizes and brings clarity, and the decision stays yours.
 

@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { createQueryClient } from '@/components/providers/providers';
-import { initiative, phase, problemResponse, task } from '@/test/fixtures';
+import { initiative, epic, problemResponse, task } from '@/test/fixtures';
 import { server } from '@/test/server';
 import {
   useArchiveInitiative,
@@ -12,7 +12,7 @@ import {
   useRestoreInitiative,
   useUnarchiveInitiative,
 } from './initiatives';
-import { useArchivePhase, useDeletePhase, useRestorePhase, useUnarchivePhase } from './phases';
+import { useArchiveEpic, useDeleteEpic, useRestoreEpic, useUnarchiveEpic } from './epics';
 import { ApiError } from './problem';
 import {
   compareTasks,
@@ -399,14 +399,14 @@ describe('useUnarchiveTask and useRestoreTask', () => {
   });
 });
 
-describe('hiding tasks with their phase or initiative', () => {
+describe('hiding tasks with their epic or initiative', () => {
   function useHidingHooks() {
     return {
       list: useTasks(),
-      archivePhase: useArchivePhase(),
-      unarchivePhase: useUnarchivePhase(),
-      deletePhase: useDeletePhase(),
-      restorePhase: useRestorePhase(),
+      archiveEpic: useArchiveEpic(),
+      unarchiveEpic: useUnarchiveEpic(),
+      deleteEpic: useDeleteEpic(),
+      restoreEpic: useRestoreEpic(),
       archiveInitiative: useArchiveInitiative(),
       unarchiveInitiative: useUnarchiveInitiative(),
       deleteInitiative: useDeleteInitiative(),
@@ -414,7 +414,7 @@ describe('hiding tasks with their phase or initiative', () => {
     };
   }
 
-  it('loads the tasks again after every phase and initiative change', async () => {
+  it('loads the tasks again after every epic and initiative change', async () => {
     let loads = 0;
     const ok = () => HttpResponse.json(initiative());
     server.use(
@@ -422,10 +422,10 @@ describe('hiding tasks with their phase or initiative', () => {
         loads += 1;
         return HttpResponse.json([paint]);
       }),
-      http.post('*/api/phases/:id/archive', () => HttpResponse.json(phase())),
-      http.post('*/api/phases/:id/unarchive', () => HttpResponse.json(phase())),
-      http.post('*/api/phases/:id/restore', () => HttpResponse.json(phase())),
-      http.delete('*/api/phases/:id', () => new HttpResponse(null, { status: 204 })),
+      http.post('*/api/epics/:id/archive', () => HttpResponse.json(epic())),
+      http.post('*/api/epics/:id/unarchive', () => HttpResponse.json(epic())),
+      http.post('*/api/epics/:id/restore', () => HttpResponse.json(epic())),
+      http.delete('*/api/epics/:id', () => new HttpResponse(null, { status: 204 })),
       http.post('*/api/initiatives/:id/archive', ok),
       http.post('*/api/initiatives/:id/unarchive', ok),
       http.post('*/api/initiatives/:id/restore', ok),
@@ -436,10 +436,10 @@ describe('hiding tasks with their phase or initiative', () => {
       expect(result.current.list.data).toEqual([paint]);
     });
     const chain = [
-      () => result.current.archivePhase.mutateAsync(phase()),
-      () => result.current.unarchivePhase.mutateAsync(phase()),
-      () => result.current.deletePhase.mutateAsync(phase()),
-      () => result.current.restorePhase.mutateAsync(phase()),
+      () => result.current.archiveEpic.mutateAsync(epic()),
+      () => result.current.unarchiveEpic.mutateAsync(epic()),
+      () => result.current.deleteEpic.mutateAsync(epic()),
+      () => result.current.restoreEpic.mutateAsync(epic()),
       () => result.current.archiveInitiative.mutateAsync(INITIATIVE_ID),
       () => result.current.unarchiveInitiative.mutateAsync(INITIATIVE_ID),
       () => result.current.deleteInitiative.mutateAsync(INITIATIVE_ID),
@@ -561,14 +561,14 @@ describe('blockers', () => {
 });
 
 describe('useUpdateTask with the panel fields', () => {
-  it('sends the phase and the planned week and keeps the server answer for them', async () => {
+  it('sends the epic and the planned week and keeps the server answer for them', async () => {
     const bodies: unknown[] = [];
     const items = [paint];
     server.use(
       http.patch('*/api/tasks/:id', async ({ request }) => {
         const body = (await request.json()) as Record<string, unknown>;
         bodies.push(body);
-        items[0] = { ...paint, ...body, phaseId: 'new-implicit' };
+        items[0] = { ...paint, ...body, epicId: 'new-implicit' };
         return HttpResponse.json(items[0]);
       }),
     );
@@ -577,13 +577,13 @@ describe('useUpdateTask with the panel fields', () => {
     await act(async () => {
       await result.current.update.mutateAsync({
         task: paint,
-        changes: { phaseId: null, plannedWeekStart: '2026-11-16' },
+        changes: { epicId: null, plannedWeekStart: '2026-11-16' },
       });
     });
 
-    expect(bodies).toEqual([{ phaseId: null, plannedWeekStart: '2026-11-16' }]);
+    expect(bodies).toEqual([{ epicId: null, plannedWeekStart: '2026-11-16' }]);
     expect(result.current.list.data?.[0]).toMatchObject({
-      phaseId: 'new-implicit',
+      epicId: 'new-implicit',
       plannedWeekStart: '2026-11-16',
     });
   });

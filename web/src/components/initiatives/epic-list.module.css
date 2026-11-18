@@ -1,4 +1,4 @@
-.phases {
+.epics {
   display: flex;
   flex-direction: column;
   margin: 0 0 6px var(--space-3);
@@ -17,7 +17,7 @@
   position: relative;
 }
 
-.phase {
+.epic {
   display: block;
   width: 100%;
   padding: 6px var(--space-10) 6px var(--space-3);
@@ -30,17 +30,17 @@
   cursor: pointer;
 }
 
-.phase:hover {
+.epic:hover {
   color: var(--tinta);
 }
 
-.phase[aria-pressed='true'] {
+.epic[aria-pressed='true'] {
   color: var(--tinta);
   font-weight: 500;
   box-shadow: inset 2px 0 0 var(--terracota);
 }
 
-.phase:focus-visible {
+.epic:focus-visible {
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
@@ -98,7 +98,7 @@
 }
 
 @media (pointer: coarse) {
-  .phase {
+  .epic {
     min-height: 44px;
     padding-block: var(--space-3);
   }

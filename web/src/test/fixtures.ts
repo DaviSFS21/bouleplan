@@ -1,5 +1,5 @@
 import { HttpResponse } from 'msw';
-import type { CalendarEvent, Initiative, Phase, ScheduledItem, Task } from '@/api/types';
+import type { CalendarEvent, Initiative, Epic, ScheduledItem, Task } from '@/api/types';
 
 export function initiative(overrides: Partial<Initiative> = {}): Initiative {
   return {
@@ -15,7 +15,7 @@ export function initiative(overrides: Partial<Initiative> = {}): Initiative {
   };
 }
 
-export function phase(overrides: Partial<Phase> = {}): Phase {
+export function epic(overrides: Partial<Epic> = {}): Epic {
   return {
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     initiativeId: '11111111-1111-4111-8111-111111111111',
@@ -57,7 +57,7 @@ export function task(overrides: Partial<Task> = {}): Task {
   return {
     id: 'a1a1a1a1-0000-4000-8000-000000000001',
     initiativeId: '11111111-1111-4111-8111-111111111111',
-    phaseId: null,
+    epicId: null,
     title: 'Comprar tinta',
     description: null,
     deadline: null,

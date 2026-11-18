@@ -337,86 +337,86 @@ describe('the priority', () => {
   });
 });
 
-describe('the phase', () => {
-  it('lists the named phases and "Sem fase", with the current one checked', async () => {
+describe('the epic', () => {
+  it('lists the named epics and "Sem épico", with the current one checked', async () => {
     const { user } = await openTask(paint);
 
-    await user.click(await inPanel().findByRole('button', { name: 'Fase: Fase 2 · Piso' }));
+    await user.click(await inPanel().findByRole('button', { name: 'Épico: Épico 2 · Piso' }));
 
     expect(screen.getAllByRole('menuitemradio').map((item) => item.textContent)).toEqual([
-      'Sem fase',
-      'Fase 1 · Demolição',
-      'Fase 2 · Piso',
+      'Sem épico',
+      'Épico 1 · Demolição',
+      'Épico 2 · Piso',
     ]);
-    expect(screen.getByRole('menuitemradio', { name: 'Fase 2 · Piso' })).toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'Épico 2 · Piso' })).toBeChecked();
   });
 
-  it('moves the task to another phase of the initiative', async () => {
+  it('moves the task to another epic of the initiative', async () => {
     const { backend, user } = await openTask(paint);
-    await inPanel().findByRole('button', { name: 'Fase: Fase 2 · Piso' });
+    await inPanel().findByRole('button', { name: 'Épico: Épico 2 · Piso' });
 
-    await chooseFrom(user, 'Fase: Fase 2 · Piso', 'menuitemradio', 'Fase 1 · Demolição');
+    await chooseFrom(user, 'Épico: Épico 2 · Piso', 'menuitemradio', 'Épico 1 · Demolição');
 
     await waitFor(() => {
-      expect(patches(backend)).toEqual([{ phaseId: demolicao.id }]);
+      expect(patches(backend)).toEqual([{ epicId: demolicao.id }]);
     });
-    expect(inPanel().getByRole('button', { name: 'Fase: Fase 1 · Demolição' })).toBeVisible();
-    expect(inPanel().getByRole('link', { name: 'Fase 1 · Demolição' })).toBeVisible();
+    expect(inPanel().getByRole('button', { name: 'Épico: Épico 1 · Demolição' })).toBeVisible();
+    expect(inPanel().getByRole('link', { name: 'Épico 1 · Demolição' })).toBeVisible();
   });
 
-  it('sends null for "Sem fase" and drops the phase from the path', async () => {
+  it('sends null for "Sem épico" and drops the epic from the path', async () => {
     const { backend, user } = await openTask(paint);
-    await inPanel().findByRole('button', { name: 'Fase: Fase 2 · Piso' });
+    await inPanel().findByRole('button', { name: 'Épico: Épico 2 · Piso' });
 
-    await chooseFrom(user, 'Fase: Fase 2 · Piso', 'menuitemradio', 'Sem fase');
+    await chooseFrom(user, 'Épico: Épico 2 · Piso', 'menuitemradio', 'Sem épico');
 
     await waitFor(() => {
-      expect(patches(backend)).toEqual([{ phaseId: null }]);
+      expect(patches(backend)).toEqual([{ epicId: null }]);
     });
-    expect(inPanel().getByRole('button', { name: 'Fase: Sem fase' })).toBeVisible();
-    expect(inPanel().queryByRole('link', { name: /Fase \d/ })).not.toBeInTheDocument();
+    expect(inPanel().getByRole('button', { name: 'Épico: Sem épico' })).toBeVisible();
+    expect(inPanel().queryByRole('link', { name: /Épico \d/ })).not.toBeInTheDocument();
   });
 
-  it('saves nothing for the phase it is already in', async () => {
+  it('saves nothing for the epic it is already in', async () => {
     const { backend, user } = await openTask(paint);
-    await inPanel().findByRole('button', { name: 'Fase: Fase 2 · Piso' });
+    await inPanel().findByRole('button', { name: 'Épico: Épico 2 · Piso' });
 
-    await chooseFrom(user, 'Fase: Fase 2 · Piso', 'menuitemradio', 'Fase 2 · Piso');
+    await chooseFrom(user, 'Épico: Épico 2 · Piso', 'menuitemradio', 'Épico 2 · Piso');
 
     expect(patches(backend)).toEqual([]);
   });
 
-  it('rolls back with the message when the phase no longer exists', async () => {
+  it('rolls back with the message when the epic no longer exists', async () => {
     const { user } = await openTask(paint);
-    await inPanel().findByRole('button', { name: 'Fase: Fase 2 · Piso' });
+    await inPanel().findByRole('button', { name: 'Épico: Épico 2 · Piso' });
     failPatches('http.404', 404);
 
-    await chooseFrom(user, 'Fase: Fase 2 · Piso', 'menuitemradio', 'Sem fase');
+    await chooseFrom(user, 'Épico: Épico 2 · Piso', 'menuitemradio', 'Sem épico');
 
-    expect(await inPanel().findByText('Essa fase não existe mais.')).toBeVisible();
-    expect(inPanel().getByRole('button', { name: 'Fase: Fase 2 · Piso' })).toBeVisible();
+    expect(await inPanel().findByText('Esse épico não existe mais.')).toBeVisible();
+    expect(inPanel().getByRole('button', { name: 'Épico: Épico 2 · Piso' })).toBeVisible();
   });
 
-  it('starts at "Sem fase" for a task in the implicit phase', async () => {
+  it('starts at "Sem épico" for a task in the implicit epic', async () => {
     const { user } = await openTask(sand);
 
-    await user.click(inPanel().getByRole('button', { name: 'Fase: Sem fase' }));
+    await user.click(inPanel().getByRole('button', { name: 'Épico: Sem épico' }));
 
-    expect(screen.getByRole('menuitemradio', { name: 'Sem fase' })).toBeChecked();
+    expect(screen.getByRole('menuitemradio', { name: 'Sem épico' })).toBeChecked();
   });
 
-  it('says "Carregando" while the phases load', async () => {
+  it('says "Carregando" while the epics load', async () => {
     navigateTo(`/?iniciativa=${reforma.id}&tarefa=${paint.id}`);
     serveTaskApi(world);
     server.use(
-      http.get('*/api/initiatives/:id/phases', async () => {
+      http.get('*/api/initiatives/:id/epics', async () => {
         await new Promise(() => undefined);
       }),
     );
     renderWithQuery(<InitiativesScreen />);
     await screen.findByRole('complementary', { name: 'Tarefa' });
 
-    expect(await inPanel().findByRole('button', { name: 'Fase: Carregando' })).toHaveTextContent(
+    expect(await inPanel().findByRole('button', { name: 'Épico: Carregando' })).toHaveTextContent(
       'Carregando…',
     );
   });
@@ -949,12 +949,12 @@ describe('the footer', () => {
 });
 
 describe('the panel header', () => {
-  it('shows the initiative and, for a named phase, its link', async () => {
+  it('shows the initiative and, for a named epic, its link', async () => {
     await openTask(paint);
 
-    expect(await inPanel().findByRole('link', { name: 'Fase 2 · Piso' })).toHaveAttribute(
+    expect(await inPanel().findByRole('link', { name: 'Épico 2 · Piso' })).toHaveAttribute(
       'href',
-      `?iniciativa=${reforma.id}&fase=${piso.id}`,
+      `?iniciativa=${reforma.id}&epico=${piso.id}`,
     );
     expect(inPanel().getByRole('link', { name: 'Reforma' })).toBeVisible();
   });

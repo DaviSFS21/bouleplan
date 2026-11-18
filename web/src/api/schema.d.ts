@@ -36,6 +36,76 @@ export interface paths {
         patch: operations["updateCalendarEvent"];
         trace?: never;
     };
+    "/epics/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Gets an active epic by id */
+        get: operations["getEpic"];
+        put?: never;
+        post?: never;
+        /** Deletes an active epic */
+        delete: operations["deleteEpic"];
+        options?: never;
+        head?: never;
+        /** Updates an active epic; absent fields stay */
+        patch: operations["updateEpic"];
+        trace?: never;
+    };
+    "/epics/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archives an active epic */
+        post: operations["archiveEpic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/epics/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restores a deleted epic; a no-op if it is not deleted */
+        post: operations["restoreEpic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/epics/{id}/unarchive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Unarchives an epic; a no-op if it is already active */
+        post: operations["unarchiveEpic"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/initiatives": {
         parameters: {
             query?: never;
@@ -90,18 +160,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/initiatives/{id}/phases": {
+    "/initiatives/{id}/epics": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Lists the active phases of an active initiative in creation order */
-        get: operations["listPhases"];
+        /** Lists the active epics of an active initiative in creation order */
+        get: operations["listEpics"];
         put?: never;
-        /** Creates a phase in an active initiative */
-        post: operations["createPhase"];
+        /** Creates an epic in an active initiative */
+        post: operations["createEpic"];
         delete?: never;
         options?: never;
         head?: never;
@@ -134,7 +204,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Creates a task in an active initiative; without phaseId it goes to the implicit phase */
+        /** Creates a task in an active initiative; without epicId it goes to the implicit epic */
         post: operations["createTask"];
         delete?: never;
         options?: never;
@@ -188,76 +258,6 @@ export interface paths {
         put?: never;
         /** Closes the sheet of a week, creating an empty one if needed */
         post: operations["closeIntrospection"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/phases/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Gets an active phase by id */
-        get: operations["getPhase"];
-        put?: never;
-        post?: never;
-        /** Deletes an active phase */
-        delete: operations["deletePhase"];
-        options?: never;
-        head?: never;
-        /** Updates an active phase; absent fields stay */
-        patch: operations["updatePhase"];
-        trace?: never;
-    };
-    "/phases/{id}/archive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Archives an active phase */
-        post: operations["archivePhase"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/phases/{id}/restore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Restores a deleted phase; a no-op if it is not deleted */
-        post: operations["restorePhase"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/phases/{id}/unarchive": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Unarchives a phase; a no-op if it is already active */
-        post: operations["unarchivePhase"];
         delete?: never;
         options?: never;
         head?: never;
@@ -323,7 +323,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists the active tasks whose phase and initiative are active, by priority, deadline and creation */
+        /** Lists the active tasks whose epic and initiative are active, by priority, deadline and creation */
         get: operations["listTasks"];
         put?: never;
         post?: never;
@@ -461,10 +461,10 @@ export interface components {
             /** @description Quarter hour, up to 23:45 */
             endTime: string;
         };
-        CreateInitiativeRequest: {
+        CreateEpicRequest: {
             name: string;
         };
-        CreatePhaseRequest: {
+        CreateInitiativeRequest: {
             name: string;
         };
         CreateScheduledItemRequest: {
@@ -480,14 +480,23 @@ export interface components {
             title: string;
             /**
              * Format: uuid
-             * @description An active named phase of the initiative; absent or null means the implicit phase
+             * @description An active named epic of the initiative; absent or null means the implicit epic
              */
-            phaseId?: string | null;
+            epicId?: string | null;
             /**
              * @default to_do
              * @enum {string}
              */
             status: "to_do" | "in_progress" | "done";
+        };
+        Epic: {
+            id: components["schemas"]["UUID"];
+            initiativeId: components["schemas"]["UUID"];
+            name: string;
+            /** @enum {string} */
+            origin: "native";
+            createdAt: components["schemas"]["OffsetDateTime"];
+            updatedAt: components["schemas"]["OffsetDateTime"];
         };
         Initiative: {
             id: components["schemas"]["UUID"];
@@ -524,15 +533,6 @@ export interface components {
          * @example 2022-03-10T12:15:50-04:00
          */
         OffsetDateTime: string;
-        Phase: {
-            id: components["schemas"]["UUID"];
-            initiativeId: components["schemas"]["UUID"];
-            name: string;
-            /** @enum {string} */
-            origin: "native";
-            createdAt: components["schemas"]["OffsetDateTime"];
-            updatedAt: components["schemas"]["OffsetDateTime"];
-        };
         Planner: {
             /** Format: date */
             weekStart: string;
@@ -589,9 +589,9 @@ export interface components {
             initiativeId: components["schemas"]["UUID"];
             /**
              * Format: uuid
-             * @description Null when the task is in the implicit phase
+             * @description Null when the task is in the implicit epic
              */
-            phaseId: string | null;
+            epicId: string | null;
             title: string;
             description: string | null;
             /** Format: date */
@@ -634,6 +634,9 @@ export interface components {
             startTime?: string;
             endTime?: string;
         };
+        UpdateEpicRequest: {
+            name?: string;
+        };
         UpdateInitiativeRequest: {
             name?: string;
             description?: string | null;
@@ -641,9 +644,6 @@ export interface components {
             overallDeadline?: string | null;
             /** @enum {string} */
             color?: "amarelo" | "lima" | "verde" | "turquesa" | "azul" | "roxo" | "rosa" | "marrom";
-        };
-        UpdatePhaseRequest: {
-            name?: string;
         };
         UpdateScheduledItemRequest: {
             /** Format: date */
@@ -670,9 +670,9 @@ export interface components {
             isBlocked?: boolean;
             /**
              * Format: uuid
-             * @description An active named phase of the same initiative; null is the implicit phase
+             * @description An active named epic of the same initiative; null is the implicit epic
              */
-            phaseId?: string | null;
+            epicId?: string | null;
             /**
              * Format: date
              * @description A Monday
@@ -787,6 +787,204 @@ export interface operations {
                 };
             };
             /** @description No event with this id of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The epic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Epic"];
+                };
+            };
+            /** @description No active epic with this id in an active initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Epic deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No active epic with this id in an active initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/merge-patch+json": components["schemas"]["UpdateEpicRequest"];
+                "application/json": components["schemas"]["UpdateEpicRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated epic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Epic"];
+                };
+            };
+            /** @description Rule violation or malformed request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description No active epic with this id in an active initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    archiveEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The archived epic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Epic"];
+                };
+            };
+            /** @description No active epic with this id in an active initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    restoreEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The epic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Epic"];
+                };
+            };
+            /** @description No epic with this id in an active initiative of the user */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unarchiveEpic: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["schemas"]["UUID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The epic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Epic"];
+                };
+            };
+            /** @description No archived or active epic with this id in an active initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -988,7 +1186,7 @@ export interface operations {
             };
         };
     };
-    listPhases: {
+    listEpics: {
         parameters: {
             query?: never;
             header?: never;
@@ -999,13 +1197,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Active named phases */
+            /** @description Active named epics */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Phase"][];
+                    "application/json": components["schemas"]["Epic"][];
                 };
             };
             /** @description No active initiative with this id */
@@ -1019,7 +1217,7 @@ export interface operations {
             };
         };
     };
-    createPhase: {
+    createEpic: {
         parameters: {
             query?: never;
             header?: never;
@@ -1030,19 +1228,19 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreatePhaseRequest"];
+                "application/json": components["schemas"]["CreateEpicRequest"];
             };
         };
         responses: {
-            /** @description Phase created */
+            /** @description Epic created */
             201: {
                 headers: {
-                    /** @description URI of the created phase */
+                    /** @description URI of the created epic */
                     Location?: unknown;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Phase"];
+                    "application/json": components["schemas"]["Epic"];
                 };
             };
             /** @description Rule violation or malformed request */
@@ -1131,7 +1329,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description No active initiative with this id, or phaseId is not an active named phase of it */
+            /** @description No active initiative with this id, or epicId is not an active named epic of it */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1300,204 +1498,6 @@ export interface operations {
             };
         };
     };
-    getPhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The phase */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Phase"];
-                };
-            };
-            /** @description No active phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    deletePhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Phase deleted */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description No active phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    updatePhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/merge-patch+json": components["schemas"]["UpdatePhaseRequest"];
-                "application/json": components["schemas"]["UpdatePhaseRequest"];
-            };
-        };
-        responses: {
-            /** @description The updated phase */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Phase"];
-                };
-            };
-            /** @description Rule violation or malformed request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-            /** @description No active phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    archivePhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The archived phase */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Phase"];
-                };
-            };
-            /** @description No active phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    restorePhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The phase */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Phase"];
-                };
-            };
-            /** @description No phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
-    unarchivePhase: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["schemas"]["UUID"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description The phase */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Phase"];
-                };
-            };
-            /** @description No archived or active phase with this id in an active initiative of the user */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["Problem"];
-                };
-            };
-        };
-    };
     getPlanner: {
         parameters: {
             query: {
@@ -1563,7 +1563,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1610,7 +1610,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No item with this id whose task is active in an active phase and initiative of the user */
+            /** @description No item with this id whose task is active in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1655,7 +1655,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description No item with this id whose task is active in an active phase and initiative of the user */
+            /** @description No item with this id whose task is active in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1723,7 +1723,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Either task is not an active task in an active phase and initiative of the user */
+            /** @description Either task is not an active task in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1762,7 +1762,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Either task is not an active task in an active phase and initiative of the user */
+            /** @description Either task is not an active task in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1793,7 +1793,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1822,7 +1822,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1867,7 +1867,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1898,7 +1898,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1929,7 +1929,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description No task with this id in an active phase and initiative of the user */
+            /** @description No task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1960,7 +1960,7 @@ export interface operations {
                     "application/json": components["schemas"]["ScheduledItem"][];
                 };
             };
-            /** @description No active task with this id in an active phase and initiative of the user */
+            /** @description No active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -1991,7 +1991,7 @@ export interface operations {
                     "application/json": components["schemas"]["Task"];
                 };
             };
-            /** @description No archived or active task with this id in an active phase and initiative of the user */
+            /** @description No archived or active task with this id in an active epic and initiative of the user */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -1,43 +1,43 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { BLANK_PHASE_NAME_MESSAGE, createPhaseMessage } from '@/api/messages';
-import type { Phase } from '@/api/types';
+import { BLANK_EPIC_NAME_MESSAGE, createEpicMessage } from '@/api/messages';
+import type { Epic } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import type { Progress } from '@/components/tasks/task-filter';
 import { InlineText } from '@/components/inline-text/inline-text';
-import { phaseLabel } from './phase-label';
-import styles from './phase-list.module.css';
+import { epicLabel } from './epic-label';
+import styles from './epic-list.module.css';
 import { QuickCreateField } from './quick-create-field';
 
 const NAME_MAX_LENGTH = 200;
 
-type PhaseListProps = Readonly<{
-  phases: readonly Phase[];
+type EpicListProps = Readonly<{
+  epics: readonly Epic[];
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onCreate: (name: string) => Promise<void>;
-  onRename: (phase: Phase, name: string) => void;
-  onArchive: (phase: Phase) => void;
-  onDelete: (phase: Phase) => void;
-  newPhaseSignal: number;
-  onNewPhaseHandled: () => void;
+  onRename: (epic: Epic, name: string) => void;
+  onArchive: (epic: Epic) => void;
+  onDelete: (epic: Epic) => void;
+  newEpicSignal: number;
+  onNewEpicHandled: () => void;
   // undefined while the tasks load
   progress: ReadonlyMap<string, Progress> | undefined;
 }>;
 
-export function PhaseList({
-  phases,
+export function EpicList({
+  epics,
   selectedId,
   onSelect,
   onCreate,
   onRename,
   onArchive,
   onDelete,
-  newPhaseSignal,
-  onNewPhaseHandled,
+  newEpicSignal,
+  onNewEpicHandled,
   progress,
-}: PhaseListProps) {
+}: EpicListProps) {
   const countId = useId();
   const root = useRef<HTMLDivElement>(null);
   const returnFocus = useRef(false);
@@ -46,13 +46,13 @@ export function PhaseList({
 
   useEffect(() => {
     if (focusTarget) {
-      root.current?.querySelector<HTMLElement>(`[data-phase-id="${focusTarget.id}"]`)?.focus();
+      root.current?.querySelector<HTMLElement>(`[data-epic-id="${focusTarget.id}"]`)?.focus();
     }
   }, [focusTarget]);
 
   useEffect(() => {
-    if (newPhaseSignal > 0) onNewPhaseHandled();
-  }, [newPhaseSignal, onNewPhaseHandled]);
+    if (newEpicSignal > 0) onNewEpicHandled();
+  }, [newEpicSignal, onNewEpicHandled]);
 
   function endEdit(id: string) {
     setEditingId(null);
@@ -63,13 +63,13 @@ export function PhaseList({
   }
 
   return (
-    <div ref={root} className={styles.phases}>
+    <div ref={root} className={styles.epics}>
       <ul className={styles.list}>
-        {phases.map((phase, position) => {
-          const count = progress?.get(phase.id);
+        {epics.map((epic, position) => {
+          const count = progress?.get(epic.id);
           return (
-            <li key={phase.id} className={styles.row}>
-              {editingId === phase.id ? (
+            <li key={epic.id} className={styles.row}>
+              {editingId === epic.id ? (
                 <div
                   className={styles.editing}
                   onKeyDownCapture={(event) => {
@@ -82,18 +82,18 @@ export function PhaseList({
                     returnFocus.current = false;
                   }}
                   onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget)) endEdit(phase.id);
+                    if (!event.currentTarget.contains(event.relatedTarget)) endEdit(epic.id);
                   }}
                 >
-                  <span>{`Fase ${String(position + 1)} ·`}</span>
+                  <span>{`Épico ${String(position + 1)} ·`}</span>
                   <InlineText
-                    label="Nome da fase"
-                    value={phase.name}
+                    label="Nome do épico"
+                    value={epic.name}
                     maxLength={NAME_MAX_LENGTH}
                     focusSignal={1}
                     trim
                     onCommit={(name) => {
-                      onRename(phase, name);
+                      onRename(epic, name);
                     }}
                   />
                 </div>
@@ -101,42 +101,42 @@ export function PhaseList({
                 <>
                   <button
                     type="button"
-                    className={styles.phase}
-                    data-phase-id={phase.id}
-                    aria-pressed={selectedId === phase.id}
-                    aria-describedby={count ? `${countId}-${phase.id}` : undefined}
+                    className={styles.epic}
+                    data-epic-id={epic.id}
+                    aria-pressed={selectedId === epic.id}
+                    aria-describedby={count ? `${countId}-${epic.id}` : undefined}
                     onClick={() => {
-                      onSelect(selectedId === phase.id ? null : phase.id);
+                      onSelect(selectedId === epic.id ? null : epic.id);
                     }}
                   >
-                    {phaseLabel(position, phase.name)}
+                    {epicLabel(position, epic.name)}
                   </button>
                   {count ? (
-                    <span id={`${countId}-${phase.id}`} className={styles.count}>
+                    <span id={`${countId}-${epic.id}`} className={styles.count}>
                       {`${String(count.done)}/${String(count.total)}`}
                     </span>
                   ) : null}
                   <div className={styles.actions}>
                     <ActionMenu
-                      label={`Ações da fase ${phase.name}`}
+                      label={`Ações do épico ${epic.name}`}
                       items={[
                         {
                           label: 'Editar nome',
                           onSelect: () => {
-                            setEditingId(phase.id);
+                            setEditingId(epic.id);
                           },
                         },
                         { separator: true },
                         {
                           label: 'Arquivar',
                           onSelect: () => {
-                            onArchive(phase);
+                            onArchive(epic);
                           },
                         },
                         {
                           label: 'Excluir',
                           onSelect: () => {
-                            onDelete(phase);
+                            onDelete(epic);
                           },
                         },
                       ]}
@@ -149,14 +149,14 @@ export function PhaseList({
         })}
       </ul>
       <QuickCreateField
-        triggerLabel="+ Nova fase"
-        inputLabel="Nome da nova fase"
-        placeholder="Nome da fase"
-        blankMessage={BLANK_PHASE_NAME_MESSAGE}
-        errorMessage={createPhaseMessage}
+        triggerLabel="+ Novo épico"
+        inputLabel="Nome do novo épico"
+        placeholder="Nome do épico"
+        blankMessage={BLANK_EPIC_NAME_MESSAGE}
+        errorMessage={createEpicMessage}
         onCreate={onCreate}
         keepOpen
-        openSignal={newPhaseSignal}
+        openSignal={newEpicSignal}
       />
     </div>
   );

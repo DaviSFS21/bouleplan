@@ -72,12 +72,12 @@ describe('initiative index as a drawer', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Horta' })).toBeInTheDocument();
   });
 
-  it('closes when a phase is chosen', async () => {
+  it('closes when an epic is chosen', async () => {
     const user = userEvent.setup();
     const opener = await renderTablet(`/?iniciativa=${reforma.id}`);
     await user.click(opener);
 
-    await user.click(await screen.findByRole('button', { name: /^Fase 2 · Piso/ }));
+    await user.click(await screen.findByRole('button', { name: /^Épico 2 · Piso/ }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => {

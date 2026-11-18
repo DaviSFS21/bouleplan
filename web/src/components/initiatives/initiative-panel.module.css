@@ -78,7 +78,7 @@
   text-transform: uppercase;
 }
 
-.phases {
+.epics {
   display: flex;
   flex-direction: column;
   margin: 0;
@@ -86,7 +86,7 @@
   list-style: none;
 }
 
-.phase {
+.epic {
   width: 100%;
   padding: var(--space-1) var(--space-2);
   border: 0;
@@ -98,16 +98,16 @@
   cursor: pointer;
 }
 
-.phase:hover {
+.epic:hover {
   background: var(--papel-elevado);
 }
 
-.phase[aria-pressed='true'] {
+.epic[aria-pressed='true'] {
   font-weight: 500;
   box-shadow: inset 2px 0 0 var(--terracota);
 }
 
-.phase:focus-visible {
+.epic:focus-visible {
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
@@ -116,11 +116,11 @@
   padding: 6px 0;
 }
 
-.phaseRow {
+.epicRow {
   position: relative;
 }
 
-.phaseCount {
+.epicCount {
   position: absolute;
   top: var(--space-1);
   right: var(--space-2);
@@ -133,7 +133,7 @@
 
 @media (pointer: coarse) {
   .value,
-  .phase {
+  .epic {
     min-width: 44px;
     min-height: 44px;
   }

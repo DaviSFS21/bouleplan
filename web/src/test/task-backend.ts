@@ -1,23 +1,23 @@
 import { http, HttpResponse } from 'msw';
-import type { Initiative, Phase, Task } from '@/api/types';
+import type { Initiative, Epic, Task } from '@/api/types';
 import { problemResponse } from './fixtures';
 import { server } from './server';
 
 interface World {
   initiatives: Initiative[];
-  phases?: Phase[];
+  epics?: Epic[];
   tasks?: Task[];
 }
 
 export interface TaskBackend {
   initiatives: Initiative[];
-  phases: Phase[];
+  epics: Epic[];
   tasks: Task[];
   calls: string[];
   bodies: unknown[];
   // Method names (PATCH, POST, DELETE, UNDO for unarchive and restore, DELETE-BLOCK) answered with a 500 while listed.
   failing: Set<string>;
-  hiddenPhases: Set<string>;
+  hiddenEpics: Set<string>;
   hiddenInitiatives: Set<string>;
   hiddenTasks: Set<string>;
   // Problem code answered with a 422 to the next blocker PUT, once.
@@ -27,12 +27,12 @@ export interface TaskBackend {
 export function serveTaskApi(world: World): TaskBackend {
   const backend: TaskBackend = {
     initiatives: world.initiatives,
-    phases: world.phases ?? [],
+    epics: world.epics ?? [],
     tasks: [...(world.tasks ?? [])],
     calls: [],
     bodies: [],
     failing: new Set(),
-    hiddenPhases: new Set(),
+    hiddenEpics: new Set(),
     hiddenInitiatives: new Set(),
     hiddenTasks: new Set(),
     blockerProblem: null,
@@ -57,17 +57,16 @@ export function serveTaskApi(world: World): TaskBackend {
       return item;
     });
   };
-  const phaseActive = (task: Task) =>
-    task.phaseId === null || !backend.hiddenPhases.has(task.phaseId);
+  const epicActive = (task: Task) => task.epicId === null || !backend.hiddenEpics.has(task.epicId);
 
   server.use(
     http.get('*/api/initiatives', () =>
       HttpResponse.json(backend.initiatives.filter(({ id }) => !backend.hiddenInitiatives.has(id))),
     ),
-    http.get('*/api/initiatives/:id/phases', ({ params }) =>
+    http.get('*/api/initiatives/:id/epics', ({ params }) =>
       HttpResponse.json(
-        backend.phases.filter(
-          (item) => item.initiativeId === params.id && !backend.hiddenPhases.has(item.id),
+        backend.epics.filter(
+          (item) => item.initiativeId === params.id && !backend.hiddenEpics.has(item.id),
         ),
       ),
     ),
@@ -77,13 +76,13 @@ export function serveTaskApi(world: World): TaskBackend {
         backend.tasks.filter(
           (task) =>
             !backend.hiddenTasks.has(task.id) &&
-            phaseActive(task) &&
+            epicActive(task) &&
             !backend.hiddenInitiatives.has(task.initiativeId),
         ),
       );
     }),
     http.post('*/api/initiatives/:id/tasks', async ({ request, params }) => {
-      const body = (await request.json()) as { title: string; phaseId?: string; status?: string };
+      const body = (await request.json()) as { title: string; epicId?: string; status?: string };
       backend.bodies.push(body);
       if (failed('POST')) return problemResponse('internal', 500);
       if (body.title.trim() === '') return problemResponse('task.title.blank');
@@ -91,7 +90,7 @@ export function serveTaskApi(world: World): TaskBackend {
       const task = {
         id: `c0000000-0000-4000-8000-${String(created).padStart(12, '0')}`,
         initiativeId: String(params.id),
-        phaseId: body.phaseId ?? null,
+        epicId: body.epicId ?? null,
         title: body.title,
         description: null,
         deadline: null,
@@ -155,13 +154,13 @@ export function serveTaskApi(world: World): TaskBackend {
       show(backend.hiddenTasks, params.id, 'restore');
       return HttpResponse.json(find(params.id));
     }),
-    http.post('*/api/phases/:id/archive', ({ params }) => {
-      hide(backend.hiddenPhases, params.id, 'archive-phase');
-      return HttpResponse.json(backend.phases.find((item) => item.id === params.id));
+    http.post('*/api/epics/:id/archive', ({ params }) => {
+      hide(backend.hiddenEpics, params.id, 'archive-epic');
+      return HttpResponse.json(backend.epics.find((item) => item.id === params.id));
     }),
-    http.post('*/api/phases/:id/unarchive', ({ params }) => {
-      show(backend.hiddenPhases, params.id, 'unarchive-phase');
-      return HttpResponse.json(backend.phases.find((item) => item.id === params.id));
+    http.post('*/api/epics/:id/unarchive', ({ params }) => {
+      show(backend.hiddenEpics, params.id, 'unarchive-epic');
+      return HttpResponse.json(backend.epics.find((item) => item.id === params.id));
     }),
     http.post('*/api/initiatives/:id/archive', ({ params }) => {
       hide(backend.hiddenInitiatives, params.id, 'archive-initiative');

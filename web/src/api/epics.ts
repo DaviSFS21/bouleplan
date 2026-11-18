@@ -8,42 +8,42 @@ import {
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
 import { runScoped as runScopedMutation } from './scoped-mutation';
-import { hideTasksOfPhase, refetchTasks, showTasksOfPhase } from './tasks';
-import type { Phase } from './types';
+import { hideTasksOfEpic, refetchTasks, showTasksOfEpic } from './tasks';
+import type { Epic } from './types';
 
-export function phasesKey(initiativeId: string) {
-  return ['initiatives', initiativeId, 'phases'] as const;
+export function epicsKey(initiativeId: string) {
+  return ['initiatives', initiativeId, 'epics'] as const;
 }
 
-function listPhases(initiativeId: string) {
-  return unwrap(api.GET('/initiatives/{id}/phases', { params: { path: { id: initiativeId } } }));
+function listEpics(initiativeId: string) {
+  return unwrap(api.GET('/initiatives/{id}/epics', { params: { path: { id: initiativeId } } }));
 }
 
-export function usePhases(initiativeId: string | null) {
+export function useEpics(initiativeId: string | null) {
   return useQuery({
-    queryKey: phasesKey(initiativeId ?? ''),
-    queryFn: () => listPhases(initiativeId ?? ''),
+    queryKey: epicsKey(initiativeId ?? ''),
+    queryFn: () => listEpics(initiativeId ?? ''),
     enabled: initiativeId !== null,
   });
 }
 
-function pickData(results: UseQueryResult<Phase[]>[]) {
+function pickData(results: UseQueryResult<Epic[]>[]) {
   return results.map((result) => result.data);
 }
 
-// One entry per id, undefined while that initiative's phases load.
-export function useManyPhases(initiativeIds: readonly string[]) {
+// One entry per id, undefined while that initiative's epics load.
+export function useManyEpics(initiativeIds: readonly string[]) {
   return useQueries({
     queries: initiativeIds.map((id) => ({
-      queryKey: phasesKey(id),
-      queryFn: () => listPhases(id),
+      queryKey: epicsKey(id),
+      queryFn: () => listEpics(id),
     })),
     combine: pickData,
   });
 }
 
-// Counts from the cache while it is fresh, else fetches, so never-loaded phases count too; 0 on failure.
-export async function fetchPhaseCount(
+// Counts from the cache while it is fresh, else fetches, so never-loaded epics count too; 0 on failure.
+export async function fetchEpicCount(
   queryClient: QueryClient,
   initiativeId: string,
   timeoutMs = 1500,
@@ -51,18 +51,18 @@ export async function fetchPhaseCount(
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      reject(new Error('Counting phases timed out'));
+      reject(new Error('Counting epics timed out'));
     }, timeoutMs);
   });
   try {
-    const phases = await Promise.race([
+    const epics = await Promise.race([
       queryClient.query({
-        queryKey: phasesKey(initiativeId),
-        queryFn: () => listPhases(initiativeId),
+        queryKey: epicsKey(initiativeId),
+        queryFn: () => listEpics(initiativeId),
       }),
       timeout,
     ]);
-    return phases.length;
+    return epics.length;
   } catch {
     return 0;
   } finally {
@@ -72,14 +72,14 @@ export async function fetchPhaseCount(
 
 function runScoped<TVariables, TData>(
   queryClient: QueryClient,
-  phase: { id: string; initiativeId: string },
+  epic: { id: string; initiativeId: string },
   variables: TVariables,
   mutationFn: (variables: TVariables) => Promise<TData>,
   onSuccess: (data: TData) => void,
 ): Promise<TData> {
   return runScopedMutation(
     queryClient,
-    { scope: `phase-${phase.id}`, invalidate: phasesKey(phase.initiativeId) },
+    { scope: `epic-${epic.id}`, invalidate: epicsKey(epic.initiativeId) },
     variables,
     mutationFn,
     onSuccess,
@@ -89,33 +89,33 @@ function runScoped<TVariables, TData>(
 function setList(
   queryClient: QueryClient,
   initiativeId: string,
-  change: (list: Phase[] | undefined) => Phase[] | undefined,
+  change: (list: Epic[] | undefined) => Epic[] | undefined,
 ) {
-  queryClient.setQueryData<Phase[]>(phasesKey(initiativeId), change);
+  queryClient.setQueryData<Epic[]>(epicsKey(initiativeId), change);
 }
 
-function addToList(list: Phase[] | undefined, added: Phase) {
+function addToList(list: Epic[] | undefined, added: Epic) {
   if (!list || list.some(({ id }) => id === added.id)) return list;
   return [...list, added].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
 }
 
-function removeFromList(list: Phase[] | undefined, id: string) {
+function removeFromList(list: Epic[] | undefined, id: string) {
   return list?.filter((item) => item.id !== id);
 }
 
-export function useCreatePhase() {
+export function useCreateEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
       mutateAsync: ({ initiativeId, name }: { initiativeId: string; name: string }) =>
-        // The create scope is the initiative's own, as it has no phase id yet.
+        // The create scope is the initiative's own, as it has no epic id yet.
         runScopedMutation(
           queryClient,
-          { scope: `initiative-${initiativeId}`, invalidate: phasesKey(initiativeId) },
+          { scope: `initiative-${initiativeId}`, invalidate: epicsKey(initiativeId) },
           name,
           (body) =>
             unwrap(
-              api.POST('/initiatives/{id}/phases', {
+              api.POST('/initiatives/{id}/epics', {
                 params: { path: { id: initiativeId } },
                 body: { name: body },
               }),
@@ -132,25 +132,25 @@ export function useCreatePhase() {
   );
 }
 
-export function useUpdatePhase() {
+export function useUpdateEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
-      mutateAsync: ({ phase, name }: { phase: Phase; name: string }) =>
+      mutateAsync: ({ epic, name }: { epic: Epic; name: string }) =>
         runScoped(
           queryClient,
-          phase,
+          epic,
           name,
           (body) =>
             unwrap(
-              api.PATCH('/phases/{id}', {
-                params: { path: { id: phase.id } },
+              api.PATCH('/epics/{id}', {
+                params: { path: { id: epic.id } },
                 body: { name: body },
                 headers: { 'Content-Type': 'application/merge-patch+json' },
               }),
             ),
           (updated) => {
-            setList(queryClient, phase.initiativeId, (list) =>
+            setList(queryClient, epic.initiativeId, (list) =>
               list?.map((item) => (item.id === updated.id ? updated : item)),
             );
           },
@@ -160,19 +160,19 @@ export function useUpdatePhase() {
   );
 }
 
-export function useArchivePhase() {
+export function useArchiveEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
-      mutateAsync: (phase: Phase) =>
+      mutateAsync: (epic: Epic) =>
         runScoped(
           queryClient,
-          phase,
-          phase.id,
-          (id) => unwrap(api.POST('/phases/{id}/archive', { params: { path: { id } } })),
+          epic,
+          epic.id,
+          (id) => unwrap(api.POST('/epics/{id}/archive', { params: { path: { id } } })),
           (archived) => {
-            setList(queryClient, phase.initiativeId, (list) => removeFromList(list, archived.id));
-            hideTasksOfPhase(queryClient, phase.id);
+            setList(queryClient, epic.initiativeId, (list) => removeFromList(list, archived.id));
+            hideTasksOfEpic(queryClient, epic.id);
             refetchTasks(queryClient);
           },
         ),
@@ -181,19 +181,19 @@ export function useArchivePhase() {
   );
 }
 
-export function useUnarchivePhase() {
+export function useUnarchiveEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
-      mutateAsync: (phase: Phase) =>
+      mutateAsync: (epic: Epic) =>
         runScoped(
           queryClient,
-          phase,
-          phase.id,
-          (id) => unwrap(api.POST('/phases/{id}/unarchive', { params: { path: { id } } })),
+          epic,
+          epic.id,
+          (id) => unwrap(api.POST('/epics/{id}/unarchive', { params: { path: { id } } })),
           (restored) => {
-            setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
-            showTasksOfPhase(queryClient, phase.id);
+            setList(queryClient, epic.initiativeId, (list) => addToList(list, restored));
+            showTasksOfEpic(queryClient, epic.id);
             refetchTasks(queryClient);
           },
         ),
@@ -202,22 +202,22 @@ export function useUnarchivePhase() {
   );
 }
 
-export function useDeletePhase() {
+export function useDeleteEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
-      mutateAsync: (phase: Phase) =>
+      mutateAsync: (epic: Epic) =>
         runScoped(
           queryClient,
-          phase,
-          phase.id,
+          epic,
+          epic.id,
           async (id) => {
-            await unwrap(api.DELETE('/phases/{id}', { params: { path: { id } } }));
+            await unwrap(api.DELETE('/epics/{id}', { params: { path: { id } } }));
             return id;
           },
           (deleted) => {
-            setList(queryClient, phase.initiativeId, (list) => removeFromList(list, deleted));
-            hideTasksOfPhase(queryClient, phase.id);
+            setList(queryClient, epic.initiativeId, (list) => removeFromList(list, deleted));
+            hideTasksOfEpic(queryClient, epic.id);
             refetchTasks(queryClient);
           },
         ),
@@ -226,19 +226,19 @@ export function useDeletePhase() {
   );
 }
 
-export function useRestorePhase() {
+export function useRestoreEpic() {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
-      mutateAsync: (phase: Phase) =>
+      mutateAsync: (epic: Epic) =>
         runScoped(
           queryClient,
-          phase,
-          phase.id,
-          (id) => unwrap(api.POST('/phases/{id}/restore', { params: { path: { id } } })),
+          epic,
+          epic.id,
+          (id) => unwrap(api.POST('/epics/{id}/restore', { params: { path: { id } } })),
           (restored) => {
-            setList(queryClient, phase.initiativeId, (list) => addToList(list, restored));
-            showTasksOfPhase(queryClient, phase.id);
+            setList(queryClient, epic.initiativeId, (list) => addToList(list, restored));
+            showTasksOfEpic(queryClient, epic.id);
             refetchTasks(queryClient);
           },
         ),

@@ -1,37 +1,37 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { BLANK_NAME_MESSAGE, createInitiativeMessage } from '@/api/messages';
-import type { Initiative, Phase, Task } from '@/api/types';
+import type { Initiative, Epic, Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { ProgressBar } from '@/components/progress/progress-bar';
 import {
   NO_PROGRESS,
   type Progress,
   progressByInitiative,
-  progressByPhase,
+  progressByEpic,
 } from '@/components/tasks/task-filter';
-import { PhaseList } from './phase-list';
+import { EpicList } from './epic-list';
 import { QuickCreateField } from './quick-create-field';
 import styles from './initiative-index.module.css';
 
 export interface FocusRequest {
   // null focuses "Todas as tarefas"
   id: string | null;
-  phaseId?: string;
+  epicId?: string;
   nonce: number;
 }
 
-export interface PhaseIndexProps {
-  // undefined while the phases load
-  phases: readonly Phase[] | undefined;
+export interface EpicIndexProps {
+  // undefined while the epics load
+  epics: readonly Epic[] | undefined;
   failed: boolean;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onCreate: (name: string) => Promise<void>;
-  onRename: (phase: Phase, name: string) => void;
-  onArchive: (phase: Phase) => void;
-  onDelete: (phase: Phase) => void;
-  newPhaseSignal: number;
-  onNewPhaseHandled: () => void;
+  onRename: (epic: Epic, name: string) => void;
+  onArchive: (epic: Epic) => void;
+  onDelete: (epic: Epic) => void;
+  newEpicSignal: number;
+  onNewEpicHandled: () => void;
 }
 
 type InitiativeIndexProps = Readonly<{
@@ -44,8 +44,8 @@ type InitiativeIndexProps = Readonly<{
   onEditColor: (id: string) => void;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
-  onNewPhase: (id: string) => void;
-  phaseIndex: PhaseIndexProps;
+  onNewEpic: (id: string) => void;
+  epicIndex: EpicIndexProps;
   // undefined while the tasks load
   tasks: readonly Task[] | undefined;
   actionError: string | null;
@@ -66,8 +66,8 @@ export function InitiativeIndex({
   onEditColor,
   onArchive,
   onDelete,
-  onNewPhase,
-  phaseIndex,
+  onNewEpic,
+  epicIndex,
   tasks,
   actionError,
   focusRequest,
@@ -75,7 +75,7 @@ export function InitiativeIndex({
   createSignal = 0,
 }: InitiativeIndexProps) {
   const initiativeProgress = progressByInitiative(tasks);
-  const phaseProgress = progressByPhase(tasks);
+  const epicProgress = progressByEpic(tasks);
   const nav = useRef<HTMLElement>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
 
@@ -90,10 +90,10 @@ export function InitiativeIndex({
     if (!root) return;
     const initiativeSelector =
       focusRequest.id === null ? '[data-all-tasks]' : `[data-initiative-id="${focusRequest.id}"]`;
-    const phase = focusRequest.phaseId
-      ? root.querySelector<HTMLElement>(`[data-phase-id="${focusRequest.phaseId}"]`)
+    const epic = focusRequest.epicId
+      ? root.querySelector<HTMLElement>(`[data-epic-id="${focusRequest.epicId}"]`)
       : null;
-    (phase ?? root.querySelector<HTMLElement>(initiativeSelector))?.focus();
+    (epic ?? root.querySelector<HTMLElement>(initiativeSelector))?.focus();
   }, [focusRequest]);
 
   async function create(name: string) {
@@ -178,9 +178,9 @@ export function InitiativeIndex({
                       },
                     },
                     {
-                      label: 'Nova fase',
+                      label: 'Novo épico',
                       onSelect: () => {
-                        onNewPhase(initiative.id);
+                        onNewEpic(initiative.id);
                       },
                     },
                     { separator: true },
@@ -201,7 +201,7 @@ export function InitiativeIndex({
               </div>
             </div>
             {selectedId === initiative.id ? (
-              <PhaseSection {...phaseIndex} progress={tasks ? phaseProgress : undefined} />
+              <EpicSection {...epicIndex} progress={tasks ? epicProgress : undefined} />
             ) : null}
           </li>
         ))}
@@ -222,14 +222,14 @@ export function InitiativeIndex({
   );
 }
 
-function PhaseSection({
-  phases,
+function EpicSection({
+  epics,
   failed,
   ...rest
-}: Readonly<PhaseIndexProps & { progress: ReadonlyMap<string, Progress> | undefined }>) {
+}: Readonly<EpicIndexProps & { progress: ReadonlyMap<string, Progress> | undefined }>) {
   if (failed) {
-    return <p className={styles.emptyNote}>Não foi possível carregar as fases.</p>;
+    return <p className={styles.emptyNote}>Não foi possível carregar os épicos.</p>;
   }
-  if (!phases) return null;
-  return <PhaseList phases={phases} {...rest} />;
+  if (!epics) return null;
+  return <EpicList epics={epics} {...rest} />;
 }

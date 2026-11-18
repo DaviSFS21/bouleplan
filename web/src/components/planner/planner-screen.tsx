@@ -25,7 +25,7 @@ import type { CalendarEvent } from '@/api/types';
 import { localToday } from '@/components/deadline-field/deadline-field';
 import { Icon } from '@/components/icon/icon';
 import {
-  PHASE_PARAM,
+  EPIC_PARAM,
   SELECTION_PARAM,
   TASK_PARAM,
   WEEK_PARAM,
@@ -231,9 +231,9 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
         params.set(TASK_PARAM, id);
       });
     },
-    selectPath: (initiativeId, phaseId) => {
+    selectPath: (initiativeId, epicId) => {
       const params = new URLSearchParams({ [SELECTION_PARAM]: initiativeId });
-      if (phaseId !== null) params.set(PHASE_PARAM, phaseId);
+      if (epicId !== null) params.set(EPIC_PARAM, epicId);
       router.push(`/?${params.toString()}`);
     },
   };
