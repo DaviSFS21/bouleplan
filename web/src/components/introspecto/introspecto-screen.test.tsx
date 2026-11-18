@@ -361,7 +361,7 @@ describe('stale errors and the end of the page', () => {
     expect(await screen.findByText('Rascunho salvo às 18:42')).toBeVisible();
   });
 
-  it('does not show an error when the keepalive request fails', async () => {
+  it('shows the save error when the keepalive request fails', async () => {
     const { backend } = await renderSheet();
     backend.failing.add('PUT');
 
