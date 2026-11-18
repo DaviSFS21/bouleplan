@@ -1,0 +1,5 @@
+# CI only: publishes the database so the Playwright reset helper can reach it.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"

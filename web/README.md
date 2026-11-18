@@ -23,9 +23,9 @@ Opens at <http://localhost:3000>.
 
 ## Configuration
 
-| Variable  | Default                 | What it does                                                                                                     |
-| --------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `API_URL` | `http://localhost:8080` | Backend base URL. `/api/:path*` is proxied to `${API_URL}/:path*`, so the browser only talks to the same origin. |
+| Variable  | Default                 | What it does                                                                                                                                                               |
+| --------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_URL` | `http://localhost:8080` | Backend base URL, read at runtime. The route handler in `src/app/api/[...path]/route.ts` proxies `/api/*` to `${API_URL}/*`, so the browser only talks to the same origin. |
 
 ## Design system
 
