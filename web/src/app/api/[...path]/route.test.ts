@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { server } from '@/test/server';
 import { DELETE, GET, PATCH, POST, PUT } from './route';
@@ -126,5 +126,110 @@ describe('API proxy', () => {
     const response = await GET(new Request('http://web.test/api/initiatives'));
 
     expect(response.status).toBe(502);
+  });
+
+  it('drops hop-by-hop request headers, including those named in Connection', async () => {
+    server.use(
+      http.get(`${upstream}/initiatives`, ({ request }) =>
+        HttpResponse.json(
+          Object.fromEntries(
+            ['keep-alive', 'te', 'upgrade', 'expect', 'x-private', 'x-keep'].map((name) => [
+              name,
+              request.headers.get(name),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    const response = await GET(
+      new Request('http://web.test/api/initiatives', {
+        headers: {
+          connection: 'keep-alive, x-private',
+          'keep-alive': 'timeout=5',
+          te: 'trailers',
+          upgrade: 'websocket',
+          expect: '100-continue',
+          'x-private': 'secret',
+          'x-keep': 'yes',
+        },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      'keep-alive': null,
+      te: null,
+      upgrade: null,
+      expect: null,
+      'x-private': null,
+      'x-keep': 'yes',
+    });
+  });
+
+  it('drops hop-by-hop response headers, including those named in Connection', async () => {
+    server.use(
+      http.get(
+        `${upstream}/initiatives`,
+        () =>
+          new HttpResponse('[]', {
+            headers: {
+              connection: 'x-private',
+              'keep-alive': 'timeout=5',
+              'x-private': 'secret',
+              'x-keep': 'yes',
+            },
+          }),
+      ),
+    );
+
+    const response = await GET(new Request('http://web.test/api/initiatives'));
+
+    expect(response.headers.get('connection')).toBeNull();
+    expect(response.headers.get('keep-alive')).toBeNull();
+    expect(response.headers.get('x-private')).toBeNull();
+    expect(response.headers.get('x-keep')).toBe('yes');
+  });
+
+  it('answers 504 when the API does not answer within 30 seconds', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const expired = new AbortController();
+    timeout.mockReturnValue(expired.signal);
+    server.use(
+      http.get(`${upstream}/initiatives`, async () => {
+        await delay('infinite');
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const pending = GET(new Request('http://web.test/api/initiatives'));
+    await vi.waitFor(() => {
+      expect(timeout).toHaveBeenCalledWith(30_000);
+    });
+    expired.abort(new DOMException('timed out', 'TimeoutError'));
+
+    expect((await pending).status).toBe(504);
+    timeout.mockRestore();
+  });
+
+  it('aborts the upstream request when the client disconnects', async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    server.use(
+      http.get(`${upstream}/initiatives`, async ({ request }) => {
+        upstreamSignal = request.signal;
+        await delay('infinite');
+        return HttpResponse.json([]);
+      }),
+    );
+    const client = new AbortController();
+
+    const pending = GET(new Request('http://web.test/api/initiatives', { signal: client.signal }));
+    await vi.waitFor(() => {
+      expect(upstreamSignal).toBeDefined();
+    });
+    client.abort();
+    await pending;
+
+    expect(upstreamSignal?.aborted).toBe(true);
   });
 });

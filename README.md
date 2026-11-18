@@ -22,7 +22,7 @@ The name comes from the Boulé, the council of ancient Athens that prepared the 
 
 ## Running locally
 
-From the repository root, create your local `.env` once, then set your own password in it. It is git-ignored and holds the database credentials used by both Docker Compose and the API in dev mode:
+From the repository root, create your local `.env` once, then set `DB_PASSWORD` in it (it ships empty, and Docker Compose refuses to start without it). It is git-ignored and holds the database credentials used by both Docker Compose and the API in dev mode:
 
 ```bash
 cp .env.example .env
@@ -91,7 +91,7 @@ CI runs the same tests in the `e2e` job, against the production images started w
 
 `compose.prod.yaml` runs PostgreSQL, the API and the web app on a single host, from images built out of `api/Dockerfile` and `web/Dockerfile`. Only the web port is published; the API and the database stay on the internal network.
 
-1. Copy `.env.example` to `.env` and fill it in. Use a strong `DB_PASSWORD`, and set `WEB_PORT` if 3000 is taken.
+1. Copy `.env.example` to `.env` and fill it in. Set a strong `DB_PASSWORD` (the compose file refuses an empty one), and set `WEB_PORT` if 3000 is taken.
 2. Build and start everything:
 
    ```bash
@@ -106,10 +106,13 @@ CI runs the same tests in the `e2e` job, against the production images started w
    docker compose -f compose.prod.yaml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > bouleplan.sql
    ```
 
-6. Restore into an empty database:
+6. Restore. The API migrates the database on start, so it is never empty while the API runs: stop the app, recreate the database, load the dump, then start again.
 
    ```bash
-   docker compose -f compose.prod.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"' < bouleplan.sql
+   docker compose -f compose.prod.yaml stop api web
+   docker compose -f compose.prod.yaml exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+   docker compose -f compose.prod.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" -v ON_ERROR_STOP=1 --single-transaction "$POSTGRES_DB"' < bouleplan.sql
+   docker compose -f compose.prod.yaml up -d
    ```
 
 The web container reads `API_URL` (set to `http://api:8080` in the compose file) when it starts, so pointing it at another API needs a restart, not a rebuild. To use published images instead of building, set `API_IMAGE` and `WEB_IMAGE` in `.env` and run `docker compose -f compose.prod.yaml pull` and `up -d`.
