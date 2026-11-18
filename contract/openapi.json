@@ -1586,6 +1586,16 @@
                             }
                         }
                     },
+                    "422": {
+                        "description": "introspection.week.future: the week has not started",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
                     "409": {
                         "description": "introspection.closed: the sheet is already closed",
                         "content": {

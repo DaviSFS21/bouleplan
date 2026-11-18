@@ -18,7 +18,10 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAdjusters;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -206,5 +209,46 @@ class IntrospectionResourceTest {
         .body(KEYS, contains("went_well", "to_improve"))
         .body(PROMPTS, contains("Old question?", "Como posso melhorar?"))
         .body(ANSWERS_ANSWER, contains("A", "C"));
+  }
+
+  @Test
+  @DisplayName("a future week can be drafted but not closed")
+  void futureWeek() {
+    LocalDate next =
+        LocalDate.now(ZoneOffset.UTC)
+            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            .plusWeeks(1);
+
+    IntrospectionApi.put(next.toString(), body(answer("went_well", "A"))).statusCode(200);
+    IntrospectionApi.close(next.toString())
+        .statusCode(422)
+        .body(CODE, equalTo("introspection.week.future"));
+    IntrospectionApi.get(next.toString())
+        .body(CLOSED_AT, nullValue())
+        .body(ANSWERS_ANSWER, contains("A", "", ""));
+  }
+
+  @Test
+  @DisplayName("a missing key is added in question order")
+  void addedKeyKeepsOrder() {
+    QuarkusTransaction.requiringNew()
+        .run(() -> {
+          entityManager
+              .createNativeQuery(
+                  "insert into introspection (id, user_id, week_start, answers)"
+                      + " values (?1, ?2, ?3, cast(?4 as jsonb))")
+              .setParameter(1, UUID.randomUUID())
+              .setParameter(2, currentUser.id())
+              .setParameter(3, LocalDate.parse(WEEK))
+              .setParameter(
+                  4,
+                  "[{\"key\": \"went_well\", \"prompt\": \"P?\", \"answer\": \"\"},"
+                      + " {\"key\": \"to_improve\", \"prompt\": \"P?\", \"answer\": \"\"}]")
+              .executeUpdate();
+        });
+
+    IntrospectionApi.put(WEEK, body(answer("went_badly", "B")))
+        .statusCode(200)
+        .body(KEYS, contains("went_well", "went_badly", "to_improve"));
   }
 }

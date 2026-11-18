@@ -6,8 +6,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -92,25 +94,44 @@ public class Introspection extends PanacheEntityBase {
         changes.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getKey, entry -> validAnswer(entry.getValue())));
     List<IntrospectionAnswer> next = new ArrayList<>();
-    for (IntrospectionAnswer stored : answers) {
-      next.add(
-          validated.containsKey(stored.key())
-              ? new IntrospectionAnswer(stored.key(), stored.prompt(), validated.get(stored.key()))
-              : stored);
+    for (IntrospectionQuestions.Question question : IntrospectionQuestions.all()) {
+      IntrospectionAnswer stored = stored(question.key());
+      if (Objects.nonNull(stored)) {
+        next.add(withAnswer(stored, validated));
+      } else if (validated.containsKey(question.key())) {
+        next.add(
+            new IntrospectionAnswer(
+                question.key(), question.prompt(), validated.get(question.key())));
+      }
     }
-    IntrospectionQuestions.all().stream()
-        .filter(question -> answers.stream().noneMatch(a -> a.key().equals(question.key())))
-        .filter(question -> validated.containsKey(question.key()))
-        .forEach(question ->
-            next.add(
-                new IntrospectionAnswer(
-                    question.key(), question.prompt(), validated.get(question.key()))));
+    answers.stream()
+        .filter(stored -> !IntrospectionQuestions.isKnown(stored.key()))
+        .forEach(stored -> next.add(withAnswer(stored, validated)));
     answers = next;
   }
 
-  /** Stamps the closing time; a closed sheet cannot be closed again. */
+  private IntrospectionAnswer stored(String key) {
+    return answers.stream().filter(a -> a.key().equals(key)).findFirst().orElse(null);
+  }
+
+  private static IntrospectionAnswer withAnswer(
+      IntrospectionAnswer stored, Map<String, String> validated) {
+    return validated.containsKey(stored.key())
+        ? new IntrospectionAnswer(stored.key(), stored.prompt(), validated.get(stored.key()))
+        : stored;
+  }
+
+  /**
+   * Stamps the closing time; a closed sheet cannot be closed again, nor can one of a week that
+   * starts after the current week (UTC).
+   */
   public void close(OffsetDateTime at) {
     requireOpen();
+    LocalDate currentWeek =
+        at.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    if (weekStart.isAfter(currentWeek)) {
+      throw new FutureWeekException();
+    }
     closedAt = at;
   }
 
@@ -127,8 +148,7 @@ public class Introspection extends PanacheEntityBase {
 
   private static String validAnswer(String text) {
     String valid =
-        EntityText.validDescription(
-            text, "Answer", ANSWER_CODE, InvalidIntrospectionException::new);
+        EntityText.validMultiline(text, "Answer", ANSWER_CODE, InvalidIntrospectionException::new);
     return valid == null ? "" : valid;
   }
 

@@ -43,8 +43,7 @@ public class IntrospectionService implements ManageIntrospectionUseCase {
   public Introspection save(LocalDate weekStart, List<AnswerChange> changes) {
     Introspection sheet = lockedSheet(weekStart);
     sheet.answer(
-        changes.stream()
-            .collect(Collectors.toMap(AnswerChange::key, AnswerChange::answer, (a, b) -> b)));
+        changes.stream().collect(Collectors.toMap(AnswerChange::key, AnswerChange::answer)));
     return sheet;
   }
 

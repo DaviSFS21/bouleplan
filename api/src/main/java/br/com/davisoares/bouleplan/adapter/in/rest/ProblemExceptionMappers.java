@@ -1,6 +1,7 @@
 package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.domain.DomainRuleViolation;
+import br.com.davisoares.bouleplan.domain.FutureWeekException;
 import br.com.davisoares.bouleplan.domain.IntrospectionClosedException;
 import br.com.davisoares.bouleplan.domain.ScheduleConflictException;
 import br.com.davisoares.bouleplan.domain.ScheduleRefusedException;
@@ -48,6 +49,13 @@ public class ProblemExceptionMappers {
   public RestResponse<Problem> introspectionClosed(IntrospectionClosedException exception) {
     return problem(
         409, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
+  }
+
+  /** A sheet of a week that has not started yet cannot be closed. */
+  @ServerExceptionMapper
+  public RestResponse<Problem> futureWeek(FutureWeekException exception) {
+    return problem(
+        422, RULE_VIOLATION_TYPE, RULE_VIOLATION_TITLE, exception.code(), exception.getMessage());
   }
 
   /** A scheduling request that the state of the task does not allow. */

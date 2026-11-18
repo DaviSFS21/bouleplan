@@ -137,6 +137,13 @@ public class IntrospectionResource {
               mediaType = Problem.MEDIA_TYPE,
               schema = @Schema(implementation = Problem.class)))
   @APIResponse(
+      responseCode = Responses.UNPROCESSABLE,
+      description = "introspection.week.future: the week has not started",
+      content =
+          @Content(
+              mediaType = Problem.MEDIA_TYPE,
+              schema = @Schema(implementation = Problem.class)))
+  @APIResponse(
       responseCode = Responses.CONFLICT,
       description = CLOSED,
       content =

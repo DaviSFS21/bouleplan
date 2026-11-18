@@ -56,19 +56,26 @@ final class EntityText {
       String subject,
       String codePrefix,
       BiFunction<String, String, ? extends DomainRuleViolation> violation) {
+    return validMultiline(description, subject + " description", codePrefix, violation);
+  }
+
+  /** Like {@link #validDescription} for a text that is named by {@code label} alone. */
+  static String validMultiline(
+      String text,
+      String label,
+      String codePrefix,
+      BiFunction<String, String, ? extends DomainRuleViolation> violation) {
     String trimmed =
-        description == null
-            ? ""
-            : stripInvisible(description.replace("\r\n", "\n").replace('\r', '\n'));
+        text == null ? "" : stripInvisible(text.replace("\r\n", "\n").replace('\r', '\n'));
     if (trimmed.codePoints().anyMatch(EntityText::isInvalidDescriptionCodePoint)) {
       throw violation.apply(
           codePrefix + ".invalid-characters",
-          subject + " description must not contain control or invalid characters");
+          label + " must not contain control or invalid characters");
     }
     if (trimmed.length() > MAX_DESCRIPTION_LENGTH) {
       throw violation.apply(
           codePrefix + ".too-long",
-          subject + " description must have at most " + MAX_DESCRIPTION_LENGTH + " characters");
+          label + " must have at most " + MAX_DESCRIPTION_LENGTH + " characters");
     }
     return trimmed.isEmpty() ? null : trimmed;
   }
