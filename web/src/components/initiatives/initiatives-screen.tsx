@@ -476,7 +476,7 @@ export function InitiativesScreen() {
         onNewEpicHandled: clearNewEpicRequest,
         onDelete: (epic) => {
           void leaveEpic(epic, deleteEpic.mutateAsync, restoreEpic.mutateAsync, {
-            done: 'Épico excluída',
+            done: 'Épico excluído',
             failed: DELETE_EPIC_FAILED_MESSAGE,
           });
         },

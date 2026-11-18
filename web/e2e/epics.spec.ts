@@ -114,7 +114,7 @@ test('deletes the filtered epic, which clears the filter, and undo re-applies it
 
   await epicMenu(page, 'Piso', 'Excluir');
 
-  await expect(page.getByText('Épico excluída')).toBeVisible();
+  await expect(page.getByText('Épico excluído')).toBeVisible();
   await expect(page).not.toHaveURL(/epico=/);
   await expect(page.getByRole('heading', { level: 1, name: 'Reforma' })).toBeVisible();
 

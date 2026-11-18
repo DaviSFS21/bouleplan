@@ -463,7 +463,7 @@ describe('renaming an epic', () => {
 describe('archiving and deleting an epic', () => {
   it.each([
     ['Arquivar', 'Épico arquivado', 'archive', 'unarchive'],
-    ['Excluir', 'Épico excluída', 'delete', 'restore'],
+    ['Excluir', 'Épico excluído', 'delete', 'restore'],
   ])('%s applies at once and "Desfazer" brings it back', async (item, message, call, undoCall) => {
     const user = userEvent.setup();
     const backend = serve([reforma], [demolition, flooring]);
@@ -505,7 +505,7 @@ describe('archiving and deleting an epic', () => {
 
   it.each([
     ['Arquivar', 'Épico arquivado'],
-    ['Excluir', 'Épico excluída'],
+    ['Excluir', 'Épico excluído'],
   ])('%s clears a filter on that epic and undo re-applies it', async (item, message) => {
     const user = userEvent.setup();
     serve([reforma], [demolition, flooring]);
@@ -596,7 +596,7 @@ describe('archiving and deleting an epic', () => {
 
     expect(await within(index()).findByRole('alert')).toHaveTextContent(message);
     expect(epicButton('Épico 1 · Demolição')).toBeVisible();
-    expect(screen.queryByText(/Épico (arquivada|excluída)/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Épico (arquivado|excluído)/)).not.toBeInTheDocument();
   });
 
   it('shows an alert when undo fails', async () => {
