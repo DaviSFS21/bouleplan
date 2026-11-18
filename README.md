@@ -11,6 +11,7 @@ The name comes from the Boulé, the council of ancient Athens that prepared the 
 | [`api/`](api/README.md) | REST backend | Java 21, Quarkus (imperative, Panache), Gradle (Kotlin DSL), Flyway |
 | [`web/`](web/README.md) | Frontend | Next.js (App Router), React, TypeScript, pnpm, Vitest |
 | `compose.yaml` | PostgreSQL for local development; with `--profile dev`, the API and the web app too | Docker Compose |
+| `compose.prod.yaml` | Single-host deployment: PostgreSQL, the API and the web app from their production images | Docker Compose |
 | `docker/` | Development image of the web app | Docker |
 | `.github/workflows/` | CI | GitHub Actions + SonarQube Cloud |
 
@@ -21,7 +22,7 @@ The name comes from the Boulé, the council of ancient Athens that prepared the 
 
 ## Running locally
 
-From the repository root, create your local `.env` once, then set your own password in it. It is git-ignored and holds the database credentials used by both Docker Compose and the API in dev mode:
+From the repository root, create your local `.env` once, then set `DB_PASSWORD` in it (it ships empty, and Docker Compose refuses to start without it). It is git-ignored and holds the database credentials used by both Docker Compose and the API in dev mode:
 
 ```bash
 cp .env.example .env
@@ -84,7 +85,39 @@ E2E_DATABASE_URL=postgresql://<DB_USERNAME>:<DB_PASSWORD>@localhost:<DB_PORT>/<D
 | `E2E_BASE_URL`     | `http://localhost:3000` | Where the frontend is served                                      |
 | `PW_CHROMIUM_PATH` | Playwright's own        | Chromium executable to use instead of the one Playwright installs |
 
-CI runs the same tests in the `e2e` job, against the production build of both projects.
+CI runs the same tests in the `e2e` job, against the production images started with `compose.prod.yaml`.
+
+## Deploying
+
+`compose.prod.yaml` runs PostgreSQL, the API and the web app on a single host, from images built out of `api/Dockerfile` and `web/Dockerfile`. Only the web port is published; the API and the database stay on the internal network.
+
+1. Copy `.env.example` to `.env` and fill it in. Set a strong `DB_PASSWORD` (the compose file refuses an empty one), and set `WEB_PORT` if 3000 is taken.
+2. Build and start everything:
+
+   ```bash
+   docker compose -f compose.prod.yaml up -d --build
+   ```
+
+3. Open the app at `http://<host>:<WEB_PORT>`. The API applies the database migrations when it starts, and the web container waits for the API to be healthy.
+4. To update, run `git pull` and the same command again. Data lives in the `db-data` volume and survives rebuilds.
+5. Back up the database:
+
+   ```bash
+   docker compose -f compose.prod.yaml exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' > bouleplan.sql
+   ```
+
+6. Restore. The API migrates the database on start, so it is never empty while the API runs: stop the app, recreate the database, load the dump, then start again.
+
+   ```bash
+   docker compose -f compose.prod.yaml stop api web
+   docker compose -f compose.prod.yaml exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+   docker compose -f compose.prod.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" -v ON_ERROR_STOP=1 --single-transaction "$POSTGRES_DB"' < bouleplan.sql
+   docker compose -f compose.prod.yaml up -d
+   ```
+
+The web container reads `API_URL` (set to `http://api:8080` in the compose file) when it starts, so pointing it at another API needs a restart, not a rebuild. To use published images instead of building, set `API_IMAGE` and `WEB_IMAGE` in `.env` and run `docker compose -f compose.prod.yaml pull` and `up -d`.
+
+**There is no authentication yet.** Do not expose the app to the internet without something in front of it, such as a VPN or a reverse proxy with authentication.
 
 ## Quality and CI
 
@@ -92,7 +125,7 @@ Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci
 
 1. **API**: Checkstyle and PMD (any violation fails the build), tests against a real PostgreSQL, and the build.
 2. **Web**: Prettier, ESLint (zero warnings), type checking, tests with coverage, and the production build.
-3. **E2E**: Playwright tests against the built API, the built frontend and a PostgreSQL service.
+3. **E2E**: builds both production images, starts them with PostgreSQL through `compose.prod.yaml` (plus `compose.ci.yaml`, which publishes the database port for the test reset), and runs the Playwright tests against the web container.
 4. **Sonar**: merges coverage from both sides and runs SonarQube Cloud. The job fails if the quality gate fails.
 
 ### One-time SonarQube Cloud setup
@@ -105,7 +138,7 @@ Every push to `main` and every pull request runs the [`CI`](.github/workflows/ci
 
 ### Dependency updates
 
-[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for Gradle (`api/`), pnpm (`web/`) and GitHub Actions. A version is only proposed after it has been public for 14 days. Quarkus stays on its LTS line: Dependabot only proposes patch releases within it, and moving to a new LTS is a deliberate upgrade.
+[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for Gradle (`api/`), pnpm (`web/`), GitHub Actions and the base images of both Dockerfiles. Java 21 and Node 22 stay put: Dependabot ignores major versions of `eclipse-temurin` and `node`. A version is only proposed after it has been public for 14 days. Quarkus stays on its LTS line: Dependabot only proposes patch releases within it, and moving to a new LTS is a deliberate upgrade.
 
 ## Language
 

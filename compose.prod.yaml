@@ -1,0 +1,59 @@
+# Single-host deployment. Build and start: docker compose -f compose.prod.yaml up -d --build
+name: bouleplan-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USERNAME:?set DB_USERNAME in .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # $$ defers expansion to the container.
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    image: ${API_IMAGE:-bouleplan-api:local}
+    build:
+      context: api
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:?set DB_NAME in .env}
+      DB_USERNAME: ${DB_USERNAME:?set DB_USERNAME in .env}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "--output", "/dev/null", "http://localhost:8080/q/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  web:
+    image: ${WEB_IMAGE:-bouleplan-web:local}
+    build:
+      context: web
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8080
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  db-data:

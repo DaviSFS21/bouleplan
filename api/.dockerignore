@@ -1,0 +1,13 @@
+build/
+.gradle/
+.kotlin/
+bin/
+out/
+.idea/
+.vscode/
+*.iml
+*.log
+.env
+Dockerfile
+.dockerignore
+README.md

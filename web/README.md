@@ -23,9 +23,9 @@ Opens at <http://localhost:3000>.
 
 ## Configuration
 
-| Variable  | Default                 | What it does                                                                                                     |
-| --------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `API_URL` | `http://localhost:8080` | Backend base URL. `/api/:path*` is proxied to `${API_URL}/:path*`, so the browser only talks to the same origin. |
+| Variable  | Default                 | What it does                                                                                                                                                               |
+| --------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_URL` | `http://localhost:8080` | Backend base URL, read at runtime. The route handler in `src/app/api/[...path]/route.ts` proxies `/api/*` to `${API_URL}/*`, so the browser only talks to the same origin. |
 
 ## Design system
 
@@ -62,7 +62,9 @@ Opens at <http://localhost:3000>.
 | `pnpm test:watch`    | Runs tests in watch mode                                       |
 | `pnpm test:coverage` | Runs tests with coverage (`coverage/lcov.info`, read by Sonar) |
 | `pnpm build`         | Production build                                               |
-| `pnpm start`         | Serves the production build                                    |
+| `pnpm start`         | Serves the production build (`next start`)                     |
+
+The production image runs the standalone output instead: after `pnpm build`, `node .next/standalone/server.js` serves the app (copy `.next/static` into `.next/standalone/.next/static` first). `pnpm start` is kept for local use and works with this output.
 
 ## Telemetry
 
