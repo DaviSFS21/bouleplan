@@ -64,6 +64,8 @@ docker compose --profile dev up
 - The web container runs as the owner of `web/`, so the files it writes there belong to you. On Linux, run `pnpm install` on the host once before the first start, so `web/node_modules` is not created by Docker.
 - PostgreSQL applies `DB_PASSWORD` only when its volume is first created. To change the password later, remove the volume with `docker compose down -v`, which deletes the local data.
 
+On Windows, the repository's `.gitattributes` keeps `gradlew` and the other scripts in LF, which the Linux containers need. A clone made before that file existed still has CRLF files: with no local changes, refresh it with `git rm -r --cached -q .` followed by `git reset --hard`, then rebuild with `docker compose --profile dev up --build`.
+
 Plain `docker compose up -d` still starts only the database.
 
 ## End-to-end tests
