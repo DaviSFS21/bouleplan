@@ -1,8 +1,21 @@
 .region {
   position: fixed;
   left: var(--space-6);
-  bottom: var(--space-6);
+  bottom: calc(var(--space-6) + var(--bar-offset));
   z-index: 40;
+}
+
+@media (max-width: 767px) {
+  .region {
+    right: var(--space-4);
+    left: var(--space-4);
+    bottom: calc(var(--space-4) + var(--bar-offset));
+  }
+
+  .toast {
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 .toast {
@@ -77,4 +90,17 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .undo {
+    min-height: 44px;
+  }
+}
+
+/* Inside a full-screen dialog the bottom bar is covered, so the toast sits at the screen edge. */
+@media (max-width: 767px) {
+  .region[data-hosted] {
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
 }

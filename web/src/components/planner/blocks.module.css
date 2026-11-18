@@ -211,3 +211,13 @@
   border-radius: 50%;
   background: var(--tinta);
 }
+
+@media (pointer: coarse) {
+  .menu {
+    opacity: 1;
+  }
+
+  .handle {
+    display: none;
+  }
+}

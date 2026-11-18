@@ -130,3 +130,11 @@
   line-height: 22px;
   pointer-events: none;
 }
+
+@media (pointer: coarse) {
+  .value,
+  .phase {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

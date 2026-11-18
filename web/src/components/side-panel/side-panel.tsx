@@ -1,15 +1,19 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useState,
   useRef,
-  type KeyboardEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
 import { Icon } from '@/components/icon/icon';
+import { useRegisterModal } from '@/components/modal-host/modal-host';
+import { useIsPhone } from '@/components/responsive/use-media-query';
 import styles from './side-panel.module.css';
 
 interface SidePanelProps {
@@ -43,6 +47,20 @@ export function SidePanel({
   children,
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
+  const phone = useIsPhone();
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  const attach = useCallback((element: HTMLElement | null) => {
+    panel.current = element;
+    setNode(element);
+  }, []);
+  useRegisterModal(phone ? node : null);
+  const wasPhone = useRef(phone);
+
+  // The header swaps its buttons across the breakpoint, which would leave focus on nothing.
+  useEffect(() => {
+    if (wasPhone.current !== phone) panel.current?.focus();
+    wasPhone.current = phone;
+  }, [phone]);
 
   const fallback = useRef(fallbackFocus);
   const prefer = useRef(preferFallback);
@@ -79,27 +97,40 @@ export function SidePanel({
     if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
   }, []);
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') onClose();
-  }
+  useModalKeys(node, { onEscape: onClose, trap: phone });
+
+  const eyebrowText = (
+    <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
+  );
 
   return (
     <aside
-      ref={panel}
+      ref={attach}
+      role={phone ? 'dialog' : undefined}
+      aria-modal={phone ? true : undefined}
       aria-label={label}
       tabIndex={-1}
       className={styles.panel}
-      onKeyDown={handleKeyDown}
     >
       <header className={styles.header}>
-        <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
+        {phone ? (
+          <button type="button" className={styles.back} onClick={onClose}>
+            <Icon icon={ChevronLeft} size={18} aria-hidden="true" />
+            Voltar
+          </button>
+        ) : (
+          eyebrowText
+        )}
         <div className={styles.actions}>
           {actions}
-          <button type="button" className={styles.close} aria-label="Fechar" onClick={onClose}>
-            <Icon icon={X} />
-          </button>
+          {phone ? null : (
+            <button type="button" className={styles.close} aria-label="Fechar" onClick={onClose}>
+              <Icon icon={X} />
+            </button>
+          )}
         </div>
       </header>
+      {phone ? eyebrowText : null}
       <div className={styles.content}>{children}</div>
       {footer ? <footer className={styles.footer}>{footer}</footer> : null}
     </aside>

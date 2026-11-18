@@ -17,30 +17,32 @@ const SECTIONS: readonly Section[] = [
   { href: '/semana', label: 'Semana', icon: CalendarDays },
 ];
 
-export function AppNav() {
+interface AppNavProps {
+  // The header on top, or the bar fixed at the bottom of a phone.
+  placement?: 'top' | 'bottom';
+}
+
+export function AppNav({ placement = 'top' }: Readonly<AppNavProps>) {
   const pathname = usePathname();
-  return (
-    <header className={styles.header}>
-      <nav aria-label="Seções">
-        <div role="tablist" aria-label="Seções" className={styles.tabs}>
-          {SECTIONS.map(({ href, label, icon }) => {
-            const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                role="tab"
-                aria-selected={active}
-                aria-current={active ? 'page' : undefined}
-                className={styles.item}
-              >
-                <Icon icon={icon} size={18} aria-hidden="true" />
-                {label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-    </header>
+  const nav = (
+    <nav aria-label="Seções" className={placement === 'top' ? undefined : styles.bar}>
+      <div className={styles.links}>
+        {SECTIONS.map(({ href, label, icon }) => {
+          const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={styles.item}
+            >
+              <Icon icon={icon} size={18} aria-hidden="true" />
+              {label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
+  return placement === 'top' ? <header className={styles.header}>{nav}</header> : nav;
 }

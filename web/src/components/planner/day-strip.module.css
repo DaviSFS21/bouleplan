@@ -122,3 +122,34 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+.menu {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  opacity: 0;
+}
+
+.ficha:hover .menu,
+.ficha:focus-within .menu,
+.menu:has([aria-expanded='true']) {
+  opacity: 1;
+}
+
+/* On touch the menu is the one control: its 44px area would overlap the "×" one. */
+@media (pointer: coarse) {
+  .ficha {
+    padding-right: var(--space-8);
+  }
+
+  .remove,
+  .ficha:hover .remove,
+  .ficha:focus-within .remove {
+    display: none;
+  }
+
+  .menu {
+    right: 0;
+    opacity: 1;
+  }
+}

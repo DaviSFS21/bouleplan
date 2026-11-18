@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { PHONE, findVeil, setViewport } from '@/test/viewport';
 import { ActionMenu, type ActionMenuEntry } from './action-menu';
 
 function setup(overrides: { onOpen?: () => void; onRename?: () => void } = {}) {
@@ -400,5 +401,90 @@ describe('a disabled item', () => {
 
     expect(screen.getByRole('menuitem', { name: 'Tirar da agenda' })).toBeDisabled();
     expect(onSelect).not.toHaveBeenCalled();
+  });
+});
+
+describe('ActionMenu as a bottom sheet on a phone', () => {
+  it('rises as a sheet with a veil and no popover position', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+
+    await user.click(trigger);
+
+    const menu = screen.getByRole('menu');
+    expect(menu.className).toContain('sheet');
+    expect(menu.style.top).toBe('');
+    expect(findVeil()).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('closes on a tap on the veil and returns focus to the trigger', async () => {
+    setViewport(PHONE);
+    const { user, trigger, onOpen } = setup();
+    await user.click(trigger);
+
+    await user.click(findVeil());
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('traps Tab inside the sheet, in both directions', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    const items = screen.getAllByRole('menuitem');
+
+    await user.tab({ shift: true });
+    expect(items[2]).toHaveFocus();
+    await user.tab();
+
+    expect(items[0]).toHaveFocus();
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('still selects an item, closes and returns focus', async () => {
+    setViewport(PHONE);
+    const { user, trigger, onRename } = setup();
+    await user.click(trigger);
+
+    await user.click(screen.getByRole('menuitem', { name: /Editar nome/ }));
+
+    expect(onRename).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it('does not close on a pointer press outside while it is a sheet', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+
+    await user.pointer({
+      keys: '[MouseLeft>]',
+      target: screen.getByRole('button', { name: 'Fora' }),
+    });
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+  });
+
+  it('closes when the screen turns across the phone breakpoint', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    setViewport({ width: 1440, coarse: false });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('keeps the veil out of the tab order and out of the accessibility tree', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+
+    expect(findVeil()).toHaveAttribute('tabindex', '-1');
+    expect(findVeil()).toHaveAttribute('aria-hidden', 'true');
   });
 });

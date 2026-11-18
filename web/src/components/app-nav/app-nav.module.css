@@ -8,7 +8,7 @@
   box-shadow: 0 1px 0 var(--borda);
 }
 
-.tabs {
+.links {
   display: flex;
   gap: var(--space-1);
 }
@@ -31,7 +31,7 @@
   color: var(--tinta);
 }
 
-.item[aria-selected='true'] {
+.item[aria-current='page'] {
   background: var(--papel-elevado);
   color: var(--tinta);
 }
@@ -39,4 +39,51 @@
 .item:focus-visible {
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
+}
+
+/* Before hydration the server renders the header; on a phone the bar replaces it. */
+@media (max-width: 767px) {
+  .header {
+    display: none;
+  }
+}
+
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  background: var(--papel-flutuante);
+  box-shadow: 0 -1px 0 var(--borda);
+}
+
+@media (max-width: 767px) {
+  .links {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+    box-sizing: border-box;
+    padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));
+  }
+
+  .item {
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-height: var(--bar-target);
+    padding: 6px 2px;
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  .item svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .item[aria-current='page'] {
+    background: transparent;
+    color: var(--terracota-escuro);
+  }
 }

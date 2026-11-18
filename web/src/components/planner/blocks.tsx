@@ -8,6 +8,7 @@ import type { CalendarEvent } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { PrioritySelo } from '@/components/selo/selo';
 import type { DragData } from './planner-drop';
+import { arrowStep, useKeyboardMoves } from './keyboard-moves';
 import { blockStyle, type Lane, type Span } from './planner-geometry';
 import type { BlockModel, DeadlineModel } from './planner-model';
 import { formatRange, parseTime } from './planner-time';
@@ -62,10 +63,19 @@ export function DedicatedBlock({
     disabled,
   });
   const root = useRef<HTMLDivElement | null>(null);
+  const keyboard = useKeyboardMoves();
   const range = formatRange(shown.start, shown.end, true);
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
+    const step = event.altKey && keyboard ? arrowStep(event.key) : null;
+    if (keyboard && step) {
+      event.preventDefault();
+      if (disabled) return;
+      if (!event.shiftKey) keyboard.moveBlock({ item, task }, step);
+      else if (step.days === 0) keyboard.resizeBlock({ item, task }, step.quarters);
+      return;
+    }
     if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
       event.preventDefault();
       root.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.click();

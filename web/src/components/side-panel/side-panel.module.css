@@ -97,3 +97,56 @@
   color: var(--tinta-muted);
   font: var(--type-meta);
 }
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  margin-left: calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--tinta);
+  font: var(--type-botao);
+  cursor: pointer;
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  /* Above the bottom bar, as the design system asks. */
+  .panel {
+    z-index: 40;
+    left: 0;
+    width: auto;
+    gap: var(--space-4);
+    padding: var(--space-2) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .close {
+    position: relative;
+  }
+
+  .close::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .path a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

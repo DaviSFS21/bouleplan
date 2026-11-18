@@ -51,3 +51,9 @@
   color: var(--erro);
   font: var(--type-meta);
 }
+
+@media (pointer: coarse) {
+  .field {
+    min-height: 44px;
+  }
+}

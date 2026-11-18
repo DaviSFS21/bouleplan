@@ -123,3 +123,75 @@
 .item:disabled:hover {
   background: transparent;
 }
+
+.veil {
+  padding: 0;
+  border: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: var(--veu);
+}
+
+.sheet {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-width: 0;
+  max-height: 80vh;
+  padding: var(--space-2) var(--space-2) calc(var(--space-4) + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  animation: rise 200ms ease-out;
+}
+
+.sheet::before {
+  content: '';
+  display: block;
+  flex: none;
+  width: 36px;
+  height: 4px;
+  margin: 2px auto var(--space-2);
+  border-radius: 2px;
+  background: var(--borda);
+}
+
+.sheet .item {
+  min-height: 44px;
+}
+
+.sheet .chips {
+  padding-block: var(--space-2);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .trigger {
+    position: relative;
+  }
+
+  .trigger::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .chip {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

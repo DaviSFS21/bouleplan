@@ -98,6 +98,11 @@ tasks.jacocoTestReport {
     enabled = false
 }
 
+// Quarkus writes the schema while augmenting; declaring it lets a cached build restore it.
+tasks.named("quarkusAppPartsBuild") {
+    outputs.dir(layout.buildDirectory.dir("openapi"))
+}
+
 val committedContract = rootDir.resolve("../contract/openapi.json")
 val generatedContract = layout.buildDirectory.file("contract/openapi.json")
 

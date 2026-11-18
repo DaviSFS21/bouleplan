@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Fraunces, Spectral, Work_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
-import { AppNav } from '@/components/app-nav/app-nav';
+import { AppShell } from '@/components/app-nav/app-shell';
 import { Providers } from '@/components/providers/providers';
 import '@/styles/globals.css';
 
@@ -39,8 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="pt-BR" className={`${display.variable} ${body.variable} ${ui.variable}`}>
       <body>
         <Providers>
-          <AppNav />
-          {children}
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>

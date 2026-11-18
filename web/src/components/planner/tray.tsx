@@ -5,6 +5,7 @@ import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react';
 import type { Initiative, Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { BlockedSelo, PrioritySelo } from '@/components/selo/selo';
+import { useKeyboardMoves } from './keyboard-moves';
 import { deadlineWeekday } from './planner-dates';
 import type { DragData } from './planner-drop';
 import { RISK_FILTER, remainingMinutes, riskLabel, trayMeta } from './planner-tasks';
@@ -78,6 +79,7 @@ function TrayItem({
     id: `tray:${task.id}`,
     data: { kind: 'tray', task } satisfies DragData,
   });
+  const keyboard = useKeyboardMoves();
   const full = remainingMinutes(task) === 0;
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -129,6 +131,16 @@ function TrayItem({
                   actions.onOpen(task.id, true);
                 },
               },
+              ...(keyboard
+                ? [
+                    {
+                      label: 'Reservar tempo…',
+                      onSelect: () => {
+                        keyboard.startReserve({ kind: 'tray', task });
+                      },
+                    },
+                  ]
+                : []),
               ...(actions.isInToday(task)
                 ? []
                 : [

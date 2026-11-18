@@ -58,3 +58,12 @@
 .remove:hover {
   color: var(--tinta);
 }
+
+@media (pointer: coarse) {
+  .value,
+  .input,
+  .remove {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}

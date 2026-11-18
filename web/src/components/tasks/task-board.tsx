@@ -10,12 +10,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useManyPhases } from '@/api/phases';
 import { BLANK_TASK_TITLE_MESSAGE, createTaskMessage } from '@/api/messages';
 import { compareTasks, useCreateTask } from '@/api/tasks';
 import type { Initiative, Phase, Task, TaskStatus } from '@/api/types';
 import { Loading } from '@/components/loading/loading';
+import { useIsCoarsePointer, useIsPhone } from '@/components/responsive/use-media-query';
+import { TabStrip, tabPanelProps } from '@/components/tab-strip/tab-strip';
 import { phaseLabel } from '@/components/initiatives/phase-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
@@ -35,7 +37,7 @@ import {
   landingIndex,
   screenReaderInstructions,
 } from './task-dnd';
-import { STATUSES, tasksIn, visibleTasks } from './task-filter';
+import { STATUSES, statusTitle, tasksIn, visibleTasks } from './task-filter';
 import styles from './task-board.module.css';
 
 export interface TaskPanelControl {
@@ -82,13 +84,25 @@ export function TaskBoard({
   const [focusTick, setFocusTick] = useState(0);
   const pendingFocus = useRef<FocusRequest | null>(null);
   const root = useRef<HTMLDivElement>(null);
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: columnKeyboardCoordinates,
-      keyboardCodes: KEYBOARD_CODES,
-    }),
-  );
+  const phone = useIsPhone();
+  // Touch scrolls and taps; moving a card goes through its menu.
+  const coarse = useIsCoarsePointer();
+  const [shownStatus, setShownStatus] = useState<TaskStatus>('to_do');
+  const tabsPrefix = useId();
+  const keyboard = useSensor(KeyboardSensor, {
+    coordinateGetter: columnKeyboardCoordinates,
+    keyboardCodes: KEYBOARD_CODES,
+  });
+  const pointer = useSensor(PointerSensor, {
+    activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+  });
+  const fineSensors = useSensors(pointer, keyboard);
+  // A coarse pointer scrolls and taps; the keyboard (an iPad can have one) still moves cards.
+  const touchSensors = useSensors(keyboard);
+  // One column on a phone leaves nowhere to drop; moving a card goes through its menu.
+  const noSensors = useSensors();
+  const fineOrTouch = coarse ? touchSensors : fineSensors;
+  const sensors = phone ? noSensors : fineOrTouch;
 
   const showPath = initiative === null;
   const phaseOwners = useMemo(
@@ -157,6 +171,7 @@ export function TaskBoard({
     extra: { onAddToToday: (task) => void todayList.add(task), isInTodayList: todayList.isInToday },
     focus: {
       moved: (task, status) => {
+        setShownStatus(status);
         requestFocus(task.id, status);
       },
       leaving: (task) => {
@@ -276,14 +291,31 @@ export function TaskBoard({
           setDragging(null);
         }}
       >
+        {phone ? (
+          <TabStrip
+            label="Estados"
+            prefix={tabsPrefix}
+            items={STATUSES.map((status) => {
+              const label = `${statusTitle(status)} · ${String(tasksIn(visible, status).length)}`;
+              return { id: status, label, content: label };
+            })}
+            selectedId={shownStatus}
+            onSelect={(id) => {
+              setShownStatus(id as TaskStatus);
+            }}
+            className={styles.stateTabs}
+            tabClassName={styles.stateTab}
+          />
+        ) : null}
         <div className={styles.columns}>
-          {STATUSES.map((status) => {
+          {STATUSES.filter((status) => !phone || status === shownStatus).map((status) => {
             const column = tasksIn(visible, status);
             const lands = dragging?.over === status && dragging.task.status !== status;
             return (
               <TaskColumn
                 key={status}
                 status={status}
+                tabPanel={phone ? tabPanelProps(tabsPrefix, shownStatus) : undefined}
                 tasks={column}
                 pathOf={pathOf}
                 colorOf={(task) => colors.get(task.initiativeId) ?? ''}
@@ -292,6 +324,7 @@ export function TaskBoard({
                 openTaskId={openTask?.id ?? null}
                 slotIndex={lands ? landingIndex(column, dragging.task, compareTasks) : null}
                 quickCreate={quickCreate(status)}
+                draggable={!phone}
               />
             );
           })}

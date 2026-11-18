@@ -308,3 +308,25 @@
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
 }
+
+@media (pointer: coarse) {
+  .valueButton,
+  .priority,
+  .iconButton,
+  .textButton,
+  .blockerTitle,
+  .option {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .priority {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .comboInput {
+    min-height: 44px;
+  }
+}
