@@ -1,0 +1,5 @@
+# Scripts and sources run inside Linux containers, so checkouts keep LF on every OS.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.jar binary
