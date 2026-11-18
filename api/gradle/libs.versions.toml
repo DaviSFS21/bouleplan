@@ -1,6 +1,6 @@
 [versions]
 quarkus = "3.33.4.2"
-spotless = "8.10.4"
+spotless = "8.11.0"
 google-java-format = "2.0.0"
 archunit = "1.5.1"
 assertj = "3.27.7"
