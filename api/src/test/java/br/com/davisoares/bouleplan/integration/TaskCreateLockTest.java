@@ -3,11 +3,11 @@ package br.com.davisoares.bouleplan.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
+import br.com.davisoares.bouleplan.application.port.in.CreateEpicUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
-import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -22,18 +22,18 @@ import org.junit.jupiter.api.Test;
 class TaskCreateLockTest {
 
   @Inject CreateInitiativeUseCase createInitiative;
-  @Inject CreatePhaseUseCase createPhase;
+  @Inject CreateEpicUseCase createEpic;
   @Inject CreateTaskUseCase createTask;
   @Inject EntityManager entityManager;
 
   private UUID initiativeId;
-  private UUID phaseId;
+  private UUID epicId;
 
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = createInitiative.create("Study").getId();
-    phaseId = createPhase.create(initiativeId, "Design").orElseThrow().getId();
+    epicId = createEpic.create(initiativeId, "Design").orElseThrow().getId();
   }
 
   @Test
@@ -48,17 +48,16 @@ class TaskCreateLockTest {
             () -> createTask.create(initiativeId, TaskCommands.create("New", null)).isPresent());
 
     assertThat(created).isFalse();
-    assertThat(TestData.countImplicitPhases(entityManager, initiativeId.toString())).isZero();
+    assertThat(TestData.countImplicitEpics(entityManager, initiativeId.toString())).isZero();
   }
 
   @Test
-  @DisplayName("a task create in a phase waits for a concurrent phase archive and is then refused")
-  void createWaitsForPhaseLock() throws InterruptedException, ExecutionException {
+  @DisplayName("a task create in an epic waits for a concurrent epic archive and is then refused")
+  void createWaitsForEpicLock() throws InterruptedException, ExecutionException {
     boolean created =
         HeldLock.writeWhileHeld(
-            () ->
-                entityManager.find(Phase.class, phaseId, LockModeType.PESSIMISTIC_WRITE).archive(),
-            () -> createTask.create(initiativeId, TaskCommands.create("New", phaseId)).isPresent());
+            () -> entityManager.find(Epic.class, epicId, LockModeType.PESSIMISTIC_WRITE).archive(),
+            () -> createTask.create(initiativeId, TaskCommands.create("New", epicId)).isPresent());
 
     assertThat(created).isFalse();
   }

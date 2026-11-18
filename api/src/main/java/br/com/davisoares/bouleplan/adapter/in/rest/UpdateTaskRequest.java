@@ -35,10 +35,9 @@ public record UpdateTaskRequest(
     @Schema(
             implementation = String.class,
             format = "uuid",
-            description =
-                "An active named phase of the same initiative; null is the implicit phase",
+            description = "An active named epic of the same initiative; null is the implicit epic",
             nullable = true)
-        UUID phaseId,
+        UUID epicId,
     @Schema(
             implementation = String.class,
             format = "date",

@@ -24,8 +24,8 @@ class TaskNotFoundResourceTest {
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    String phaseId = PhaseApi.createId(initiativeId, "Design");
-    taskId = TaskApi.createIdInPhase(initiativeId, "Write", phaseId);
+    String epicId = EpicApi.createId(initiativeId, "Design");
+    taskId = TaskApi.createIdInEpic(initiativeId, "Write", epicId);
   }
 
   @Test
@@ -70,30 +70,30 @@ class TaskNotFoundResourceTest {
   }
 
   @Test
-  @DisplayName("a phaseId that is unknown, foreign, of another initiative or implicit is 404")
-  void invalidPhaseId() {
+  @DisplayName("an epicId that is unknown, foreign, of another initiative or implicit is 404")
+  void invalidEpicId() {
     String otherInitiative = TaskApi.initiativeId("Work");
-    final String otherPhase = PhaseApi.createId(otherInitiative, "Other");
-    String archivedPhase = PhaseApi.createId(initiativeId, "Archived");
-    PhaseActions.archive(archivedPhase).statusCode(200);
-    TaskApi.createId(otherInitiative, "creates the implicit phase");
-    String implicit = TestData.insertImplicitPhase(initiativeId);
+    final String otherEpic = EpicApi.createId(otherInitiative, "Other");
+    String archivedEpic = EpicApi.createId(initiativeId, "Archived");
+    EpicActions.archive(archivedEpic).statusCode(200);
+    TaskApi.createId(otherInitiative, "creates the implicit epic");
+    String implicit = TestData.insertImplicitEpic(initiativeId);
 
     InitiativeAssertions.assertNotFound(
         TaskApi.post(initiativeId, TaskAssertions.createBody(UUID.randomUUID().toString())));
     InitiativeAssertions.assertNotFound(
         TaskApi.post(
-            initiativeId, TaskAssertions.createBody(TestData.insertForeignPhase(entityManager))));
+            initiativeId, TaskAssertions.createBody(TestData.insertForeignEpic(entityManager))));
     InitiativeAssertions.assertNotFound(
-        TaskApi.post(initiativeId, TaskAssertions.createBody(otherPhase)));
+        TaskApi.post(initiativeId, TaskAssertions.createBody(otherEpic)));
     InitiativeAssertions.assertNotFound(
-        TaskApi.post(initiativeId, TaskAssertions.createBody(archivedPhase)));
+        TaskApi.post(initiativeId, TaskAssertions.createBody(archivedEpic)));
     InitiativeAssertions.assertNotFound(
         TaskApi.post(initiativeId, TaskAssertions.createBody(implicit)));
   }
 
   @Test
-  @DisplayName("a refused create leaves no implicit phase and no task behind")
+  @DisplayName("a refused create leaves no implicit epic and no task behind")
   void refusedCreateStoresNothing() {
     String otherInitiative = TaskApi.initiativeId("Work");
 
@@ -102,7 +102,7 @@ class TaskNotFoundResourceTest {
     InitiativeAssertions.assertProblem(
         TaskApi.post(otherInitiative, "{\"title\": \" \"}"), 400, TaskApi.BLANK);
 
-    assertThat(TestData.countImplicitPhases(entityManager, otherInitiative)).isZero();
+    assertThat(TestData.countImplicitEpics(entityManager, otherInitiative)).isZero();
     TaskApi.list().body("size()", is(1));
   }
 }

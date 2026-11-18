@@ -19,7 +19,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-/** A unit of work in a phase of an initiative. */
+/** A unit of work in an epic of an initiative. */
 @SuppressWarnings({
   "PMD.TooManyMethods", // the entity carries the business rules and a getter per column
   "PMD.ShortClassName" // the name of the task table in the ERD
@@ -36,8 +36,8 @@ public class Task extends PanacheEntityBase {
   @Id @GeneratedValue @UuidGenerator private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "phase_id", nullable = false)
-  private Phase phase;
+  @JoinColumn(name = "epic_id", nullable = false)
+  private Epic epic;
 
   @Column(nullable = false, length = MAX_TITLE_LENGTH)
   private String title;
@@ -87,9 +87,9 @@ public class Task extends PanacheEntityBase {
    * Creates a native, active, unblocked P2 task; the title is trimmed and validated, and a missing
    * status means {@code to_do}.
    */
-  public static Task create(Phase phase, String title, TaskStatus status) {
+  public static Task create(Epic epic, String title, TaskStatus status) {
     Task task = new Task();
-    task.phase = phase;
+    task.epic = epic;
     task.title = validTitle(title);
     task.priority = TaskPriority.P2;
     task.status = status == null ? TaskStatus.TO_DO : status;
@@ -163,9 +163,9 @@ public class Task extends PanacheEntityBase {
     blocked = isBlocked;
   }
 
-  /** Moves the task to another phase; the caller guarantees it belongs to the same initiative. */
-  public void moveToPhase(Phase newPhase) {
-    phase = newPhase;
+  /** Moves the task to another epic; the caller guarantees it belongs to the same initiative. */
+  public void moveToEpic(Epic newEpic) {
+    epic = newEpic;
   }
 
   /** Plans the task for the week starting on this Monday, or clears it with {@code null}. */
@@ -228,8 +228,8 @@ public class Task extends PanacheEntityBase {
     return id;
   }
 
-  public Phase getPhase() {
-    return phase;
+  public Epic getEpic() {
+    return epic;
   }
 
   public String getTitle() {

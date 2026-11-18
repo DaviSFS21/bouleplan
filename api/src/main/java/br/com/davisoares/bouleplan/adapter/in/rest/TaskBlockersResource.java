@@ -20,7 +20,7 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 public class TaskBlockersResource {
 
   private static final String NO_TASKS =
-      "Either task is not an active task in an active phase and initiative of the user";
+      "Either task is not an active task in an active epic and initiative of the user";
 
   private final AddTaskBlockerUseCase addBlocker;
   private final RemoveTaskBlockerUseCase removeBlocker;

@@ -51,7 +51,7 @@ public class TaskResource {
   @Operation(
       operationId = "listTasks",
       summary =
-          "Lists the active tasks whose phase and initiative are active,"
+          "Lists the active tasks whose epic and initiative are active,"
               + " by priority, deadline and creation")
   @APIResponse(
       responseCode = Responses.OK,

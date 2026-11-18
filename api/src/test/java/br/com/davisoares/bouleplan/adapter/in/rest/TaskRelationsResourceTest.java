@@ -16,7 +16,7 @@ class TaskRelationsResourceTest {
   private static final String BLOCKED_BY = "blockedBy";
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
   private String first;
   private String second;
   private String third;
@@ -25,9 +25,9 @@ class TaskRelationsResourceTest {
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
+    epicId = EpicApi.createId(initiativeId, "Design");
     first = TaskApi.createId(initiativeId, "A");
-    second = TaskApi.createIdInPhase(initiativeId, "B", phaseId);
+    second = TaskApi.createIdInEpic(initiativeId, "B", epicId);
     third = TaskApi.createId(initiativeId, "C");
     TaskBlockerApi.block(first, second).statusCode(204);
     TaskBlockerApi.block(first, third).statusCode(204);
@@ -85,13 +85,13 @@ class TaskRelationsResourceTest {
   }
 
   @Test
-  @DisplayName("a task in an archived phase disappears from the other side and comes back")
-  void hiddenPhase() {
-    PhaseActions.archive(phaseId).statusCode(200);
+  @DisplayName("a task in an archived epic disappears from the other side and comes back")
+  void hiddenEpic() {
+    EpicActions.archive(epicId).statusCode(200);
 
     TaskApi.get(first).body(BLOCKS, contains(third));
 
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
 
     TaskApi.get(first).body(BLOCKS, contains(second, third));
   }
@@ -120,9 +120,9 @@ class TaskRelationsResourceTest {
   }
 
   @Test
-  @DisplayName("moving a task to another phase keeps its relations")
-  void phaseMove() {
-    TaskApi.patch(second, "{\"phaseId\": null}").statusCode(200).body(BLOCKED_BY, contains(first));
+  @DisplayName("moving a task to another epic keeps its relations")
+  void epicMove() {
+    TaskApi.patch(second, "{\"epicId\": null}").statusCode(200).body(BLOCKED_BY, contains(first));
 
     TaskApi.get(first).body(BLOCKS, contains(second, third));
   }

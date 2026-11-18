@@ -27,7 +27,7 @@ class CreateBodiesStrictTest {
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
-    initiativeId = PhaseApi.initiativeId("Study");
+    initiativeId = EpicApi.initiativeId("Study");
   }
 
   @Test
@@ -49,18 +49,18 @@ class CreateBodiesStrictTest {
 
   @Test
   @DisplayName(
-      "POST /initiatives/{id}/phases rejects mistyped names, unknown fields and non-objects")
-  void phaseCreateIsStrict() {
+      "POST /initiatives/{id}/epics rejects mistyped names, unknown fields and non-objects")
+  void epicCreateIsStrict() {
     for (String body : BAD_BODIES) {
-      InitiativeAssertions.assertMalformed(PhaseApi.post(initiativeId, body));
+      InitiativeAssertions.assertMalformed(EpicApi.post(initiativeId, body));
     }
-    PhaseApi.list(initiativeId).body("", Matchers.empty());
+    EpicApi.list(initiativeId).body("", Matchers.empty());
   }
 
   @Test
-  @DisplayName("POST /initiatives/{id}/phases with a null name keeps the blank-name code")
-  void phaseBlankName() {
+  @DisplayName("POST /initiatives/{id}/epics with a null name keeps the blank-name code")
+  void epicBlankName() {
     InitiativeAssertions.assertProblem(
-        PhaseApi.post(initiativeId, "{\"name\": null}"), 400, PhaseApi.BLANK);
+        EpicApi.post(initiativeId, "{\"name\": null}"), 400, EpicApi.BLANK);
   }
 }

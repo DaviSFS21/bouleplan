@@ -196,14 +196,14 @@ class ScheduledItemCreateResourceTest {
   }
 
   @Test
-  @DisplayName("a task whose phase or initiative is hidden is 404")
+  @DisplayName("a task whose epic or initiative is hidden is 404")
   void hiddenParents() {
-    String phaseId = PhaseApi.createId(initiativeId, "Design");
-    String inPhase = TaskApi.createIdInPhase(initiativeId, "Plan", phaseId);
-    PhaseActions.archive(phaseId).statusCode(200);
+    String epicId = EpicApi.createId(initiativeId, "Design");
+    String inEpic = TaskApi.createIdInEpic(initiativeId, "Plan", epicId);
+    EpicActions.archive(epicId).statusCode(200);
 
     InitiativeAssertions.assertNotFound(
-        PlannerApi.postItem(PlannerApi.dayListJson(inPhase, PlannerApi.TUESDAY)));
+        PlannerApi.postItem(PlannerApi.dayListJson(inEpic, PlannerApi.TUESDAY)));
 
     InitiativeActions.archive(initiativeId).statusCode(200);
 

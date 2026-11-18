@@ -12,10 +12,10 @@ class TaskTest {
   private static final UUID INITIATIVE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
   private static final String BLANK_CODE = "task.title.blank";
 
-  private final Phase phase = Phase.create(INITIATIVE_ID, "Design");
+  private final Epic epic = Epic.create(INITIATIVE_ID, "Design");
 
   private String codeOf(String title) {
-    Throwable thrown = catchThrowable(() -> Task.create(phase, title, TaskStatus.TO_DO));
+    Throwable thrown = catchThrowable(() -> Task.create(epic, title, TaskStatus.TO_DO));
     assertThat(thrown).isInstanceOf(InvalidTaskException.class);
     return ((DomainRuleViolation) thrown).code();
   }
@@ -23,10 +23,10 @@ class TaskTest {
   @Test
   @DisplayName("create makes a native, active, unblocked P2 task with a trimmed title")
   void create() {
-    Task task = Task.create(phase, " ​Write the plan  ", TaskStatus.TO_DO);
+    Task task = Task.create(epic, " ​Write the plan  ", TaskStatus.TO_DO);
 
     assertThat(task.getTitle()).isEqualTo("Write the plan");
-    assertThat(task.getPhase()).isSameAs(phase);
+    assertThat(task.getEpic()).isSameAs(epic);
     assertThat(task.getPriority()).isEqualTo(TaskPriority.P2);
     assertThat(task.getStatus()).isEqualTo(TaskStatus.TO_DO);
     assertThat(task.isBlocked()).isFalse();
@@ -41,8 +41,8 @@ class TaskTest {
   @Test
   @DisplayName("create starts in the given status, and a missing one means to_do")
   void createStatus() {
-    assertThat(Task.create(phase, "A", TaskStatus.DONE).getStatus()).isEqualTo(TaskStatus.DONE);
-    assertThat(Task.create(phase, "A", null).getStatus()).isEqualTo(TaskStatus.TO_DO);
+    assertThat(Task.create(epic, "A", TaskStatus.DONE).getStatus()).isEqualTo(TaskStatus.DONE);
+    assertThat(Task.create(epic, "A", null).getStatus()).isEqualTo(TaskStatus.TO_DO);
   }
 
   @Test
@@ -57,7 +57,7 @@ class TaskTest {
   @DisplayName("a title over 300 characters has the code task.title.too-long")
   void tooLong() {
     assertThat(codeOf("a".repeat(301))).isEqualTo("task.title.too-long");
-    assertThat(Task.create(phase, "a".repeat(300), null).getTitle()).hasSize(300);
+    assertThat(Task.create(epic, "a".repeat(300), null).getTitle()).hasSize(300);
   }
 
   @Test
@@ -70,7 +70,7 @@ class TaskTest {
   @Test
   @DisplayName("the violation message talks about the title")
   void message() {
-    assertThat(catchThrowable(() -> Task.create(phase, "", null)))
+    assertThat(catchThrowable(() -> Task.create(epic, "", null)))
         .hasMessageContaining("Task title");
   }
 }

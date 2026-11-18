@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class TaskResourceTest {
 
-  private static final String PHASE_ID = "phaseId";
+  private static final String EPIC_ID = "epicId";
   private static final String WRITE = "Write";
   private static final String DESIGN = "Design";
 
@@ -36,7 +36,7 @@ class TaskResourceTest {
   }
 
   @Test
-  @DisplayName("create returns 201 with the defaults, the implicit phase as null, and no internals")
+  @DisplayName("create returns 201 with the defaults, the implicit epic as null, and no internals")
   void create() {
     String id = TaskApi.createId(initiativeId, " Write ");
 
@@ -44,7 +44,7 @@ class TaskResourceTest {
         .statusCode(200)
         .body("id", Matchers.equalTo(id))
         .body("initiativeId", Matchers.equalTo(initiativeId))
-        .body(PHASE_ID, Matchers.nullValue())
+        .body(EPIC_ID, Matchers.nullValue())
         .body(TaskApi.TITLE, Matchers.equalTo(WRITE))
         .body("description", Matchers.nullValue())
         .body("deadline", Matchers.nullValue())
@@ -55,7 +55,7 @@ class TaskResourceTest {
         .body("plannedWeekStart", Matchers.nullValue())
         .body("createdAt", Matchers.notNullValue())
         .body("updatedAt", Matchers.notNullValue())
-        .body("$", Matchers.hasKey(PHASE_ID))
+        .body("$", Matchers.hasKey(EPIC_ID))
         .body("$", Matchers.not(Matchers.hasKey("origin")))
         .body("$", Matchers.not(Matchers.hasKey("archivedAt")))
         .body("$", Matchers.not(Matchers.hasKey("blocked")));
@@ -73,47 +73,47 @@ class TaskResourceTest {
   }
 
   @Test
-  @DisplayName("create accepts a status and a named phase of the initiative")
-  void createWithStatusAndPhase() {
-    String phaseId = PhaseApi.createId(initiativeId, DESIGN);
+  @DisplayName("create accepts a status and a named epic of the initiative")
+  void createWithStatusAndEpic() {
+    String epicId = EpicApi.createId(initiativeId, DESIGN);
 
     TaskApi.post(
             initiativeId,
-            "{\"title\": \"Write\", \"status\": \"in_progress\", \"phaseId\": \"" + phaseId + "\"}")
+            "{\"title\": \"Write\", \"status\": \"in_progress\", \"epicId\": \"" + epicId + "\"}")
         .statusCode(201)
         .body("status", Matchers.equalTo("in_progress"))
-        .body(PHASE_ID, Matchers.equalTo(phaseId))
+        .body(EPIC_ID, Matchers.equalTo(epicId))
         .body("initiativeId", Matchers.equalTo(initiativeId));
   }
 
   @Test
-  @DisplayName("a null phaseId means the implicit phase, like an absent one")
-  void nullPhaseId() {
-    TaskApi.post(initiativeId, "{\"title\": \"Write\", \"phaseId\": null}")
+  @DisplayName("a null epicId means the implicit epic, like an absent one")
+  void nullEpicId() {
+    TaskApi.post(initiativeId, "{\"title\": \"Write\", \"epicId\": null}")
         .statusCode(201)
-        .body(PHASE_ID, Matchers.nullValue());
+        .body(EPIC_ID, Matchers.nullValue());
   }
 
   @Test
-  @DisplayName("the implicit phase is created once and reused, even when named phases exist")
-  void implicitPhaseCreatedOnce() {
+  @DisplayName("the implicit epic is created once and reused, even when named epics exist")
+  void implicitEpicCreatedOnce() {
     TaskApi.createId(initiativeId, "A");
-    PhaseApi.createId(initiativeId, DESIGN);
+    EpicApi.createId(initiativeId, DESIGN);
     TaskApi.createId(initiativeId, "B");
 
-    TaskApi.list().body(PHASE_ID, Matchers.contains(Matchers.nullValue(), Matchers.nullValue()));
-    assertThat(TestData.countImplicitPhases(entityManager, initiativeId)).isEqualTo(1);
-    PhaseApi.list(initiativeId).body(PhaseApi.NAME, Matchers.contains(DESIGN));
+    TaskApi.list().body(EPIC_ID, Matchers.contains(Matchers.nullValue(), Matchers.nullValue()));
+    assertThat(TestData.countImplicitEpics(entityManager, initiativeId)).isEqualTo(1);
+    EpicApi.list(initiativeId).body(EpicApi.NAME, Matchers.contains(DESIGN));
   }
 
   @Test
-  @DisplayName("creating named phases later never moves tasks of the implicit phase")
-  void namedPhasesDoNotMoveTasks() {
+  @DisplayName("creating named epics later never moves tasks of the implicit epic")
+  void namedEpicsDoNotMoveTasks() {
     String id = TaskApi.createId(initiativeId, "A");
-    String phaseId = PhaseApi.createId(initiativeId, DESIGN);
+    String epicId = EpicApi.createId(initiativeId, DESIGN);
 
-    TaskApi.get(id).body(PHASE_ID, Matchers.nullValue());
-    TaskApi.createIdInPhase(initiativeId, "B", phaseId);
-    TaskApi.get(id).body(PHASE_ID, Matchers.nullValue());
+    TaskApi.get(id).body(EPIC_ID, Matchers.nullValue());
+    TaskApi.createIdInEpic(initiativeId, "B", epicId);
+    TaskApi.get(id).body(EPIC_ID, Matchers.nullValue());
   }
 }

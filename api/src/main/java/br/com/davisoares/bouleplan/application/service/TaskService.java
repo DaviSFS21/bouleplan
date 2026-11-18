@@ -11,11 +11,11 @@ import br.com.davisoares.bouleplan.application.port.in.UnarchiveTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskCommand;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.out.CurrentUser;
+import br.com.davisoares.bouleplan.application.port.out.EpicRepository;
 import br.com.davisoares.bouleplan.application.port.out.InitiativeRepository;
-import br.com.davisoares.bouleplan.application.port.out.PhaseRepository;
 import br.com.davisoares.bouleplan.application.port.out.TaskRepository;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -37,7 +37,7 @@ public class TaskService
         RestoreTaskUseCase {
 
   private final TaskRepository tasks;
-  private final PhaseRepository phases;
+  private final EpicRepository epics;
   private final InitiativeRepository initiatives;
   private final CurrentUser currentUser;
   private final TaskLocker locker;
@@ -45,12 +45,12 @@ public class TaskService
   /** Wires the outbound ports. */
   public TaskService(
       TaskRepository tasks,
-      PhaseRepository phases,
+      EpicRepository epics,
       InitiativeRepository initiatives,
       CurrentUser currentUser,
       TaskLocker locker) {
     this.tasks = tasks;
-    this.phases = phases;
+    this.epics = epics;
     this.initiatives = initiatives;
     this.currentUser = currentUser;
     this.locker = locker;
@@ -61,16 +61,16 @@ public class TaskService
     return tasks.findVisibleByUser(currentUser.id());
   }
 
-  // Locking the initiative serializes the creation of the implicit phase.
+  // Locking the initiative serializes the creation of the implicit epic.
   @Override
   @Transactional
   public Optional<Task> create(UUID initiativeId, CreateTaskCommand command) {
     return initiatives
         .findByIdAndUserForUpdate(initiativeId, currentUser.id())
         .filter(Initiative::isActive)
-        .flatMap(initiative -> phaseFor(initiative, command.phaseId()))
-        .map(phase -> {
-          Task task = Task.create(phase, command.title(), command.status());
+        .flatMap(initiative -> epicFor(initiative, command.epicId()))
+        .map(epic -> {
+          Task task = Task.create(epic, command.title(), command.status());
           tasks.save(task);
           return task;
         });
@@ -85,13 +85,13 @@ public class TaskService
   @Transactional
   public Optional<Task> update(UUID id, UpdateTaskCommand command) {
     Optional<Task> updated;
-    if (command.phaseId().present()) {
+    if (command.epicId().present()) {
       updated =
           locker
-              .lockForMove(id, command.phaseId().value())
+              .lockForMove(id, command.epicId().value())
               .filter(move -> move.task().isActive())
               .map(move -> {
-                move.task().moveToPhase(move.target());
+                move.task().moveToEpic(move.target());
                 return move.task();
               });
     } else {
@@ -173,21 +173,21 @@ public class TaskService
         });
   }
 
-  private Optional<Phase> phaseFor(Initiative initiative, UUID phaseId) {
-    return phaseId == null
-        ? Optional.of(implicitPhaseOf(initiative.getId()))
-        : phases
-            .findByIdAndInitiativeForUpdate(phaseId, initiative.getId())
-            .filter(phase -> !phase.isImplicit() && phase.isActive());
+  private Optional<Epic> epicFor(Initiative initiative, UUID epicId) {
+    return epicId == null
+        ? Optional.of(implicitEpicOf(initiative.getId()))
+        : epics
+            .findByIdAndInitiativeForUpdate(epicId, initiative.getId())
+            .filter(epic -> !epic.isImplicit() && epic.isActive());
   }
 
-  private Phase implicitPhaseOf(UUID initiativeId) {
-    return phases
+  private Epic implicitEpicOf(UUID initiativeId) {
+    return epics
         .findImplicitByInitiativeForUpdate(initiativeId)
         .orElseGet(() -> {
-          Phase phase = Phase.createImplicit(initiativeId);
-          phases.save(phase);
-          return phase;
+          Epic epic = Epic.createImplicit(initiativeId);
+          epics.save(epic);
+          return epic;
         });
   }
 

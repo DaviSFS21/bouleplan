@@ -1,12 +1,12 @@
 package br.com.davisoares.bouleplan.application.service;
 
 import br.com.davisoares.bouleplan.application.port.out.CurrentUser;
+import br.com.davisoares.bouleplan.application.port.out.EpicRepository;
 import br.com.davisoares.bouleplan.application.port.out.InitiativeRepository;
-import br.com.davisoares.bouleplan.application.port.out.PhaseRepository;
 import br.com.davisoares.bouleplan.application.port.out.TaskLocation;
 import br.com.davisoares.bouleplan.application.port.out.TaskRepository;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.Map;
@@ -19,48 +19,48 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Takes the row locks of a task write in the fixed order initiative, phase, task. Nothing is loaded
- * before its parent is locked. The phase of a task only changes under its initiative's lock, so it
+ * Takes the row locks of a task write in the fixed order initiative, epic, task. Nothing is loaded
+ * before its parent is locked. The epic of a task only changes under its initiative's lock, so it
  * is read again once that lock is held.
  */
 @ApplicationScoped
 class TaskLocker {
 
   private final TaskRepository tasks;
-  private final PhaseRepository phases;
+  private final EpicRepository epics;
   private final InitiativeRepository initiatives;
   private final CurrentUser currentUser;
 
   TaskLocker(
       TaskRepository tasks,
-      PhaseRepository phases,
+      EpicRepository epics,
       InitiativeRepository initiatives,
       CurrentUser currentUser) {
     this.tasks = tasks;
-    this.phases = phases;
+    this.epics = epics;
     this.initiatives = initiatives;
     this.currentUser = currentUser;
   }
 
-  /** A task of the user in any state, whose phase and initiative are active, locked. */
+  /** A task of the user in any state, whose epic and initiative are active, locked. */
   Optional<Task> lock(UUID id) {
     return lockInitiativeOf(id)
         .flatMap(initiative -> currentLocation(id))
         .flatMap(location ->
-            phases.findByIdAndInitiativeForUpdate(location.phaseId(), location.initiativeId()))
-        .filter(Phase::isActive)
-        .flatMap(phase -> tasks.findByIdForUpdate(id));
+            epics.findByIdAndInitiativeForUpdate(location.epicId(), location.initiativeId()))
+        .filter(Epic::isActive)
+        .flatMap(epic -> tasks.findByIdForUpdate(id));
   }
 
   /**
-   * Like {@link #lock} for a task that is about to change phase. The current and the target phase
-   * are locked by id order, so that opposite moves cannot deadlock. A {@code null} target is the
-   * implicit phase, created if the initiative has none.
+   * Like {@link #lock} for a task that is about to change epic. The current and the target epic are
+   * locked by id order, so that opposite moves cannot deadlock. A {@code null} target is the
+   * implicit epic, created if the initiative has none.
    */
-  Optional<TaskMove> lockForMove(UUID id, UUID targetPhaseId) {
+  Optional<TaskMove> lockForMove(UUID id, UUID targetEpicId) {
     return lockInitiativeOf(id)
         .flatMap(initiative -> currentLocation(id))
-        .flatMap(location -> lockPhasesForMove(location, targetPhaseId))
+        .flatMap(location -> lockEpicsForMove(location, targetEpicId))
         .flatMap(target ->
             tasks
                 .findByIdForUpdate(id)
@@ -68,46 +68,46 @@ class TaskLocker {
                 .map(task -> new TaskMove(task, target.get())));
   }
 
-  // The target is a supplier so that an implicit phase is only created for a task that moves.
-  private Optional<Supplier<Phase>> lockPhasesForMove(TaskLocation location, UUID targetPhaseId) {
+  // The target is a supplier so that an implicit epic is only created for a task that moves.
+  private Optional<Supplier<Epic>> lockEpicsForMove(TaskLocation location, UUID targetEpicId) {
     UUID initiativeId = location.initiativeId();
     UUID targetId =
-        targetPhaseId == null
-            ? phases.findImplicitIdByInitiative(initiativeId).orElse(null)
-            : targetPhaseId;
-    Map<UUID, Phase> locked =
-        Stream.of(location.phaseId(), targetId)
+        targetEpicId == null
+            ? epics.findImplicitIdByInitiative(initiativeId).orElse(null)
+            : targetEpicId;
+    Map<UUID, Epic> locked =
+        Stream.of(location.epicId(), targetId)
             .filter(Objects::nonNull)
             .distinct()
             .sorted()
-            .map(phaseId -> phases.findByIdAndInitiativeForUpdate(phaseId, initiativeId))
+            .map(epicId -> epics.findByIdAndInitiativeForUpdate(epicId, initiativeId))
             .flatMap(Optional::stream)
-            .collect(Collectors.toMap(Phase::getId, Function.identity()));
-    return Optional.ofNullable(locked.get(location.phaseId()))
-        .filter(Phase::isActive)
-        .flatMap(current -> targetOf(locked, targetPhaseId, targetId, initiativeId));
+            .collect(Collectors.toMap(Epic::getId, Function.identity()));
+    return Optional.ofNullable(locked.get(location.epicId()))
+        .filter(Epic::isActive)
+        .flatMap(current -> targetOf(locked, targetEpicId, targetId, initiativeId));
   }
 
-  private Optional<Supplier<Phase>> targetOf(
-      Map<UUID, Phase> locked, UUID targetPhaseId, UUID targetId, UUID initiativeId) {
-    Optional<Supplier<Phase>> target;
-    if (targetPhaseId == null) {
+  private Optional<Supplier<Epic>> targetOf(
+      Map<UUID, Epic> locked, UUID targetEpicId, UUID targetId, UUID initiativeId) {
+    Optional<Supplier<Epic>> target;
+    if (targetEpicId == null) {
       target =
           Optional.of(
-              targetId == null ? () -> newImplicitPhase(initiativeId) : () -> locked.get(targetId));
+              targetId == null ? () -> newImplicitEpic(initiativeId) : () -> locked.get(targetId));
     } else {
       target =
-          Optional.ofNullable(locked.get(targetPhaseId))
-              .filter(phase -> !phase.isImplicit() && phase.isActive())
-              .map(phase -> () -> phase);
+          Optional.ofNullable(locked.get(targetEpicId))
+              .filter(epic -> !epic.isImplicit() && epic.isActive())
+              .map(epic -> () -> epic);
     }
     return target;
   }
 
-  private Phase newImplicitPhase(UUID initiativeId) {
-    Phase phase = Phase.createImplicit(initiativeId);
-    phases.save(phase);
-    return phase;
+  private Epic newImplicitEpic(UUID initiativeId) {
+    Epic epic = Epic.createImplicit(initiativeId);
+    epics.save(epic);
+    return epic;
   }
 
   private Optional<Initiative> lockInitiativeOf(UUID taskId) {
@@ -122,6 +122,6 @@ class TaskLocker {
     return tasks.findLocation(taskId);
   }
 
-  /** A locked task and the locked phase it is going to. */
-  record TaskMove(Task task, Phase target) {}
+  /** A locked task and the locked epic it is going to. */
+  record TaskMove(Task task, Epic target) {}
 }

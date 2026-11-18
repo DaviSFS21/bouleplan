@@ -8,11 +8,11 @@ import java.util.UUID;
 final class TaskBlockerRows {
 
   private final EntityManager entityManager;
-  private final UUID phaseId;
+  private final UUID epicId;
 
-  TaskBlockerRows(EntityManager entityManager, UUID phaseId) {
+  TaskBlockerRows(EntityManager entityManager, UUID epicId) {
     this.entityManager = entityManager;
-    this.phaseId = phaseId;
+    this.epicId = epicId;
   }
 
   UUID insertTask() {
@@ -20,9 +20,9 @@ final class TaskBlockerRows {
     QuarkusTransaction.requiringNew()
         .run(() -> {
           entityManager
-              .createNativeQuery("insert into task (id, phase_id, title) values (?1, ?2, 'x')")
+              .createNativeQuery("insert into task (id, epic_id, title) values (?1, ?2, 'x')")
               .setParameter(1, id)
-              .setParameter(2, phaseId)
+              .setParameter(2, epicId)
               .executeUpdate();
         });
     return id;

@@ -3,8 +3,8 @@ package br.com.davisoares.bouleplan.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
+import br.com.davisoares.bouleplan.application.port.in.CreateEpicUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
-import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateScheduledItemCommand;
 import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.ManageScheduledItemsUseCase;
@@ -41,7 +41,7 @@ class ScheduledItemConcurrencyTest {
   private static final LocalDate DAY = LocalDate.of(2026, 11, 17);
 
   @Inject CreateInitiativeUseCase createInitiative;
-  @Inject CreatePhaseUseCase createPhase;
+  @Inject CreateEpicUseCase createEpic;
   @Inject UpdateTaskUseCase updateTask;
   @Inject CreateTaskUseCase createTask;
   @Inject ManageScheduledItemsUseCase manageItems;
@@ -56,7 +56,7 @@ class ScheduledItemConcurrencyTest {
     TestData.deleteAllInitiatives();
     initiativeId = createInitiative.create("Study").getId();
     first = createTask.create(initiativeId, TaskCommands.create("A", null)).orElseThrow().getId();
-    // Its own initiative, so that the two tasks share no initiative, phase or task lock.
+    // Its own initiative, so that the two tasks share no initiative, epic or task lock.
     UUID otherInitiativeId = createInitiative.create("Work").getId();
     second =
         createTask.create(otherInitiativeId, TaskCommands.create("B", null)).orElseThrow().getId();
@@ -171,11 +171,10 @@ class ScheduledItemConcurrencyTest {
   }
 
   @Test
-  @DisplayName(
-      "item writes racing opposite phase moves of their tasks neither deadlock nor overlap")
-  void itemWritesAndPhaseMovesDoNotDeadlock() throws ExecutionException, InterruptedException {
-    UUID design = createPhase.create(initiativeId, "Design").orElseThrow().getId();
-    UUID build = createPhase.create(initiativeId, "Build").orElseThrow().getId();
+  @DisplayName("item writes racing opposite epic moves of their tasks neither deadlock nor overlap")
+  void itemWritesAndEpicMovesDoNotDeadlock() throws ExecutionException, InterruptedException {
+    UUID design = createEpic.create(initiativeId, "Design").orElseThrow().getId();
+    UUID build = createEpic.create(initiativeId, "Build").orElseThrow().getId();
     UUID inDesign =
         createTask.create(initiativeId, TaskCommands.create("C", design)).orElseThrow().getId();
     UUID inBuild =

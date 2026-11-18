@@ -22,7 +22,7 @@ public class PanacheScheduledItemRepository
     implements ScheduledItemRepository, PanacheRepositoryBase<ScheduledItem, UUID> {
 
   private static final String VISIBLE_TASK_IDS_OF_USER =
-      "select t.id from Task t join t.phase p"
+      "select t.id from Task t join t.epic p"
           + " where t.archivedAt is null and t.deletedAt is null"
           + " and p.archivedAt is null and p.deletedAt is null"
           + " and p.initiativeId in (select i.id from Initiative i"
@@ -31,7 +31,7 @@ public class PanacheScheduledItemRepository
   private static final String VISIBLE_SQL =
       " from scheduled_item si"
           + " join task t on t.id = si.task_id"
-          + " join phase p on p.id = t.phase_id"
+          + " join epic p on p.id = t.epic_id"
           + " join initiative i on i.id = p.initiative_id"
           + " where i.user_id = :user and i.archived_at is null and i.deleted_at is null"
           + " and p.archived_at is null and p.deleted_at is null"
@@ -41,7 +41,7 @@ public class PanacheScheduledItemRepository
   private static final String DATE = "date";
 
   private static final String OWN_TASK_IDS =
-      "select t.id from task t join phase p on p.id = t.phase_id"
+      "select t.id from task t join epic p on p.id = t.epic_id"
           + " join initiative i on i.id = p.initiative_id where i.user_id = :user";
 
   private static final String MINUTES = "extract(epoch from (si.end_time - si.start_time)) / 60";
@@ -102,7 +102,7 @@ public class PanacheScheduledItemRepository
                     "select coalesce(max(si.sort_order), -1) + 1"
                         + " from scheduled_item si"
                         + " join task t on t.id = si.task_id"
-                        + " join phase p on p.id = t.phase_id"
+                        + " join epic p on p.id = t.epic_id"
                         + " join initiative i on i.id = p.initiative_id"
                         + " where i.user_id = :user and si.date = :date")
                 .setParameter(USER, userId)

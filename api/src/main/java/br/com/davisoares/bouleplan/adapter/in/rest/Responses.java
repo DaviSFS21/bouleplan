@@ -10,15 +10,15 @@ final class Responses {
   static final String UNPROCESSABLE = "422";
   static final String NO_ACTIVE = "No active initiative with this id";
 
-  static final String NO_PHASE = "No active phase with this id in an active initiative of the user";
+  static final String NO_EPIC = "No active epic with this id in an active initiative of the user";
 
   static final String NO_TASK =
-      "No active task with this id in an active phase and initiative of the user";
+      "No active task with this id in an active epic and initiative of the user";
 
   static final String NO_EVENT = "No event with this id of the user";
 
   static final String NO_ITEM =
-      "No item with this id whose task is active in an active phase and initiative of the user";
+      "No item with this id whose task is active in an active epic and initiative of the user";
 
   private Responses() {}
 }

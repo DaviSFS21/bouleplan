@@ -13,7 +13,7 @@ class TaskLifecycleTest {
   private static final UUID INITIATIVE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
   private final Task task =
-      Task.create(Phase.create(INITIATIVE_ID, "Design"), "Write", TaskStatus.TO_DO);
+      Task.create(Epic.create(INITIATIVE_ID, "Design"), "Write", TaskStatus.TO_DO);
 
   @Test
   @DisplayName("archive stamps only archivedAt in UTC and is idempotent")

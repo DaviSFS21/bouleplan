@@ -1,7 +1,7 @@
 package br.com.davisoares.bouleplan;
 
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import io.quarkus.hibernate.orm.panache.Panache;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -15,8 +15,7 @@ public final class TestData {
   private TestData() {}
 
   /**
-   * Deletes every item, event, blocker, task, phase and then initiative, in a committed
-   * transaction.
+   * Deletes every item, event, blocker, task, epic and then initiative, in a committed transaction.
    */
   public static void deleteAllInitiatives() {
     // A method reference would call the unenhanced Panache static and fail at runtime.
@@ -31,7 +30,7 @@ public final class TestData {
           Panache.getEntityManager().createNativeQuery("delete from introspection").executeUpdate();
           Panache.getEntityManager().createNativeQuery("delete from task_blocker").executeUpdate();
           Task.deleteAll();
-          Phase.deleteAll();
+          Epic.deleteAll();
           Initiative.deleteAll();
         });
   }
@@ -68,23 +67,23 @@ public final class TestData {
         });
   }
 
-  /** Persists the implicit phase of an initiative and returns its id. */
-  public static String insertImplicitPhase(String initiativeId) {
+  /** Persists the implicit epic of an initiative and returns its id. */
+  public static String insertImplicitEpic(String initiativeId) {
     return QuarkusTransaction.requiringNew()
         .call(() -> {
-          Phase phase = Phase.createImplicit(UUID.fromString(initiativeId));
-          phase.persist();
-          return phase.getId().toString();
+          Epic epic = Epic.createImplicit(UUID.fromString(initiativeId));
+          epic.persist();
+          return epic.getId().toString();
         });
   }
 
   /**
-   * Inserts an active initiative with an active phase, both of another user; returns the phase id.
+   * Inserts an active initiative with an active epic, both of another user; returns the epic id.
    */
-  public static String insertForeignPhase(EntityManager entityManager) {
+  public static String insertForeignEpic(EntityManager entityManager) {
     UUID otherUser = UUID.randomUUID();
     UUID initiativeId = UUID.randomUUID();
-    UUID phaseId = UUID.randomUUID();
+    UUID epicId = UUID.randomUUID();
     QuarkusTransaction.requiringNew()
         .run(() -> {
           entityManager
@@ -100,12 +99,12 @@ public final class TestData {
               .executeUpdate();
           entityManager
               .createNativeQuery(
-                  "insert into phase (id, initiative_id, name) values (?1, ?2, 'Theirs')")
-              .setParameter(1, phaseId)
+                  "insert into epic (id, initiative_id, name) values (?1, ?2, 'Theirs')")
+              .setParameter(1, epicId)
               .setParameter(2, initiativeId)
               .executeUpdate();
         });
-    return phaseId.toString();
+    return epicId.toString();
   }
 
   /** Clears {@code archived_at} of an initiative straight in the database. */
@@ -119,40 +118,40 @@ public final class TestData {
         });
   }
 
-  /** Counts the implicit phases of an initiative. */
-  public static long countImplicitPhases(EntityManager entityManager, String initiativeId) {
+  /** Counts the implicit epics of an initiative. */
+  public static long countImplicitEpics(EntityManager entityManager, String initiativeId) {
     return QuarkusTransaction.requiringNew()
         .call(() ->
             (Long)
                 entityManager
                     .createQuery(
-                        "select count(p) from Phase p"
+                        "select count(p) from Epic p"
                             + " where p.initiativeId = ?1 and p.implicit = true")
                     .setParameter(1, UUID.fromString(initiativeId))
                     .getSingleResult());
   }
 
-  /** Inserts an active initiative, phase and task, all of another user; returns the task id. */
+  /** Inserts an active initiative, epic and task, all of another user; returns the task id. */
   public static String insertForeignTask(EntityManager entityManager) {
-    String phaseId = insertForeignPhase(entityManager);
+    String epicId = insertForeignEpic(entityManager);
     UUID taskId = UUID.randomUUID();
     QuarkusTransaction.requiringNew()
         .run(() -> {
           entityManager
-              .createNativeQuery("insert into task (id, phase_id, title) values (?1, ?2, 'Theirs')")
+              .createNativeQuery("insert into task (id, epic_id, title) values (?1, ?2, 'Theirs')")
               .setParameter(1, taskId)
-              .setParameter(2, UUID.fromString(phaseId))
+              .setParameter(2, UUID.fromString(epicId))
               .executeUpdate();
         });
     return taskId.toString();
   }
 
-  /** Stamps {@code deleted_at} of a phase straight in the database. */
-  public static void markPhaseDeleted(EntityManager entityManager, String id) {
+  /** Stamps {@code deleted_at} of an epic straight in the database. */
+  public static void markEpicDeleted(EntityManager entityManager, String id) {
     QuarkusTransaction.requiringNew()
         .run(() -> {
           entityManager
-              .createNativeQuery("update phase set deleted_at = now() where id = ?1")
+              .createNativeQuery("update epic set deleted_at = now() where id = ?1")
               .setParameter(1, UUID.fromString(id))
               .executeUpdate();
         });

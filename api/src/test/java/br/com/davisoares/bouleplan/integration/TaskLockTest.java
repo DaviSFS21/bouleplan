@@ -3,12 +3,12 @@ package br.com.davisoares.bouleplan.integration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
+import br.com.davisoares.bouleplan.application.port.in.CreateEpicUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
-import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import br.com.davisoares.bouleplan.domain.TaskPriority;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -30,23 +30,23 @@ class TaskLockTest {
   private static final String RENAMED = "Renamed";
 
   @Inject CreateInitiativeUseCase createInitiative;
-  @Inject CreatePhaseUseCase createPhase;
+  @Inject CreateEpicUseCase createEpic;
   @Inject CreateTaskUseCase createTask;
   @Inject UpdateTaskUseCase updateTask;
   @Inject EntityManager entityManager;
 
   private UUID initiativeId;
-  private UUID phaseId;
+  private UUID epicId;
   private UUID taskId;
 
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = createInitiative.create("Study").getId();
-    phaseId = createPhase.create(initiativeId, "Design").orElseThrow().getId();
+    epicId = createEpic.create(initiativeId, "Design").orElseThrow().getId();
     taskId =
         createTask
-            .create(initiativeId, TaskCommands.create(ORIGINAL, phaseId))
+            .create(initiativeId, TaskCommands.create(ORIGINAL, epicId))
             .orElseThrow()
             .getId();
   }
@@ -75,12 +75,11 @@ class TaskLockTest {
   }
 
   @Test
-  @DisplayName("a task write waits for a concurrent phase archive and is then refused")
-  void taskWriteWaitsForPhaseLock() throws InterruptedException, ExecutionException {
+  @DisplayName("a task write waits for a concurrent epic archive and is then refused")
+  void taskWriteWaitsForEpicLock() throws InterruptedException, ExecutionException {
     boolean applied =
         HeldLock.writeWhileHeld(
-            () ->
-                entityManager.find(Phase.class, phaseId, LockModeType.PESSIMISTIC_WRITE).archive(),
+            () -> entityManager.find(Epic.class, epicId, LockModeType.PESSIMISTIC_WRITE).archive(),
             rename());
 
     assertThat(applied).isFalse();

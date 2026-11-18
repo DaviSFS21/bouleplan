@@ -10,15 +10,15 @@ import org.junit.jupiter.api.Test;
 class TaskHierarchyResourceTest {
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
   private String taskId;
 
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
-    taskId = TaskApi.createIdInPhase(initiativeId, "Write", phaseId);
+    epicId = EpicApi.createId(initiativeId, "Design");
+    taskId = TaskApi.createIdInEpic(initiativeId, "Write", epicId);
   }
 
   @Test
@@ -46,28 +46,28 @@ class TaskHierarchyResourceTest {
   }
 
   @Test
-  @DisplayName("an archived phase makes its tasks unreachable until it comes back")
-  void archivedPhase() {
-    PhaseActions.archive(phaseId).statusCode(200);
+  @DisplayName("an archived epic makes its tasks unreachable until it comes back")
+  void archivedEpic() {
+    EpicActions.archive(epicId).statusCode(200);
 
     TaskAssertions.assertEveryOperationNotFound(taskId);
     InitiativeAssertions.assertNotFound(
-        TaskApi.post(initiativeId, TaskAssertions.createBody(phaseId)));
+        TaskApi.post(initiativeId, TaskAssertions.createBody(epicId)));
 
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
     TaskApi.get(taskId).statusCode(200);
   }
 
   @Test
-  @DisplayName("a deleted phase makes its tasks unreachable until it is restored")
-  void deletedPhase() {
-    PhaseActions.delete(phaseId).statusCode(204);
+  @DisplayName("a deleted epic makes its tasks unreachable until it is restored")
+  void deletedEpic() {
+    EpicActions.delete(epicId).statusCode(204);
 
     TaskAssertions.assertEveryOperationNotFound(taskId);
     InitiativeAssertions.assertNotFound(
-        TaskApi.post(initiativeId, TaskAssertions.createBody(phaseId)));
+        TaskApi.post(initiativeId, TaskAssertions.createBody(epicId)));
 
-    PhaseActions.restore(phaseId).statusCode(200);
+    EpicActions.restore(epicId).statusCode(200);
     TaskApi.get(taskId).statusCode(200);
   }
 }

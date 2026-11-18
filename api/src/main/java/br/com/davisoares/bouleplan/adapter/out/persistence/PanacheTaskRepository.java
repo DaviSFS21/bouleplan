@@ -16,7 +16,7 @@ import java.util.UUID;
 public class PanacheTaskRepository implements TaskRepository, PanacheRepositoryBase<Task, UUID> {
 
   private static final String VISIBLE_OF_USER =
-      "select t from Task t join fetch t.phase p"
+      "select t from Task t join fetch t.epic p"
           + " where t.archivedAt is null and t.deletedAt is null"
           + " and p.archivedAt is null and p.deletedAt is null"
           + " and p.initiativeId in (select i.id from Initiative i"
@@ -49,8 +49,7 @@ public class PanacheTaskRepository implements TaskRepository, PanacheRepositoryB
   public Optional<TaskLocation> findLocation(UUID id) {
     return getEntityManager()
         .createQuery(
-            "select p.id, p.initiativeId from Task t join t.phase p where t.id = ?1",
-            Object[].class)
+            "select p.id, p.initiativeId from Task t join t.epic p where t.id = ?1", Object[].class)
         .setParameter(1, id)
         .getResultList()
         .stream()

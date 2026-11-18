@@ -95,13 +95,13 @@ class TaskBlockerCycleResourceTest {
   }
 
   @Test
-  @DisplayName("a cycle is detected through a task in an archived phase or initiative")
+  @DisplayName("a cycle is detected through a task in an archived epic or initiative")
   void cycleThroughHiddenParents() {
-    String phase = PhaseApi.createId(initiativeId, "Design");
-    String inPhase = TaskApi.createIdInPhase(initiativeId, "In phase", phase);
-    TaskBlockerApi.block(first, inPhase).statusCode(204);
-    TaskBlockerApi.block(inPhase, second).statusCode(204);
-    PhaseActions.archive(phase).statusCode(200);
+    String epic = EpicApi.createId(initiativeId, "Design");
+    String inEpic = TaskApi.createIdInEpic(initiativeId, "In epic", epic);
+    TaskBlockerApi.block(first, inEpic).statusCode(204);
+    TaskBlockerApi.block(inEpic, second).statusCode(204);
+    EpicActions.archive(epic).statusCode(200);
 
     InitiativeAssertions.assertProblem(TaskBlockerApi.block(second, first), 422, CYCLE);
   }

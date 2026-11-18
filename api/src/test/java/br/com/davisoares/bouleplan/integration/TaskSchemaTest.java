@@ -29,7 +29,7 @@ class TaskSchemaTest {
     UUID initiativeId = createInitiative.create("Study").getId();
     rows =
         new TaskRows(
-            entityManager, UUID.fromString(TestData.insertImplicitPhase(initiativeId.toString())));
+            entityManager, UUID.fromString(TestData.insertImplicitEpic(initiativeId.toString())));
   }
 
   @Test
@@ -44,11 +44,11 @@ class TaskSchemaTest {
   }
 
   @Test
-  @DisplayName("a task needs an existing phase")
-  void phaseReference() {
-    assertThatThrownBy(() -> rows.insertInPhase(UUID.randomUUID()))
+  @DisplayName("a task needs an existing epic")
+  void epicReference() {
+    assertThatThrownBy(() -> rows.insertInEpic(UUID.randomUUID()))
         .isInstanceOf(PersistenceException.class);
-    assertThatThrownBy(() -> rows.insertInPhase(null)).isInstanceOf(PersistenceException.class);
+    assertThatThrownBy(() -> rows.insertInEpic(null)).isInstanceOf(PersistenceException.class);
   }
 
   @Test

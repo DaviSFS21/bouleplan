@@ -2,7 +2,7 @@ package br.com.davisoares.bouleplan.adapter.in.rest;
 
 import br.com.davisoares.bouleplan.application.port.in.TaskRelations;
 import br.com.davisoares.bouleplan.application.port.in.TaskReservation;
-import br.com.davisoares.bouleplan.domain.Phase;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Task;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
@@ -18,7 +18,7 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
     requiredProperties = {
       "id",
       "initiativeId",
-      "phaseId",
+      "epicId",
       "title",
       "description",
       "deadline",
@@ -40,9 +40,9 @@ public record TaskResponse(
     @Schema(
             implementation = String.class,
             format = "uuid",
-            description = "Null when the task is in the implicit phase",
+            description = "Null when the task is in the implicit epic",
             nullable = true)
-        UUID phaseId,
+        UUID epicId,
     String title,
     @Schema(nullable = true) String description,
     @Schema(implementation = String.class, format = "date", nullable = true) LocalDate deadline,
@@ -70,13 +70,13 @@ public record TaskResponse(
     OffsetDateTime createdAt,
     OffsetDateTime updatedAt) {
 
-  /** Maps the entity at the REST boundary, hiding the implicit phase. */
+  /** Maps the entity at the REST boundary, hiding the implicit epic. */
   public static TaskResponse from(Task task, TaskRelations relations, TaskReservation reservation) {
-    Phase phase = task.getPhase();
+    Epic epic = task.getEpic();
     return new TaskResponse(
         task.getId(),
-        phase.getInitiativeId(),
-        phase.isImplicit() ? null : phase.getId(),
+        epic.getInitiativeId(),
+        epic.isImplicit() ? null : epic.getId(),
         task.getTitle(),
         task.getDescription(),
         task.getDeadline(),
