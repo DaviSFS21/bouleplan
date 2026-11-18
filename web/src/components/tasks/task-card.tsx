@@ -28,6 +28,8 @@ interface TaskCardProps {
   now: Date;
   actions: TaskActions;
   isOpen?: boolean;
+  // False when there is nowhere to drop, so no drag instructions are announced.
+  draggable?: boolean;
 }
 
 // Pointer and key events from the menu and the title field must not open the task.
@@ -75,7 +77,7 @@ export function TaskCardPreview({
   path,
   color,
   now,
-}: Readonly<Omit<TaskCardProps, 'actions' | 'isOpen'>>) {
+}: Readonly<Omit<TaskCardProps, 'actions' | 'isOpen' | 'draggable'>>) {
   return (
     <div
       className={[styles.card, styles.dragging].join(' ')}
@@ -93,6 +95,7 @@ export function TaskCard({
   now,
   actions,
   isOpen = false,
+  draggable = true,
 }: Readonly<TaskCardProps>) {
   const [editing, setEditing] = useState(false);
   const card = useRef<HTMLElement | null>(null);
@@ -101,7 +104,7 @@ export function TaskCard({
     useDraggable({
       id: task.id,
       data: { task } satisfies DraggedTask,
-      disabled: editing,
+      disabled: editing || !draggable,
     });
 
   function endEdit() {
@@ -174,9 +177,9 @@ export function TaskCard({
         onKeyDown={handleKeyDown}
         onClick={handleClick}
         tabIndex={attributes.tabIndex}
-        aria-describedby={attributes['aria-describedby']}
+        aria-describedby={draggable ? attributes['aria-describedby'] : undefined}
         aria-label={task.title}
-        aria-roledescription="tarefa arrastável"
+        aria-roledescription={draggable ? 'tarefa arrastável' : undefined}
         ref={(element) => {
           card.current = element;
           setNodeRef(element);

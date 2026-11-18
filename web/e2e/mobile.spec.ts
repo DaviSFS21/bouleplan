@@ -299,8 +299,17 @@ test.describe('on a phone', () => {
     const { initiativeId } = await seedBoard(page);
     await page.goto(`/?iniciativa=${initiativeId}`);
     await page.getByRole('button', { name: 'Ações da tarefa Comprar tinta', exact: true }).tap();
-    await expect(page.getByRole('menu')).toBeVisible();
-    await page.waitForTimeout(300);
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    let previous: unknown;
+    await expect
+      .poll(async () => {
+        const box = JSON.stringify(await menu.boundingBox());
+        const settled = box === previous;
+        previous = box;
+        return settled;
+      })
+      .toBe(true);
 
     expect(await touchProblems(page, '[role="menu"]')).toEqual([]);
   });
@@ -351,13 +360,14 @@ test.describe('on a phone', () => {
 async function touchProblems(page: Page, scope = 'body'): Promise<string[]> {
   return page.evaluate(
     ([root, minimum]) => {
-      const controls = document
-        .querySelector(root)
-        ?.querySelectorAll<HTMLElement>(
-          'a[href], button:not([aria-hidden="true"]), input:not([type="hidden"]), select, textarea, [role="tab"]',
-        );
+      const scoped = document.querySelector(root);
+      if (!scoped) throw new Error(`No element matches ${root}.`);
+      const controls = scoped.querySelectorAll<HTMLElement>(
+        'a[href], button:not([aria-hidden="true"]), input:not([type="hidden"]), select, textarea, [role="tab"]',
+      );
+      if (controls.length === 0) throw new Error(`No controls found in ${root}.`);
       const found: string[] = [];
-      for (const element of controls ?? []) {
+      for (const element of controls) {
         const style = getComputedStyle(element);
         if (style.visibility === 'hidden' || style.display === 'none') continue;
         element.scrollIntoView({ block: 'center' });

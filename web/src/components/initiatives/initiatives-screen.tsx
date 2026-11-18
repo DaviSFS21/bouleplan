@@ -102,6 +102,9 @@ export function InitiativesScreen() {
 
   const [createSignal, setCreateSignal] = useState(0);
 
+  // The drawer remounts the index on each open, so a spent signal would reopen the create field.
+  if (belowDesktop && !drawerOpen && createSignal > 0) setCreateSignal(0);
+
   // Back at the desktop width the index is in place again, so a later narrow screen starts closed,
   // and focus, which was in the drawer, goes to the selected row.
   if (!belowDesktop && drawerOpen) {

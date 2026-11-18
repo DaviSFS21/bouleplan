@@ -6,7 +6,7 @@ import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
 import { serveTaskApi } from '@/test/task-backend';
 import { reforma, world } from '@/test/task-world';
-import { PHONE, setViewport } from '@/test/viewport';
+import { PHONE, TABLET, setViewport } from '@/test/viewport';
 
 vi.mock('next/navigation', () => import('@/test/next-navigation'));
 
@@ -102,7 +102,7 @@ describe('moving a card on a touch screen', () => {
     expect(screen.getByRole('button', { name: 'Ações da tarefa Comprar tinta' })).toBeVisible();
   });
 
-  it('has no pointer drag, but the keyboard still picks a card up', async () => {
+  it('has no pointer drag and no keyboard drag, since there is only one column', async () => {
     const { user } = await renderPhoneBoard();
     const source = screen.getByRole('article', { name: 'Comprar tinta' });
 
@@ -131,6 +131,27 @@ describe('moving a card on a touch screen', () => {
 
     source.focus();
     await user.keyboard(' ');
+    expect(screen.queryByText(/Comprar tinta está sobre a coluna/)).not.toBeInTheDocument();
+  });
+
+  it('announces no drag instructions on the card', async () => {
+    await renderPhoneBoard();
+    const card = screen.getByRole('article', { name: 'Comprar tinta' });
+
+    expect(card).not.toHaveAttribute('aria-describedby');
+    expect(card).not.toHaveAttribute('aria-roledescription');
+  });
+
+  it('keeps the drag instructions on a tablet, which shows the three columns', async () => {
+    setViewport(TABLET);
+    serveTaskApi(world);
+    renderWithQuery(<InitiativesScreen />);
+    const card = await screen.findByRole('article', { name: 'Comprar tinta' });
+
+    expect(card).toHaveAttribute('aria-describedby');
+    expect(card).toHaveAttribute('aria-roledescription', 'tarefa arrastável');
+    card.focus();
+    await userEvent.setup().keyboard(' ');
     expect(await screen.findByText(/Comprar tinta está sobre a coluna/)).toBeInTheDocument();
   });
 });

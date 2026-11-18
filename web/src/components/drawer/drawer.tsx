@@ -5,11 +5,10 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
-import { trapTab } from '@/components/focus-trap/trap-tab';
+import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
 import { useRegisterModal } from '@/components/modal-host/modal-host';
 import styles from './drawer.module.css';
 
@@ -40,10 +39,7 @@ export function Drawer({ label, opener, onClose, children }: Readonly<DrawerProp
     };
   }, [opener]);
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') onClose();
-    else trapTab(event, panel.current);
-  }
+  useModalKeys(node, { onEscape: onClose, trap: true });
 
   return (
     <>
@@ -61,7 +57,6 @@ export function Drawer({ label, opener, onClose, children }: Readonly<DrawerProp
         aria-label={label}
         tabIndex={-1}
         className={styles.drawer}
-        onKeyDown={handleKeyDown}
       >
         {children}
       </div>

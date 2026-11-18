@@ -1,5 +1,3 @@
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -10,7 +8,10 @@ export function focusableIn(container: HTMLElement): HTMLElement[] {
 }
 
 // Keeps Tab inside the container. Events from portals (menus) are not the container's to trap.
-export function trapTab(event: ReactKeyboardEvent, container: HTMLElement | null) {
+export function trapTab(
+  event: Pick<KeyboardEvent, 'key' | 'shiftKey' | 'target' | 'preventDefault'>,
+  container: HTMLElement | null,
+) {
   if (event.key !== 'Tab' || !container) return;
   if (!(event.target instanceof Node) || !container.contains(event.target)) return;
   const items = focusableIn(container);

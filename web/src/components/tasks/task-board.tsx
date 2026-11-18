@@ -99,6 +99,10 @@ export function TaskBoard({
   const fineSensors = useSensors(pointer, keyboard);
   // A coarse pointer scrolls and taps; the keyboard (an iPad can have one) still moves cards.
   const touchSensors = useSensors(keyboard);
+  // One column on a phone leaves nowhere to drop; moving a card goes through its menu.
+  const noSensors = useSensors();
+  const fineOrTouch = coarse ? touchSensors : fineSensors;
+  const sensors = phone ? noSensors : fineOrTouch;
 
   const showPath = initiative === null;
   const phaseOwners = useMemo(
@@ -273,7 +277,7 @@ export function TaskBoard({
         </p>
       ) : null}
       <DndContext
-        sensors={coarse ? touchSensors : fineSensors}
+        sensors={sensors}
         collisionDetection={columnCollision}
         accessibility={{ announcements, screenReaderInstructions }}
         onDragStart={handleDragStart}
@@ -320,6 +324,7 @@ export function TaskBoard({
                 openTaskId={openTask?.id ?? null}
                 slotIndex={lands ? landingIndex(column, dragging.task, compareTasks) : null}
                 quickCreate={quickCreate(status)}
+                draggable={!phone}
               />
             );
           })}

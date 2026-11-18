@@ -165,6 +165,24 @@ describe('first use on a narrow screen', () => {
     expect(within(drawer).getByRole('textbox', { name: 'Nome da nova iniciativa' })).toHaveFocus();
   });
 
+  it('does not reopen the create field when the drawer is opened again from "Iniciativas"', async () => {
+    setViewport(TABLET);
+    serveTaskApi({ initiatives: [] });
+    const user = userEvent.setup();
+    renderWithQuery(<InitiativesScreen />);
+    await screen.findByText('Nenhuma iniciativa ainda.');
+    await user.click(screen.getByRole('button', { name: '+ Nova iniciativa' }));
+    await user.click(findVeil());
+
+    await user.click(screen.getByRole('button', { name: 'Iniciativas' }));
+
+    const drawer = screen.getByRole('dialog', { name: 'Gaveta de iniciativas' });
+    expect(
+      within(drawer).queryByRole('textbox', { name: 'Nome da nova iniciativa' }),
+    ).not.toBeInTheDocument();
+    expect(drawer).toHaveFocus();
+  });
+
   it('does not show it once an initiative exists, or on a desktop', async () => {
     await renderTablet();
     expect(screen.queryByText('Nenhuma iniciativa ainda.')).not.toBeInTheDocument();

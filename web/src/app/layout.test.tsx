@@ -26,7 +26,7 @@ describe('RootLayout', () => {
 
     expect(html).toMatch(/^<html lang="pt-BR" class="display-class body-class ui-class">/);
     expect(html).toMatch(
-      /<body><header[^>]*>.*<\/header><p>content<\/p><div role="status"[^>]*><\/div><\/body>/,
+      /<body><header[^>]*>.*<\/header><p>content<\/p><div style="display:contents"><\/div><div role="status"[^>]*><\/div><\/body>/,
     );
     expect(html).toContain('>Quadro<');
     expect(html).toContain('>Semana<');

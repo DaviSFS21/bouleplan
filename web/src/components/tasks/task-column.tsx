@@ -19,6 +19,7 @@ interface TaskColumnProps {
   // Where the dragged card would land, when it comes from another column.
   slotIndex: number | null;
   quickCreate: ReactNode;
+  draggable?: boolean;
   // Set when the phone shows one column at a time, as the panel of the state tabs.
   tabPanel?: { id: string; role: 'tabpanel'; 'aria-labelledby': string };
 }
@@ -34,6 +35,7 @@ export function TaskColumn({
   slotIndex,
   quickCreate,
   tabPanel,
+  draggable = true,
 }: Readonly<TaskColumnProps>) {
   const { setNodeRef } = useDroppable({ id: status });
   const title = statusTitle(status);
@@ -46,6 +48,7 @@ export function TaskColumn({
       now={now}
       actions={actions}
       isOpen={task.id === openTaskId}
+      draggable={draggable}
     />
   ));
   if (slotIndex !== null) {

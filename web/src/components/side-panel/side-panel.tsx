@@ -7,11 +7,10 @@ import {
   useLayoutEffect,
   useState,
   useRef,
-  type KeyboardEvent,
   type ReactNode,
   type RefObject,
 } from 'react';
-import { trapTab } from '@/components/focus-trap/trap-tab';
+import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
 import { Icon } from '@/components/icon/icon';
 import { useRegisterModal } from '@/components/modal-host/modal-host';
 import { useIsPhone } from '@/components/responsive/use-media-query';
@@ -98,10 +97,7 @@ export function SidePanel({
     if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
   }, []);
 
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') onClose();
-    else if (phone) trapTab(event, panel.current);
-  }
+  useModalKeys(node, { onEscape: onClose, trap: phone });
 
   const eyebrowText = (
     <span className={eyebrowStyle === 'path' ? styles.path : styles.eyebrow}>{eyebrow}</span>
@@ -115,7 +111,6 @@ export function SidePanel({
       aria-label={label}
       tabIndex={-1}
       className={styles.panel}
-      onKeyDown={handleKeyDown}
     >
       <header className={styles.header}>
         {phone ? (

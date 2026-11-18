@@ -298,7 +298,82 @@ describe('SidePanel on a phone', () => {
     expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent('Feito');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('moves a toast already showing into the dialog without remounting it', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    renderWithQuery(<EarlyToastHarness />);
+    await user.click(screen.getByRole('button', { name: 'Avisar' }));
+    const message = screen.getByText('Feito');
+
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Tarefa' });
+    expect(within(dialog).getByText('Feito')).toBe(message);
+  });
+
+  it('keeps Tab inside from the hosted "Desfazer"', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    renderWithQuery(<ToastHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    await user.click(screen.getByRole('button', { name: 'Avisar' }));
+    screen.getByRole('button', { name: 'Desfazer' }).focus();
+
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Voltar' })).toHaveFocus();
+  });
+
+  it('closes on Escape from the hosted "Desfazer"', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    renderWithQuery(<ToastHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    await user.click(screen.getByRole('button', { name: 'Avisar' }));
+    screen.getByRole('button', { name: 'Desfazer' }).focus();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
+
+function EarlyToastHarness() {
+  const [open, setOpen] = useState(false);
+  const toast = useToast();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          toast.show({ message: 'Feito', onUndo: vi.fn() });
+        }}
+      >
+        Avisar
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        Abrir painel
+      </button>
+      {open ? (
+        <SidePanel
+          label="Tarefa"
+          eyebrow="Tarefa"
+          onClose={() => {
+            setOpen(false);
+          }}
+        >
+          <p>Conteúdo</p>
+        </SidePanel>
+      ) : null}
+    </>
+  );
+}
 
 function ToastHarness() {
   const [open, setOpen] = useState(false);
