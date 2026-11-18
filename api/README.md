@@ -107,6 +107,14 @@ cannot have a `sortOrder`. Items of a task that is archived, deleted, or in an a
 phase or initiative are hidden, answer 404 and come back with it; an item of a task that is `done`
 cannot be created or changed (422), but can be deleted.
 
+| Method | Path | Result |
+| --- | --- | --- |
+| `GET` | `/introspections/{weekStart}` | 200 `{weekStart, answers: [{key, prompt, answer}], closedAt, updatedAt}`: the stored sheet, or an unsaved empty draft (`updatedAt` null) when there is none, never 404; 400 `introspection.week.invalid` unless `weekStart` is a Monday with a year from 1 to 9999 |
+| `PUT` | `/introspections/{weekStart}` | 200; body `{"answers": [{"key", "answer"}]}` with the keys `went_well`, `went_badly`, `to_improve` at most once each; upserts the draft, keys not sent keep their answer and every stored prompt stays; answers are plain text of at most 10000 characters (CRLF/CR become LF); an unknown or duplicate key, extra fields or wrong types are 400 `http.400`; 400 `introspection.answer.too-long` or `introspection.answer.invalid-characters`; 409 `introspection.closed` |
+| `POST` | `/introspections/{weekStart}/close` | 200, stamps `closedAt` (creating an empty sheet if there is none); 409 `introspection.closed` if already closed; 422 `introspection.week.future` if the week starts after the current week (UTC) |
+
+A closed sheet is read-only. The server owns the question texts and stores each prompt with its answer when the sheet is created.
+
 Every task JSON has `reservedMinutes` (the minutes of the task's visible dedicated blocks) and
 `reservedByDeadlineMinutes` (the same, only blocks dated on or before the `deadline`; equal to
 `reservedMinutes` when there is no deadline). The task list gets both with one grouped query.
@@ -130,9 +138,9 @@ Clients show their own (pt-BR) text chosen by `code`, never `detail`.
 
 | `type` | Status | `code` |
 | --- | --- | --- |
-| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid`, `task.planned-week.invalid`, `calendar-event.title.blank`, `calendar-event.title.too-long`, `calendar-event.title.invalid-characters`, `calendar-event.time.invalid`, `scheduled-item.time.invalid`, `planner.week.invalid` |
-| `/problems/rule-violation` | 409 | `scheduled-item.overlap`, `scheduled-item.duplicate` |
-| `/problems/rule-violation` | 422 | `task.blocker.self`, `task.blocker.cycle`, `scheduled-item.task-done` |
+| `/problems/rule-violation` | 400 | the domain rule: `initiative.name.blank`, `initiative.name.too-long`, `initiative.name.invalid-characters`, `initiative.description.too-long`, `initiative.description.invalid-characters`, `initiative.deadline.invalid`, `initiative.color.required`, `initiative.color.invalid`, `phase.name.blank`, `phase.name.too-long`, `phase.name.invalid-characters`, `task.title.blank`, `task.title.too-long`, `task.title.invalid-characters`, `task.description.too-long`, `task.description.invalid-characters`, `task.deadline.invalid`, `task.effort.invalid`, `task.planned-week.invalid`, `calendar-event.title.blank`, `calendar-event.title.too-long`, `calendar-event.title.invalid-characters`, `calendar-event.time.invalid`, `scheduled-item.time.invalid`, `planner.week.invalid`, `introspection.week.invalid`, `introspection.answer.too-long`, `introspection.answer.invalid-characters` |
+| `/problems/rule-violation` | 409 | `scheduled-item.overlap`, `scheduled-item.duplicate`, `introspection.closed` |
+| `/problems/rule-violation` | 422 | `task.blocker.self`, `task.blocker.cycle`, `scheduled-item.task-done`, `introspection.week.future` |
 | `/problems/malformed-request` | 400 | `http.400` |
 | `/problems/http-error` | framework status (404, 405, 415...) | `http.<status>` |
 | `/problems/internal` | 500 | `internal` (message logged, never returned) |

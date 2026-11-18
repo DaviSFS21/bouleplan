@@ -1,7 +1,10 @@
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach } from 'vitest';
 import { server } from '@/test/server';
+
+// A loaded machine running many files at once can take over a second to settle a request.
+configure({ asyncUtilTimeout: 3000 });
 
 // Node's Request rejects relative URLs; browsers resolve them against the page origin.
 const NativeRequest = globalThis.Request;

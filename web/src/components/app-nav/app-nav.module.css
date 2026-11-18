@@ -61,7 +61,7 @@
 @media (max-width: 767px) {
   .links {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 0;
     box-sizing: border-box;
     padding: var(--space-1) var(--space-1) calc(var(--space-1) + env(safe-area-inset-bottom));

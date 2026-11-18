@@ -48,7 +48,7 @@ export function DescriptionField({
   // keeps it dirty, because the optimistic value matches the draft and a rollback must not wipe it.
   if (value !== syncedValue) {
     setSyncedValue(value);
-    if (!dirty) setDraft(value);
+    if (!dirty && value !== draft.trim()) setDraft(value);
   }
 
   useLayoutEffect(() => {

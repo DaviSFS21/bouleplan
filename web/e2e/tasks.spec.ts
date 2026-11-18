@@ -145,8 +145,20 @@ test('moves a card to "Em andamento" with the keyboard', async ({ page }) => {
   await card(page, 'Rejuntar').focus();
   await page.keyboard.press('Space');
   await expect(announcement(page)).toContainText('Rejuntar está sobre a coluna A fazer');
-  await page.keyboard.press('ArrowRight');
-  await expect(announcement(page)).toContainText('está sobre a coluna Em andamento');
+  // dnd-kit binds its key listener a moment after the pickup is announced,
+  // so an early arrow can be lost.
+  let overshot = false;
+  await expect(async () => {
+    const said = await announcement(page).innerText();
+    overshot = said.includes('Feito');
+    // Both arrows landed: retrying would only hide it.
+    if (overshot) return;
+    if (!said.includes('Em andamento')) await page.keyboard.press('ArrowRight');
+    await expect(announcement(page)).toContainText('está sobre a coluna Em andamento', {
+      timeout: 1000,
+    });
+  }).toPass();
+  expect(overshot, 'Both arrows landed: the card went past "Em andamento".').toBe(false);
   await page.keyboard.press('Space');
 
   await expect(

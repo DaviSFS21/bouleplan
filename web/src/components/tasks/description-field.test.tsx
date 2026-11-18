@@ -244,3 +244,25 @@ describe('DescriptionField autosave', () => {
     expect(field).toHaveValue('salvo');
   });
 });
+
+describe('DescriptionField echo of a trimmed save', () => {
+  it('keeps the spaces and newlines typed after an idle save whose trimmed text comes back', async () => {
+    const onSave = vi.fn(() => Promise.resolve(true));
+    const view = render(<DescriptionField value="" onSave={onSave} />);
+    const field = screen.getByRole('textbox', { name: 'Descrição' });
+
+    fireEvent.change(field, { target: { value: 'hello ' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(onSave).toHaveBeenCalledExactlyOnceWith('hello');
+    view.rerender(<DescriptionField value="hello" onSave={onSave} />);
+    fireEvent.change(field, { target: { value: 'hello world\n\n' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    view.rerender(<DescriptionField value="hello world" onSave={onSave} />);
+
+    expect(field).toHaveValue('hello world\n\n');
+  });
+});

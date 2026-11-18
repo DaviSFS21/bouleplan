@@ -12,6 +12,7 @@ import {
   updateInitiativeMessage,
   blockerMessage,
   plannerMessage,
+  introspectionMessage,
 } from './messages';
 import { ApiError } from './problem';
 
@@ -199,6 +200,27 @@ describe('plannerMessage', () => {
   it('uses the fallback for errors that are not ApiError', () => {
     expect(plannerMessage(new TypeError('x'), 'move')).toBe(
       'Não foi possível mover. Tente de novo.',
+    );
+  });
+});
+
+describe('introspectionMessage', () => {
+  it.each([
+    ['save', 'introspection.closed', 'Esta folha já foi fechada e não muda mais.'],
+    ['close', 'introspection.closed', 'Esta folha já foi fechada e não muda mais.'],
+    ['save', 'introspection.answer.too-long', 'Use no máximo 10.000 caracteres.'],
+    ['save', 'introspection.answer.invalid-characters', 'A resposta tem caracteres inválidos.'],
+    ['close', 'introspection.week.invalid', 'Essa semana não é válida.'],
+    ['close', 'introspection.week.future', 'Só dá para fechar uma semana que já começou.'],
+    ['save', 'internal', 'Não foi possível salvar a resposta. Tente de novo.'],
+    ['close', 'internal', 'Não foi possível fechar o Introspecto. Tente de novo.'],
+  ] as const)('maps %s failures with %s', (action, code, message) => {
+    expect(introspectionMessage(failure(code), action)).toBe(message);
+  });
+
+  it('uses the fallback for errors that are not ApiError', () => {
+    expect(introspectionMessage(new TypeError('x'), 'close')).toBe(
+      'Não foi possível fechar o Introspecto. Tente de novo.',
     );
   });
 });

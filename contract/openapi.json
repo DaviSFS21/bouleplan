@@ -207,6 +207,82 @@
                     }
                 }
             },
+            "Introspection": {
+                "required": [
+                    "weekStart",
+                    "answers",
+                    "closedAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "weekStart": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/IntrospectionAnswer"
+                        },
+                        "description": "One entry per question, in display order"
+                    },
+                    "closedAt": {
+                        "description": "Null while the sheet is a draft",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OffsetDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "updatedAt": {
+                        "description": "Null until the sheet is first saved",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/OffsetDateTime"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "IntrospectionAnswer": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "prompt",
+                    "answer"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "examples": [
+                            "went_well"
+                        ]
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "description": "The question text the sheet was created with"
+                    },
+                    "answer": {
+                        "type": "string",
+                        "maxLength": 10000
+                    }
+                }
+            },
             "OffsetDateTime": {
                 "type": "string",
                 "format": "date-time",
@@ -314,6 +390,42 @@
                         "examples": [
                             "initiative.name.blank"
                         ]
+                    }
+                }
+            },
+            "SaveIntrospectionAnswer": {
+                "type": "object",
+                "required": [
+                    "key",
+                    "answer"
+                ],
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "enum": [
+                            "went_well",
+                            "went_badly",
+                            "to_improve"
+                        ]
+                    },
+                    "answer": {
+                        "type": "string",
+                        "maxLength": 10000
+                    }
+                }
+            },
+            "SaveIntrospectionRequest": {
+                "required": [
+                    "answers"
+                ],
+                "type": "object",
+                "properties": {
+                    "answers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SaveIntrospectionAnswer"
+                        },
+                        "description": "Each key at most once; keys not sent keep their answer"
                     }
                 }
             },
@@ -669,6 +781,9 @@
     "tags": [
         {
             "name": "Initiatives"
+        },
+        {
+            "name": "Introspecto"
         },
         {
             "name": "Phases"
@@ -1316,6 +1431,173 @@
                     },
                     "404": {
                         "description": "No archived or active initiative with this id",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/introspections/{weekStart}": {
+            "put": {
+                "summary": "Saves the answers of an open sheet",
+                "operationId": "saveIntrospection",
+                "tags": [
+                    "Introspecto"
+                ],
+                "parameters": [
+                    {
+                        "description": "The Monday of the reviewed week",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "name": "weekStart",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SaveIntrospectionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The sheet",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Introspection"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "introspection.week.invalid, an answer rule code, or a malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "introspection.closed: the sheet is already closed",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Gets the sheet of a week, or an unsaved empty draft",
+                "operationId": "getIntrospection",
+                "tags": [
+                    "Introspecto"
+                ],
+                "parameters": [
+                    {
+                        "description": "The Monday of the reviewed week",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "name": "weekStart",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The sheet",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Introspection"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "introspection.week.invalid",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/introspections/{weekStart}/close": {
+            "post": {
+                "summary": "Closes the sheet of a week, creating an empty one if needed",
+                "operationId": "closeIntrospection",
+                "tags": [
+                    "Introspecto"
+                ],
+                "parameters": [
+                    {
+                        "description": "The Monday of the reviewed week",
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        },
+                        "name": "weekStart",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The sheet",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Introspection"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "introspection.week.invalid",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "introspection.week.future: the week has not started",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "introspection.closed: the sheet is already closed",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

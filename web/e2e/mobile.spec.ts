@@ -34,14 +34,18 @@ async function box(locator: Locator) {
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 
-  test('the navigation is a bottom bar of two links', async ({ page }) => {
+  test('the navigation is a bottom bar of three links', async ({ page }) => {
     await page.goto('/');
 
     const nav = page.getByRole('navigation', { name: 'Seções', exact: true });
     const board = nav.getByRole('link', { name: 'Quadro', exact: true });
     const week = nav.getByRole('link', { name: 'Semana', exact: true });
+    const review = nav.getByRole('link', { name: 'Introspecto', exact: true });
+    await expect(nav.getByRole('link')).toHaveText(['Quadro', 'Semana', 'Introspecto']);
     await expect(board).toHaveAttribute('aria-current', 'page');
     await expect(week).not.toHaveAttribute('aria-current', 'page');
+    await expect(review).not.toHaveAttribute('aria-current', 'page');
+    expect((await box(review)).height).toBeGreaterThanOrEqual(52);
     await expect(page.getByRole('tablist', { name: 'Seções' })).toHaveCount(0);
 
     const bar = await box(nav);
@@ -51,6 +55,11 @@ test.describe('on a phone', () => {
     await week.tap();
     await expect(page).toHaveURL(/\/semana/);
     await expect(week).toHaveAttribute('aria-current', 'page');
+
+    await review.tap();
+    await expect(page).toHaveURL(/\/introspecto/);
+    await expect(review).toHaveAttribute('aria-current', 'page');
+    await expect(week).not.toHaveAttribute('aria-current', 'page');
   });
 
   test('switches the states with the tabs, one column at a time', async ({ page }) => {

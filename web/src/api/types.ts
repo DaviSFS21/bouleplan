@@ -29,3 +29,7 @@ export type CreateCalendarEventRequest = components['schemas']['CreateCalendarEv
 export type UpdateCalendarEventRequest = components['schemas']['UpdateCalendarEventRequest'];
 export type CreateScheduledItemRequest = components['schemas']['CreateScheduledItemRequest'];
 export type UpdateScheduledItemRequest = components['schemas']['UpdateScheduledItemRequest'];
+
+export type Introspection = components['schemas']['Introspection'];
+export type IntrospectionAnswer = components['schemas']['IntrospectionAnswer'];
+export type AnswerKey = components['schemas']['SaveIntrospectionAnswer']['key'];
