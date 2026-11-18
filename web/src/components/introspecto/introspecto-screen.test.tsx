@@ -1,4 +1,4 @@
-import { act, cleanup, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,6 +34,7 @@ beforeEach(() => {
 afterEach(() => {
   navigateTo('/');
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 function answer(label: string) {
@@ -139,7 +140,7 @@ describe('the summary of the week that passed', () => {
     expect(done).not.toHaveTextContent('Tarefa antiga');
     const behind = summaryList('Ficaram para trás · 2');
     expect(behind).toHaveTextContent('Lixar parede');
-    expect(behind).toHaveTextContent('Reforma · venceu sáb, 14 nov');
+    expect(behind).toHaveTextContent('Reforma · prazo sáb, 14 nov');
     expect(within(behind).getByText('P1')).toBeVisible();
     expect(behind).toHaveTextContent('Quebrar piso');
     expect(behind).toHaveTextContent('sem prazo');
@@ -188,9 +189,11 @@ describe('the summary of the week that passed', () => {
 
 describe('autosave of the answers', () => {
   it('saves 800 ms after the last keystroke, only that answer', async () => {
-    const { backend, user } = await renderSheet({ fake: true });
+    const { backend } = await renderSheet({ fake: true });
+    // From here time moves only when the test moves it, so a slow machine cannot blur the 800 ms.
+    vi.useFakeTimers();
 
-    await user.type(answer('O que foi bom?'), 'Terminei a sala.');
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Terminei a sala.' } });
     act(() => {
       vi.advanceTimersByTime(700);
     });
@@ -198,6 +201,7 @@ describe('autosave of the answers', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
     });
+    vi.useRealTimers();
 
     await waitFor(() => {
       expect(backend.saves).toEqual([[{ key: 'went_well', answer: 'Terminei a sala.' }]]);
@@ -253,8 +257,12 @@ describe('autosave of the answers', () => {
 
   it('shows the message of the server problem for a closed sheet', async () => {
     const { backend, user } = await renderSheet();
+    let attempts = 0;
     server.use(
-      http.put('*/api/introspections/:week', () => problemResponse('introspection.closed', 409)),
+      http.put('*/api/introspections/:week', () => {
+        attempts += 1;
+        return problemResponse('introspection.closed', 409);
+      }),
     );
 
     await user.type(answer('Como posso melhorar?'), 'Planejar.');
@@ -264,6 +272,11 @@ describe('autosave of the answers', () => {
       'Esta folha já foi fechada e não muda mais.',
     );
     expect(backend.saves).toHaveLength(0);
+    // Leaving tries the failed save once more, here, before the next test starts.
+    cleanup();
+    await waitFor(() => {
+      expect(attempts).toBe(2);
+    });
   });
 
   it('keeps each answer under its own question when two are saved in a row', async () => {
@@ -276,6 +289,7 @@ describe('autosave of the answers', () => {
     await waitFor(() => {
       expect(backend.saves).toHaveLength(2);
     });
+
     expect(answer('O que foi bom?')).toHaveValue('Um');
     expect(answer('O que foi ruim?')).toHaveValue('Dois');
     expect(backend.sheets.get(WEEK)?.answers.map(({ answer: text }) => text)).toEqual([
@@ -286,7 +300,130 @@ describe('autosave of the answers', () => {
   });
 });
 
+describe('stale errors and the end of the page', () => {
+  it('drops the error of a slow failing save once a later save is confirmed', async () => {
+    const { backend } = await renderSheet({ fake: true });
+    backend.slowSave = { ms: 1000, fail: true };
+
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Um' } });
+    fireEvent.blur(answer('O que foi bom?'));
+    backend.slowSave = null;
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Um dois' } });
+    fireEvent.blur(answer('O que foi bom?'));
+
+    await waitFor(() => {
+      expect(backend.sheets.get(WEEK)?.answers[0]?.answer).toBe('Um dois');
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(answer('O que foi bom?')).toHaveValue('Um dois');
+  });
+
+  it('keeps the spaces typed after an idle save, with the server trimming like the API', async () => {
+    const { backend } = await renderSheet({ fake: true });
+
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'hello ' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    await waitFor(() => {
+      expect(backend.sheets.get(WEEK)?.answers[0]?.answer).toBe('hello');
+    });
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'hello world\n\n' } });
+
+    expect(answer('O que foi bom?')).toHaveValue('hello world\n\n');
+    fireEvent.blur(answer('O que foi bom?'));
+    await waitFor(() => {
+      expect(backend.sheets.get(WEEK)?.answers[0]?.answer).toBe('hello world');
+    });
+  });
+
+  it('sends a pending answer with keepalive when the page is hidden', async () => {
+    const { backend } = await renderSheet();
+    const sentKeepalive: boolean[] = [];
+    const realFetch = globalThis.fetch;
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      if (input instanceof Request && input.method === 'PUT') sentKeepalive.push(input.keepalive);
+      return realFetch(input, init);
+    });
+
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Quase perdi.' } });
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    await waitFor(() => {
+      expect(backend.saves).toEqual([[{ key: 'went_well', answer: 'Quase perdi.' }]]);
+    });
+    expect(sentKeepalive).toEqual([true]);
+    expect(await screen.findByText('Rascunho salvo às 18:42')).toBeVisible();
+  });
+
+  it('does not show an error when the keepalive request fails', async () => {
+    const { backend } = await renderSheet();
+    backend.failing.add('PUT');
+
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Quase perdi.' } });
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    await waitFor(() => {
+      expect(backend.saves).toHaveLength(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível salvar a resposta');
+    });
+    // Leaving tries the failed save once more, here, before the next test starts.
+    cleanup();
+    await waitFor(() => {
+      expect(backend.saves).toHaveLength(2);
+    });
+  });
+
+  it('survives a keepalive request that cannot be sent', async () => {
+    await renderSheet();
+    server.use(http.put('*/api/introspections/:week', () => HttpResponse.error()));
+
+    fireEvent.change(answer('O que foi bom?'), { target: { value: 'Quase perdi.' } });
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível salvar');
+  });
+});
+
 describe('closing the sheet', () => {
+  it('moves focus to the note that replaces the button', async () => {
+    const { user } = await renderSheet();
+
+    await user.click(screen.getByRole('button', { name: 'Fechar o Introspecto' }));
+
+    const note = await screen.findByText('Esta folha foi fechada e não muda mais.');
+    expect(note).toHaveFocus();
+  });
+
+  it('does not take focus when the sheet was already closed on arrival', async () => {
+    await renderSheet({ sheets: [sheet(WEEK, { closedAt: '2026-11-21T08:00:00-03:00' })] });
+
+    expect(screen.getByText('Esta folha foi fechada e não muda mais.')).not.toHaveFocus();
+  });
+
+  it('freezes the answers while it closes', async () => {
+    const { backend, user } = await renderSheet();
+    backend.slowSave = { ms: 300, fail: false };
+
+    await user.type(answer('O que foi bom?'), 'Terminei.');
+    await user.click(screen.getByRole('button', { name: 'Fechar o Introspecto' }));
+
+    expect(answer('O que foi bom?')).toHaveAttribute('readonly');
+    expect(screen.getByRole('button', { name: 'Fechar o Introspecto' })).toBeDisabled();
+    expect(await screen.findByText(/^Fechada em /)).toBeVisible();
+  });
+
   it('saves a pending answer first, then closes and turns read-only', async () => {
     const { backend, user } = await renderSheet();
 
@@ -381,10 +518,13 @@ describe('moving between weeks', () => {
     expect(screen.getByRole('button', { name: 'Próxima semana' })).toBeDisabled();
   });
 
-  it('disables "next" on the default week and past it', async () => {
+  it('falls back to the default week when the URL asks for a week that has not started', async () => {
     navigateTo('/introspecto?semana=2026-11-30');
-    await renderSheet();
+    const { backend } = await renderSheet();
 
+    expect(backend.calls).toEqual(expect.arrayContaining([`GET ${WEEK}`]));
+    expect(backend.calls).not.toContain('GET 2026-11-30');
+    expect(screen.getByRole('heading', { level: 1, name: '16 a 22 de novembro' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Próxima semana' })).toBeDisabled();
   });
 
@@ -416,8 +556,9 @@ describe('moving between weeks', () => {
     expect(first.backend.calls).toContain('GET 0001-01-01');
     cleanup();
 
-    navigateTo('/introspecto?semana=9999-12-27');
-    await renderSheet();
+    navigateTo('/introspecto');
+    // The last Friday the calendar has: its week has no week after it.
+    await renderSheet({ now: new Date(9999, 11, 31, 10) });
     expect(screen.queryByRole('region', { name: 'A próxima semana' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'A semana que passou' })).toBeVisible();
   });

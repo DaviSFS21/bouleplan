@@ -3,7 +3,7 @@ import { useId } from 'react';
 import type { Task } from '@/api/types';
 import { Icon } from '@/components/icon/icon';
 import { PrioritySelo } from '@/components/selo/selo';
-import { deadlineLabel } from '@/components/tasks/task-deadline';
+import { deadlineText } from './introspecto-model';
 import styles from './week-summary.module.css';
 
 interface WeekSummaryProps {
@@ -47,7 +47,7 @@ export function WeekSummary({ done, behind, names, now }: Readonly<WeekSummaryPr
                 <span className={styles.row}>
                   <PrioritySelo priority={task.priority} />
                   <span className={styles.meta}>
-                    {`${names.get(task.initiativeId) ?? ''} · ${deadlineLabel(task.deadline, now, false).text}`}
+                    {`${names.get(task.initiativeId) ?? ''} · ${deadlineText(task.deadline, now)}`}
                   </span>
                 </span>
               </span>

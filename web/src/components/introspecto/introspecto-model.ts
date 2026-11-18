@@ -1,5 +1,6 @@
 import { compareTasks } from '@/api/tasks';
 import type { Task, TaskChanges } from '@/api/types';
+import { formatDeadline, localToday } from '@/components/deadline-field/deadline-field';
 import { weekOfInstant } from './introspecto-week';
 
 export interface WeekSummary {
@@ -67,8 +68,14 @@ export function isPlanned(task: Task, nextWeek: string): boolean {
   return task.plannedWeekStart === nextWeek;
 }
 
-export function planChange(task: Task, nextWeek: string): TaskChanges {
-  return { plannedWeekStart: isPlanned(task, nextWeek) ? null : nextWeek };
+// Unchecking gives a task left behind its reviewed week back, so it is still left behind.
+export function planChange(task: Task, nextWeek: string, restoreWeek: string | null): TaskChanges {
+  return { plannedWeekStart: isPlanned(task, nextWeek) ? restoreWeek : nextWeek };
+}
+
+// A due date here is a plain fact, never "late".
+export function deadlineText(deadline: string | null, now: Date): string {
+  return deadline === null ? 'sem prazo' : `prazo ${formatDeadline(deadline, localToday(now))}`;
 }
 
 function markedOf(tasks: readonly Task[], nextWeek: string): number {

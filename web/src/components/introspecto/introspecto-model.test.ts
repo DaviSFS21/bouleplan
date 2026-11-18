@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { task } from '@/test/fixtures';
 import {
   buildPlan,
+  deadlineText,
   leftBehind,
   rememberLeft,
   isPlanned,
@@ -141,14 +142,27 @@ describe('planning marks', () => {
     expect(isPlanned(make(3), NEXT)).toBe(false);
   });
 
-  it('checking sets the next week and unchecking clears it only when it matches', () => {
-    expect(planChange(make(1), NEXT)).toEqual({ plannedWeekStart: NEXT });
-    expect(planChange(make(2, { plannedWeekStart: WEEK }), NEXT)).toEqual({
+  it('checking sets the next week and unchecking gives back the restore week', () => {
+    expect(planChange(make(1), NEXT, null)).toEqual({ plannedWeekStart: NEXT });
+    expect(planChange(make(2, { plannedWeekStart: WEEK }), NEXT, WEEK)).toEqual({
       plannedWeekStart: NEXT,
     });
-    expect(planChange(make(3, { plannedWeekStart: NEXT }), NEXT)).toEqual({
+    expect(planChange(make(3, { plannedWeekStart: NEXT }), NEXT, null)).toEqual({
       plannedWeekStart: null,
     });
+    expect(planChange(make(4, { plannedWeekStart: NEXT }), NEXT, WEEK)).toEqual({
+      plannedWeekStart: WEEK,
+    });
+  });
+});
+
+describe('deadlineText', () => {
+  it('states the date plainly, never as late', () => {
+    const now = new Date(2026, 10, 20, 10);
+
+    expect(deadlineText('2026-11-14', now)).toBe('prazo sáb, 14 nov');
+    expect(deadlineText('2026-11-25', now)).toBe('prazo qua, 25 nov');
+    expect(deadlineText(null, now)).toBe('sem prazo');
   });
 });
 

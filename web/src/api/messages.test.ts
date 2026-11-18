@@ -211,6 +211,7 @@ describe('introspectionMessage', () => {
     ['save', 'introspection.answer.too-long', 'Use no máximo 10.000 caracteres.'],
     ['save', 'introspection.answer.invalid-characters', 'A resposta tem caracteres inválidos.'],
     ['close', 'introspection.week.invalid', 'Essa semana não é válida.'],
+    ['close', 'introspection.week.future', 'Só dá para fechar uma semana que já começou.'],
     ['save', 'internal', 'Não foi possível salvar a resposta. Tente de novo.'],
     ['close', 'internal', 'Não foi possível fechar o Introspecto. Tente de novo.'],
   ] as const)('maps %s failures with %s', (action, code, message) => {

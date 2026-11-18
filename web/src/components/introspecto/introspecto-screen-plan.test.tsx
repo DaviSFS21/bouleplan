@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sheet } from '@/test/introspection-backend';
 import {
@@ -22,6 +22,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  localStorage.clear();
   navigateTo('/');
 });
 
@@ -82,7 +83,7 @@ describe('the planning of the next week', () => {
     const row = box('Lixar parede');
     expect(row).toHaveTextContent('P1');
     expect(row).toHaveAccessibleDescription(/P1/);
-    expect(row).toHaveAccessibleDescription(/venceu sáb, 14 nov/);
+    expect(row).toHaveAccessibleDescription(/prazo sáb, 14 nov/);
     expect(row).toHaveTextContent('4h');
     expect(box('Quebrar piso')).toHaveTextContent('sem estimativa');
     expect(box('Plantar alface')).toHaveTextContent('1,5h');
@@ -198,6 +199,66 @@ describe('checking a task', () => {
     await waitFor(() => {
       expect(tasks.bodies.at(-1)).toEqual({ plannedWeekStart: WEEK });
     });
+  });
+});
+
+describe('what was left behind, once planned', () => {
+  it('goes back to the reviewed week when the task is unchecked', async () => {
+    const { tasks, user } = await renderSheet();
+
+    await user.click(box('Lixar parede'));
+    await waitFor(() => {
+      expect(tasks.tasks.find(({ id }) => id === sanding.id)?.plannedWeekStart).toBe(NEXT);
+    });
+    await user.click(box('Lixar parede'));
+
+    expect(box('Lixar parede')).not.toBeChecked();
+    await waitFor(() => {
+      expect(tasks.tasks.find(({ id }) => id === sanding.id)?.plannedWeekStart).toBe(WEEK);
+    });
+    expect(tasks.bodies.at(-1)).toEqual({ plannedWeekStart: WEEK });
+    expect(screen.getByRole('heading', { name: 'Ficaram para trás · 2' })).toBeVisible();
+  });
+
+  it('stays in the tray and the summary after a reload, checked', async () => {
+    const first = await renderSheet();
+    await first.user.click(box('Lixar parede'));
+    await waitFor(() => {
+      expect(first.tasks.tasks.find(({ id }) => id === sanding.id)?.plannedWeekStart).toBe(NEXT);
+    });
+    cleanup();
+
+    await renderSheet({ world: { tasks: first.tasks.tasks } });
+
+    expect(screen.getByRole('heading', { name: 'Ficaram para trás · 2' })).toBeVisible();
+    expect(plan().getByText('1 de 2 entram')).toBeVisible();
+    expect(
+      within(plan().getByRole('list', { name: 'Ficaram para trás' })).getByRole('checkbox', {
+        name: 'Lixar parede',
+      }),
+    ).toBeChecked();
+  });
+
+  it('is read for a closed sheet too', async () => {
+    localStorage.setItem(
+      'bouleplan.introspecto.leftBehind.2026-11-16',
+      JSON.stringify([sanding.id, 'gone']),
+    );
+    await renderSheet({
+      sheets: [sheet(WEEK, { closedAt: '2026-11-21T08:00:00-03:00' })],
+      world: { tasks: [{ ...sanding, plannedWeekStart: NEXT }, tap] },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Ficaram para trás · 1' })).toBeVisible();
+    expect(box('Lixar parede')).toBeDisabled();
+    expect(box('Lixar parede')).toBeChecked();
+  });
+
+  it('forgets ids that are no longer tasks', async () => {
+    localStorage.setItem('bouleplan.introspecto.leftBehind.2026-11-16', JSON.stringify(['gone']));
+    await renderSheet({ world: { tasks: [tap] } });
+
+    expect(localStorage.getItem('bouleplan.introspecto.leftBehind.2026-11-16')).toBe('[]');
   });
 });
 

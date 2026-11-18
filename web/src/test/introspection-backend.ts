@@ -31,6 +31,8 @@ export interface IntrospectionBackend {
   calls: string[];
   // Bodies of the PUT requests, in order.
   saves: { key: string; answer: string }[][];
+  // Whether each PUT asked to outlive the page.
+  keepalives: boolean[];
   // Methods (GET, PUT, POST) answered with a 500 while listed.
   failing: Set<string>;
   // Milliseconds each PUT waits before it answers, and whether it then fails.
@@ -47,6 +49,7 @@ export function serveIntrospectionApi(
     sheets: new Map(initial.map((item) => [item.weekStart, item])),
     calls: [],
     saves: [],
+    keepalives: [],
     failing: new Set(),
     slowSave: null,
     stamp: now,
@@ -63,6 +66,7 @@ export function serveIntrospectionApi(
       const body = (await request.json()) as { answers: { key: string; answer: string }[] };
       backend.calls.push(`PUT ${String(params.week)}`);
       backend.saves.push(body.answers);
+      backend.keepalives.push(request.keepalive);
       const slow = backend.slowSave;
       if (slow) {
         await new Promise((resolve) => setTimeout(resolve, slow.ms));
@@ -76,7 +80,9 @@ export function serveIntrospectionApi(
         updatedAt: backend.stamp,
         answers: current.answers.map((entry) => {
           const change = body.answers.find(({ key }) => key === entry.key);
-          return change ? { ...entry, answer: change.answer.replaceAll('\r\n', '\n') } : entry;
+          return change
+            ? { ...entry, answer: change.answer.replaceAll('\r\n', '\n').trim() }
+            : entry;
         }),
       };
       backend.sheets.set(String(params.week), saved);

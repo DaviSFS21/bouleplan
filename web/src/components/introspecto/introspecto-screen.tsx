@@ -2,8 +2,13 @@
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useCloseIntrospection, useIntrospection, useSaveAnswer } from '@/api/introspection';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCloseIntrospection,
+  useIntrospection,
+  useSaveAnswer,
+  useSaveAnswerKeepalive,
+} from '@/api/introspection';
 import { useInitiatives } from '@/api/initiatives';
 import {
   CLOSE_UNSAVED_MESSAGE,
@@ -23,6 +28,7 @@ import { useClock } from '@/components/tasks/use-clock';
 import { useToast } from '@/components/toast/toast';
 import { buildPlan, leftBehind, planChange, rememberLeft, summarize } from './introspecto-model';
 import { defaultReviewWeek, isWeekStart } from './introspecto-week';
+import { loadLeft, saveLeft } from './left-store';
 import { QuestionField, type Flush } from './question-field';
 import { WeekPlan } from './week-plan';
 import { WeekSummary } from './week-summary';
@@ -64,9 +70,13 @@ interface SheetProps {
 function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readonly<SheetProps>) {
   const toast = useToast();
   const saveAnswer = useSaveAnswer();
+  const saveAnswerKeepalive = useSaveAnswerKeepalive();
   const closeSheet = useCloseIntrospection();
   const updateTask = useUpdateTask();
   const flushes = useRef(new Map<string, Flush>());
+  const attempts = useRef(new Map<string, number>());
+  const closedNote = useRef<HTMLParagraphElement>(null);
+  const wasClosed = useRef(sheet.closedAt !== null);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [closeError, setCloseError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
@@ -77,9 +87,20 @@ function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readon
     () => new Map(initiatives.map(({ id, name }) => [id, name])),
     [initiatives],
   );
-  const [left, setLeft] = useState(() => rememberLeft(new Set(), tasks, weekStart));
+  const [left, setLeft] = useState(() =>
+    rememberLeft(loadLeft(weekStart, new Set(tasks.map(({ id }) => id))), tasks, weekStart),
+  );
   const remembered = rememberLeft(left, tasks, weekStart);
   if (remembered !== left) setLeft(remembered);
+  useEffect(() => {
+    saveLeft(weekStart, remembered);
+  }, [weekStart, remembered]);
+
+  // The button that closed the sheet is gone, so focus moves to the note that replaces it.
+  useEffect(() => {
+    if (closed && !wasClosed.current) closedNote.current?.focus();
+    wasClosed.current = closed;
+  }, [closed]);
   const done = useMemo(() => summarize(tasks, weekStart).done, [tasks, weekStart]);
   const behind = useMemo(() => leftBehind(tasks, remembered), [tasks, remembered]);
   const plan = useMemo(
@@ -97,14 +118,20 @@ function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readon
     else flushes.current.delete(name);
   }, []);
 
-  async function save(key: string, answer: string): Promise<boolean> {
+  async function save(key: string, answer: string, keepalive = false): Promise<boolean> {
+    const attempt = (attempts.current.get(key) ?? 0) + 1;
+    attempts.current.set(key, attempt);
     setErrors((current) => ({ ...current, [key]: null }));
+    // The server owns the questions; the contract lists the MVP keys.
+    const input = { weekStart, key: key as AnswerKey, answer };
     try {
-      // The server owns the questions; the contract lists the MVP keys.
-      await saveAnswer.mutateAsync({ weekStart, key: key as AnswerKey, answer });
+      await (keepalive ? saveAnswerKeepalive.send(input) : saveAnswer.mutateAsync(input));
       return true;
     } catch (failure) {
-      setErrors((current) => ({ ...current, [key]: introspectionMessage(failure, 'save') }));
+      // A failure of a save that a newer one already replaced is not news.
+      if (attempts.current.get(key) === attempt) {
+        setErrors((current) => ({ ...current, [key]: introspectionMessage(failure, 'save') }));
+      }
       return false;
     }
   }
@@ -130,7 +157,10 @@ function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readon
   async function toggle(task: Task) {
     if (nextWeek === null) return;
     try {
-      await updateTask.mutateAsync({ task, changes: planChange(task, nextWeek) });
+      await updateTask.mutateAsync({
+        task,
+        changes: planChange(task, nextWeek, remembered.has(task.id) ? weekStart : null),
+      });
     } catch (failure) {
       toast.show({ message: updateTaskMessage(failure, 'plannedWeekStart') });
     }
@@ -187,8 +217,9 @@ function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readon
               prompt={prompt}
               value={answer}
               readOnly={closed}
+              locked={closing}
               error={errors[key] ?? null}
-              onSave={(text) => save(key, text)}
+              onSave={(text, keepalive) => save(key, text, keepalive)}
               register={register}
             />
           ))}
@@ -217,7 +248,9 @@ function Sheet({ weekStart, sheet, tasks, initiatives, now, navigation }: Readon
 
         <footer className={styles.footer}>
           {closed ? (
-            <p className={styles.note}>Esta folha foi fechada e não muda mais.</p>
+            <p ref={closedNote} tabIndex={-1} className={styles.note}>
+              Esta folha foi fechada e não muda mais.
+            </p>
           ) : (
             <>
               <p className={styles.note}>
@@ -253,7 +286,8 @@ export function IntrospectoScreen({ now }: Readonly<{ now?: Date }>) {
   const clock = useClock(now);
   const defaultWeek = defaultReviewWeek(clock);
   const requested = searchParams.get(WEEK_PARAM);
-  const weekStart = isWeekStart(requested) ? requested : defaultWeek;
+  // A week that has not started yet has nothing to review.
+  const weekStart = isWeekStart(requested) && requested <= defaultWeek ? requested : defaultWeek;
 
   const initiativesQuery = useInitiatives();
   const tasksQuery = useTasks();

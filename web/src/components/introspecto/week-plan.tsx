@@ -3,8 +3,14 @@ import { useId, useState } from 'react';
 import type { Initiative, Task } from '@/api/types';
 import { Icon } from '@/components/icon/icon';
 import { PrioritySelo } from '@/components/selo/selo';
-import { deadlineLabel } from '@/components/tasks/task-deadline';
-import { groupCounter, isPlanned, tallyText, trayCounter, type Plan } from './introspecto-model';
+import {
+  deadlineText,
+  groupCounter,
+  isPlanned,
+  tallyText,
+  trayCounter,
+  type Plan,
+} from './introspecto-model';
 import styles from './week-plan.module.css';
 
 interface WeekPlanProps {
@@ -57,7 +63,7 @@ function PlanRow({ task, checked, now, disabled, onToggle }: Readonly<RowProps>)
           </span>
           <span id={metaId} className={styles.row}>
             <PrioritySelo priority={task.priority} />
-            <span className={styles.meta}>{deadlineLabel(task.deadline, now, false).text}</span>
+            <span className={styles.meta}>{deadlineText(task.deadline, now)}</span>
           </span>
         </span>
         <span

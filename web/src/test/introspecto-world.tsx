@@ -118,10 +118,11 @@ export async function renderSheet(
     now?: Date;
     sheets?: Parameters<typeof serveIntrospectionApi>[0];
     world?: Partial<Parameters<typeof serveTaskApi>[0]>;
-    fake?: boolean;
+    // true lets time run on its own; 'manual' moves only when the test moves it.
+    fake?: boolean | 'manual';
   } = {},
 ) {
-  if (options.fake) vi.useFakeTimers({ shouldAdvanceTime: true });
+  if (options.fake) vi.useFakeTimers({ shouldAdvanceTime: options.fake !== 'manual' });
   const tasks = serveTaskApi({ ...introspectoWorld, ...options.world });
   const backend = serveIntrospectionApi(options.sheets);
   renderWithQuery(<IntrospectoScreen now={options.now ?? FRIDAY} />);

@@ -14,11 +14,18 @@ afterEach(() => {
 interface Setup {
   value?: string;
   readOnly?: boolean;
+  locked?: boolean;
   error?: string | null;
   onSave?: (text: string) => Promise<boolean>;
 }
 
-function build({ value = 'Texto salvo', readOnly = false, error = null, onSave }: Setup = {}) {
+function build({
+  value = 'Texto salvo',
+  readOnly = false,
+  locked = false,
+  error = null,
+  onSave,
+}: Setup = {}) {
   const save = onSave ?? vi.fn(() => Promise.resolve(true));
   const flushes = new Map<string, Flush>();
   const register = vi.fn((name: string, flush: Flush | null) => {
@@ -31,6 +38,7 @@ function build({ value = 'Texto salvo', readOnly = false, error = null, onSave }
       prompt="O que foi bom?"
       value={props.value ?? value}
       readOnly={props.readOnly ?? readOnly}
+      locked={props.locked ?? locked}
       error={props.error === undefined ? error : props.error}
       onSave={save}
       register={register}
@@ -59,14 +67,16 @@ describe('QuestionField', () => {
     expect(screen.getByLabelText('O que foi bom?')).toBe(field);
   });
 
-  it('saves 800 ms after the last keystroke, not before', async () => {
-    const { save, user, field } = setup();
+  it('saves 800 ms after the last keystroke, not before', () => {
+    // Timers that only move when the test moves them, so a slow machine cannot blur the 800 ms.
+    vi.useFakeTimers();
+    const { save, field } = setup();
 
-    await user.type(field, '!');
+    fireEvent.change(field, { target: { value: 'Texto salvo!' } });
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    await user.type(field, '?');
+    fireEvent.change(field, { target: { value: 'Texto salvo!?' } });
     act(() => {
       vi.advanceTimersByTime(500);
     });
@@ -221,7 +231,7 @@ describe('QuestionField', () => {
     expect(failing).toHaveBeenCalledTimes(2);
   });
 
-  it('does not retry on unmount a save that just failed', async () => {
+  it('tries once more on unmount a save that failed', async () => {
     const failing = vi.fn(() => Promise.resolve(false));
     const { element } = build({ onSave: failing });
     const view = render(element());
@@ -233,11 +243,83 @@ describe('QuestionField', () => {
       await Promise.resolve();
     });
     view.unmount();
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
 
-    expect(failing).toHaveBeenCalledTimes(1);
+    expect(failing).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the spaces typed after an idle save whose trimmed text comes back', async () => {
+    const { element, save } = build({ value: '' });
+    const view = render(element());
+    const field = screen.getByRole('textbox', { name: 'O que foi bom?' });
+
+    fireEvent.change(field, { target: { value: 'hello ' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(save).toHaveBeenCalledExactlyOnceWith('hello');
+    view.rerender(element({ value: 'hello' }));
+    fireEvent.change(field, { target: { value: 'hello world' } });
+
+    expect(field).toHaveValue('hello world');
+  });
+
+  it('keeps the newlines typed after an idle save whose trimmed text comes back', async () => {
+    const { element, save } = build({ value: '' });
+    const view = render(element());
+    const field = screen.getByRole('textbox', { name: 'O que foi bom?' });
+
+    fireEvent.change(field, { target: { value: 'line one\n\n' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    expect(save).toHaveBeenCalledExactlyOnceWith('line one');
+    view.rerender(element({ value: 'line one' }));
+
+    expect(field).toHaveValue('line one\n\n');
+  });
+
+  it('still adopts a different saved text while it is clean', async () => {
+    const { element } = build({ value: '' });
+    const view = render(element());
+    const field = screen.getByRole('textbox', { name: 'O que foi bom?' });
+
+    fireEvent.change(field, { target: { value: 'hello ' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900);
+    });
+    view.rerender(element({ value: 'hello' }));
+    view.rerender(element({ value: 'changed elsewhere' }));
+
+    expect(field).toHaveValue('changed elsewhere');
+  });
+
+  it('sends what is pending, with keepalive, when the page is hidden or leaves', async () => {
+    const { save, user, field } = setup();
+
+    await user.type(field, '!');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(save).toHaveBeenCalledExactlyOnceWith('Texto salvo!', true);
+
+    await user.type(field, '?');
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+    act(() => {
+      window.dispatchEvent(new Event('pagehide'));
+    });
+    expect(save).toHaveBeenLastCalledWith('Texto salvo!?', true);
+  });
+
+  it('is frozen while locked', () => {
+    const { element } = build({ locked: true });
+    render(element());
+
+    expect(screen.getByRole('textbox', { name: 'O que foi bom?' })).toHaveAttribute('readonly');
   });
 
   it('registers a flush that saves at once and resolves with the confirmation', async () => {

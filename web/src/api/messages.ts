@@ -217,6 +217,7 @@ const INTROSPECTION_MESSAGES: Readonly<Record<string, string>> = {
   'introspection.answer.too-long': 'Use no máximo 10.000 caracteres.',
   'introspection.answer.invalid-characters': 'A resposta tem caracteres inválidos.',
   'introspection.week.invalid': 'Essa semana não é válida.',
+  'introspection.week.future': 'Só dá para fechar uma semana que já começou.',
 };
 
 const INTROSPECTION_FALLBACK_MESSAGES: Readonly<Record<IntrospectionAction, string>> = {

@@ -16,7 +16,8 @@ import styles from './question-field.module.css';
 export const ANSWER_IDLE_MS = 800;
 const MAX_LENGTH = 10_000;
 
-export type Flush = () => Promise<boolean>;
+// Keepalive is for a page that is going away: the request has to outlive it.
+export type Flush = (keepalive?: boolean) => Promise<boolean>;
 
 interface QuestionFieldProps {
   name: string;
@@ -24,8 +25,10 @@ interface QuestionFieldProps {
   // The answer the server confirmed.
   value: string;
   readOnly: boolean;
+  // Still editable in the model but frozen while the sheet closes.
+  locked: boolean;
   // Resolves true once the server confirmed the text; a false answer keeps the field dirty.
-  onSave: (text: string) => Promise<boolean>;
+  onSave: (text: string, keepalive?: boolean) => Promise<boolean>;
   error: string | null;
   // The sheet asks every field to save what is pending before it closes.
   register: (name: string, flush: Flush | null) => void;
@@ -36,6 +39,7 @@ export function QuestionField({
   prompt,
   value,
   readOnly,
+  locked,
   onSave,
   error,
   register,
@@ -48,7 +52,6 @@ export function QuestionField({
   const latest = useRef({ draft, dirty, value, onSave });
   const sent = useRef<{ from: string; text: string } | null>(null);
   const inflight = useRef<Promise<boolean> | null>(null);
-  const failed = useRef(false);
   const fieldId = useId();
   const errorId = useId();
 
@@ -56,11 +59,12 @@ export function QuestionField({
     latest.current = { draft, dirty, value, onSave };
   });
 
-  // While the field is clean it follows the saved text. A save that is sent but not confirmed
-  // keeps it dirty, so a late answer or a failure never wipes what was typed.
+  // While the field is clean it follows an outside change of the saved text. The server stores the
+  // trimmed text, so its echo of what was typed must not rewrite the draft: that would eat the
+  // spaces and newlines typed after the pause. A save not yet confirmed keeps the field dirty.
   if (value !== syncedValue) {
     setSyncedValue(value);
-    if (!dirty) setDraft(value);
+    if (!dirty && value !== draft.trim()) setDraft(value);
   }
 
   useLayoutEffect(() => {
@@ -70,7 +74,7 @@ export function QuestionField({
     if (element.scrollHeight > 0) element.style.height = `${String(element.scrollHeight)}px`;
   }, [draft]);
 
-  const flush = useCallback<Flush>(() => {
+  const flush = useCallback<Flush>((keepalive = false) => {
     clearTimeout(timer.current);
     const { draft: text, dirty: changed, value: saved, onSave: save } = latest.current;
     const next = text.trim();
@@ -79,19 +83,34 @@ export function QuestionField({
     // The blur and the unmount that follows it must not send the same text twice.
     if (sent.current?.from === saved && sent.current.text === next) return pending;
     sent.current = { from: saved, text: next };
-    const request: Promise<boolean> = save(next).then((confirmed) => {
-      if (inflight.current === request) inflight.current = null;
-      if (!confirmed) {
-        failed.current = true;
+    const request: Promise<boolean> = (keepalive ? save(next, true) : save(next)).then(
+      (confirmed) => {
+        if (inflight.current === request) inflight.current = null;
         if (sent.current?.text === next) sent.current = null;
-      } else if (latest.current.draft.trim() === next) {
-        setDirty(false);
-      }
-      return confirmed;
-    });
+        if (!confirmed) return confirmed;
+        if (latest.current.draft.trim() === next) setDirty(false);
+        return confirmed;
+      },
+    );
     inflight.current = request;
     return request;
   }, []);
+
+  // A tab that closes, reloads or hides within the idle wait must not lose what was typed.
+  useEffect(() => {
+    function hide() {
+      if (document.visibilityState === 'hidden') void flush(true);
+    }
+    function leave() {
+      void flush(true);
+    }
+    window.addEventListener('pagehide', leave);
+    document.addEventListener('visibilitychange', hide);
+    return () => {
+      window.removeEventListener('pagehide', leave);
+      document.removeEventListener('visibilitychange', hide);
+    };
+  }, [flush]);
 
   useEffect(() => {
     register(name, flush);
@@ -100,17 +119,15 @@ export function QuestionField({
     };
   }, [name, register, flush]);
 
-  // Switching week must not lose text still waiting for the idle save, but it does not retry one that failed.
+  // Switching week saves what is waiting, and tries once more what failed.
   useEffect(
     () => () => {
-      if (failed.current) clearTimeout(timer.current);
-      else void flush();
+      void flush();
     },
     [flush],
   );
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
-    failed.current = false;
     setDraft(event.target.value);
     setDirty(true);
     clearTimeout(timer.current);
@@ -147,6 +164,7 @@ export function QuestionField({
             aria-describedby={error ? errorId : undefined}
             rows={2}
             maxLength={MAX_LENGTH}
+            readOnly={locked}
             value={draft}
             onChange={handleChange}
             onBlur={handleBlur}

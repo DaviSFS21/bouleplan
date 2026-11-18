@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api, unwrap } from './client';
+import { toApiError } from './problem';
 import { runScoped } from './scoped-mutation';
 import type { AnswerKey, Introspection } from './types';
 
@@ -64,6 +65,31 @@ export function useSaveAnswer() {
             );
           },
         ),
+    }),
+    [queryClient],
+  );
+}
+
+export function useSaveAnswerKeepalive() {
+  const queryClient = useQueryClient();
+  return useMemo(
+    () => ({
+      // For a page that is going away: it skips the queue so the request is sent before the page dies.
+      send: async ({ weekStart, key, answer }: SaveAnswerInput): Promise<void> => {
+        const response = await fetch(
+          new Request(`/api/introspections/${weekStart}`, {
+            method: 'PUT',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answers: [{ key, answer }] }),
+          }),
+        );
+        const payload: unknown = await response.json().catch(() => undefined);
+        if (!response.ok) throw toApiError(payload, response);
+        queryClient.setQueryData<Introspection>(introspectionKey(weekStart), (sheet) =>
+          withSaved(sheet, payload as Introspection, key),
+        );
+      },
     }),
     [queryClient],
   );
