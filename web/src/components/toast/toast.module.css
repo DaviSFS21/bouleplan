@@ -91,3 +91,16 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+@media (pointer: coarse) {
+  .undo {
+    min-height: 44px;
+  }
+}
+
+/* Inside a full-screen dialog the bottom bar is covered, so the toast sits at the screen edge. */
+@media (max-width: 767px) {
+  .region[data-hosted] {
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  }
+}

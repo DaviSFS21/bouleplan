@@ -56,6 +56,10 @@ test('moves and resizes a block with the keyboard, and announces each change', a
 });
 
 test('refuses to move a block into taken time, and sends nothing', async ({ page }) => {
+  const writes: string[] = [];
+  page.on('request', (request) => {
+    if (['PATCH', 'POST', 'DELETE'].includes(request.method())) writes.push(request.method());
+  });
   const { taskIds } = await seedInitiative(page.request, 'Reforma', [
     { title: 'Comprar tinta' },
     { title: 'Lixar parede' },
@@ -75,6 +79,7 @@ test('refuses to move a block into taken time, and sends nothing', async ({ page
 
   await expect(announced(page)).toHaveText('Não cabe: já há tempo reservado.');
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeFocused();
+  expect(writes).toEqual([]);
 });
 
 test('moves a ficha to another day and reserves time for it from its menu', async ({ page }) => {

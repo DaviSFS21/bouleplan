@@ -52,27 +52,31 @@ async function dragFichaToThursday(pointer: { coarse: boolean }) {
       });
     });
   }
+  // A drag that started dims the ficha it carries; this is what tells the two pointers apart.
+  const dragStarted = ficha.className.includes('source');
   act(() => {
     fireEvent.pointerUp(document, { ...POINTER, clientX: target.x, clientY: target.y });
   });
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 80));
+    await Promise.resolve();
   });
-  return backend;
+  return { backend, dragStarted };
 }
 
 describe('dragging in the week', () => {
   it('moves a ficha to another day with a fine pointer', async () => {
-    const backend = await dragFichaToThursday({ coarse: false });
+    const { backend, dragStarted } = await dragFichaToThursday({ coarse: false });
 
+    expect(dragStarted).toBe(true);
     await waitFor(() => {
       expect(backend.bodies).not.toHaveLength(0);
     });
   });
 
   it('does nothing with a coarse pointer: moving goes through the menus', async () => {
-    const backend = await dragFichaToThursday({ coarse: true });
+    const { backend, dragStarted } = await dragFichaToThursday({ coarse: true });
 
+    expect(dragStarted).toBe(false);
     expect(backend.bodies).toEqual([]);
     expect(within(strip('2026-11-19')).queryByRole('article')).not.toBeInTheDocument();
   });

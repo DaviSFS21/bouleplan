@@ -52,6 +52,8 @@ type InitiativeIndexProps = Readonly<{
   focusRequest: FocusRequest | null;
   // The drawer supplies the width and the edge.
   inDrawer?: boolean;
+  // Each new positive value opens the field of a new initiative and focuses it.
+  createSignal?: number;
 }>;
 
 export function InitiativeIndex({
@@ -70,6 +72,7 @@ export function InitiativeIndex({
   actionError,
   focusRequest,
   inDrawer = false,
+  createSignal = 0,
 }: InitiativeIndexProps) {
   const initiativeProgress = progressByInitiative(tasks);
   const phaseProgress = progressByPhase(tasks);
@@ -213,6 +216,7 @@ export function InitiativeIndex({
         blankMessage={BLANK_NAME_MESSAGE}
         errorMessage={createInitiativeMessage}
         onCreate={create}
+        openSignal={createSignal}
       />
     </nav>
   );

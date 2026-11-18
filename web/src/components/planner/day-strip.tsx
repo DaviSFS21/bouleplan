@@ -78,6 +78,13 @@ function Ficha({ entry, moving, onOpen, onRemove }: Readonly<FichaProps>) {
                     keyboard.startReserve({ kind: 'ficha', item, task });
                   },
                 },
+                {
+                  label: 'Tirar da lista',
+                  disabled: pending,
+                  onSelect: () => {
+                    onRemove(entry);
+                  },
+                },
               ]}
             />
           </div>

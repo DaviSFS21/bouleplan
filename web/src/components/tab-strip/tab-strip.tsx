@@ -24,6 +24,7 @@ export function tabPanelProps(prefix: string, selectedId: string) {
   return {
     id: `${prefix}-panel`,
     role: 'tabpanel',
+    tabIndex: 0,
     'aria-labelledby': `${prefix}-tab-${selectedId}`,
   } as const;
 }
@@ -40,6 +41,7 @@ export function TabStrip({
   const list = useRef<HTMLDivElement>(null);
 
   function handleKeyDown(event: KeyboardEvent) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
     const position = items.findIndex(({ id }) => id === selectedId);
     const steps: Record<string, number | undefined> = {
       ArrowRight: (position + 1) % items.length,

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useIsMutating, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   useArchiveInitiative,
   useCreateInitiative,
@@ -100,8 +100,14 @@ export function InitiativesScreen() {
   const belowDesktop = useIsBelowDesktop();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Back at the desktop width the index is in place again, so a later narrow screen starts closed.
-  if (!belowDesktop && drawerOpen) setDrawerOpen(false);
+  const [createSignal, setCreateSignal] = useState(0);
+
+  // Back at the desktop width the index is in place again, so a later narrow screen starts closed,
+  // and focus, which was in the drawer, goes to the selected row.
+  if (!belowDesktop && drawerOpen) {
+    setDrawerOpen(false);
+    setFocusRequest((current) => ({ id: selectedInitiativeId, nonce: (current?.nonce ?? 0) + 1 }));
+  }
 
   const clearRequest = useCallback(() => {
     setRequest(null);
@@ -400,6 +406,7 @@ export function InitiativesScreen() {
   const index = (
     <InitiativeIndex
       inDrawer={belowDesktop}
+      createSignal={createSignal}
       initiatives={data}
       selectedId={selected?.id ?? null}
       onSelect={(id) => {
@@ -460,17 +467,18 @@ export function InitiativesScreen() {
     />
   );
 
+  let drawer: ReactNode = index;
+  if (belowDesktop) {
+    drawer = drawerOpen ? (
+      <Drawer label="Gaveta de iniciativas" opener={drawerOpener} onClose={closeDrawer}>
+        {index}
+      </Drawer>
+    ) : null;
+  }
+
   return (
     <main className={styles.screen}>
-      {belowDesktop ? (
-        drawerOpen ? (
-          <Drawer label="Gaveta de iniciativas" opener={drawerOpener} onClose={closeDrawer}>
-            {index}
-          </Drawer>
-        ) : null
-      ) : (
-        index
-      )}
+      {drawer}
       <InitiativeBoard
         initiative={selected}
         phase={filteredPhase}
@@ -494,6 +502,10 @@ export function InitiativesScreen() {
             : undefined
         }
         drawerOpenerRef={drawerOpener}
+        onCreateInitiative={() => {
+          setCreateSignal((signal) => signal + 1);
+          setDrawerOpen(true);
+        }}
         onOpenDetails={() => {
           if (selected) openDetails(selected.id);
         }}

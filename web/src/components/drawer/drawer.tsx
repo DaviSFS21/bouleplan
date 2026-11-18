@@ -1,7 +1,16 @@
 'use client';
 
-import { useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import {
+  useCallback,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { trapTab } from '@/components/focus-trap/trap-tab';
+import { useRegisterModal } from '@/components/modal-host/modal-host';
 import styles from './drawer.module.css';
 
 interface DrawerProps {
@@ -12,7 +21,13 @@ interface DrawerProps {
 }
 
 export function Drawer({ label, opener, onClose, children }: Readonly<DrawerProps>) {
-  const panel = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement | null>(null);
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  const attach = useCallback((element: HTMLDivElement | null) => {
+    panel.current = element;
+    setNode(element);
+  }, []);
+  useRegisterModal(node);
 
   useLayoutEffect(() => {
     const previous = document.activeElement;
@@ -32,9 +47,15 @@ export function Drawer({ label, opener, onClose, children }: Readonly<DrawerProp
 
   return (
     <>
-      <div className={styles.veil} aria-hidden="true" onClick={onClose} />
+      <button
+        type="button"
+        className={styles.veil}
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={onClose}
+      />
       <div
-        ref={panel}
+        ref={attach}
         role="dialog"
         aria-modal="true"
         aria-label={label}

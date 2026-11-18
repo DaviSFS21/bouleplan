@@ -81,4 +81,23 @@ describe('TabStrip', () => {
     await user.keyboard('x');
     expect(screen.getByRole('tab', { name: 'Primeira' })).toHaveAttribute('aria-selected', 'true');
   });
+
+  it('leaves keys with Alt, Ctrl or Meta to the browser and the screen reader', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    screen.getByRole('tab', { name: 'Primeira' }).focus();
+
+    await user.keyboard(
+      '{Alt>}{ArrowRight}{/Alt}{Control>}{End}{/Control}{Meta>}{ArrowLeft}{/Meta}',
+    );
+
+    expect(screen.getByRole('tab', { name: 'Primeira' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Primeira' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('makes the tabpanel reachable by keyboard', () => {
+    render(<Harness />);
+
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '0');
+  });
 });

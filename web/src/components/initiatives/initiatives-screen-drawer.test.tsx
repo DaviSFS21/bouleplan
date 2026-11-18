@@ -123,4 +123,53 @@ describe('initiative index as a drawer', () => {
     setViewport(TABLET);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('puts focus on the selected row when the drawer closes because the screen widened', async () => {
+    const user = userEvent.setup();
+    const opener = await renderTablet(`/?iniciativa=${horta.id}`);
+    await user.click(opener);
+
+    setViewport({ width: 1440, coarse: false });
+
+    const index = await screen.findByRole('navigation', { name: 'Iniciativas' });
+    const row = within(index).getByRole('button', { name: /^Horta/ });
+    await waitFor(() => {
+      expect(row).toHaveFocus();
+    });
+  });
+
+  it('puts focus on "Todas as tarefas" when nothing was selected', async () => {
+    const user = userEvent.setup();
+    const opener = await renderTablet();
+    await user.click(opener);
+
+    setViewport({ width: 1440, coarse: false });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Todas as tarefas' })).toHaveFocus();
+    });
+  });
+});
+
+describe('first use on a narrow screen', () => {
+  it('offers "+ Nova iniciativa" on the board, which opens the drawer on the create field', async () => {
+    setViewport(TABLET);
+    serveTaskApi({ initiatives: [] });
+    const user = userEvent.setup();
+    renderWithQuery(<InitiativesScreen />);
+
+    expect(await screen.findByText('Nenhuma iniciativa ainda.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '+ Nova iniciativa' }));
+
+    const drawer = screen.getByRole('dialog', { name: 'Gaveta de iniciativas' });
+    expect(within(drawer).getByRole('textbox', { name: 'Nome da nova iniciativa' })).toHaveFocus();
+  });
+
+  it('does not show it once an initiative exists, or on a desktop', async () => {
+    await renderTablet();
+    expect(screen.queryByText('Nenhuma iniciativa ainda.')).not.toBeInTheDocument();
+
+    setViewport({ width: 1440, coarse: false });
+    expect(screen.queryByRole('button', { name: '+ Nova iniciativa' })).toBeInTheDocument();
+  });
 });

@@ -7,10 +7,15 @@ import { deadlineWeekday, dayRow } from './planner-dates';
 import { resolveDrop, type DragData, type DropContext, type DropIntent } from './planner-drop';
 import { pixelsFromMinutes, type Span } from './planner-geometry';
 import { itemSpan } from './planner-model';
-import { QUARTER, formatApiTime, formatRange } from './planner-time';
+import { MAX_END, QUARTER, formatApiTime, formatRange } from './planner-time';
 
 export const NO_ROOM_MESSAGE = 'Não cabe: já há tempo reservado.';
 export const MINIMUM_DURATION_MESSAGE = 'Duração mínima: 15 minutos.';
+export const DAY_START_MESSAGE = 'Início do dia.';
+export const DAY_END_MESSAGE = 'Fim do dia: não dá para estender.';
+export const DAY_END_MOVE_MESSAGE = 'Fim do dia.';
+export const WEEK_START_MESSAGE = 'Início da semana.';
+export const WEEK_END_MESSAGE = 'Fim da semana.';
 
 export interface PlannedItem {
   item: ScheduledItem;
@@ -52,7 +57,7 @@ interface Options {
   // Sends the request of a drop intent, the same one a drag sends.
   apply: (intent: DropIntent) => Promise<void>;
   // Keeps focus on the thing that moved when it is drawn again somewhere else.
-  keepFocus: (selector: string) => void;
+  keepFocus: (selector: string | null) => void;
 }
 
 interface Landing {
@@ -65,6 +70,11 @@ export interface PlannerKeyboard {
   moves: Omit<KeyboardMoves, 'startReserve'>;
   reserve: (origin: ReserveOrigin, date: string, start: number) => boolean;
   announcement: { id: number; text: string };
+}
+
+function resizeRefusal(quarters: number, end: number): string {
+  if (quarters < 0) return MINIMUM_DURATION_MESSAGE;
+  return end >= MAX_END ? DAY_END_MESSAGE : NO_ROOM_MESSAGE;
 }
 
 function when(date: string, span: Span): string {
@@ -107,6 +117,8 @@ export function usePlannerKeyboard({
       landing.count -= 1;
       if (landing.count === 0 && landings.current.get(item.id) === landing) {
         landings.current.delete(item.id);
+        // The item is where it will stay: nothing is left to find.
+        keepFocus(null);
       }
     });
   }
@@ -118,7 +130,10 @@ export function usePlannerKeyboard({
   function moveBlock({ item, task }: PlannedItem, steps: { days: number; quarters: number }) {
     const current = latest(item);
     const date = neighbour(current.date, steps.days);
-    if (date === null) return;
+    if (date === null) {
+      announce(steps.days < 0 ? WEEK_START_MESSAGE : WEEK_END_MESSAGE);
+      return;
+    }
     const deltaY = pixelsFromMinutes(steps.quarters * QUARTER);
     const { intent } = resolveDrop(
       { kind: 'block', item: current, task },
@@ -128,9 +143,11 @@ export function usePlannerKeyboard({
       context(),
     );
     if (intent.type === 'blocked') announce(NO_ROOM_MESSAGE);
+    if (intent.type === 'none')
+      announce(steps.quarters < 0 ? DAY_START_MESSAGE : DAY_END_MOVE_MESSAGE);
     if (intent.type !== 'move-block') return;
     announce(`Bloco movido para ${when(intent.date, intent.span)}.`);
-    keepFocus(`[data-block-id="${item.id}"]`);
+    if (intent.date !== current.date) keepFocus(`[data-block-id="${item.id}"]`);
     send(item, intent.date, intent.span, intent);
   }
 
@@ -144,7 +161,7 @@ export function usePlannerKeyboard({
       context(),
     );
     if (intent.type !== 'resize') {
-      announce(quarters > 0 ? NO_ROOM_MESSAGE : MINIMUM_DURATION_MESSAGE);
+      announce(resizeRefusal(quarters, itemSpan(current).end));
       return;
     }
     const span = { start: itemSpan(current).start, end: intent.end };
@@ -155,7 +172,10 @@ export function usePlannerKeyboard({
   function moveFicha({ item, task }: PlannedItem, days: number) {
     const current = latest(item);
     const date = neighbour(current.date, days);
-    if (date === null) return;
+    if (date === null) {
+      announce(days < 0 ? WEEK_START_MESSAGE : WEEK_END_MESSAGE);
+      return;
+    }
     const data: DragData = { kind: 'ficha', item: current, task };
     const { intent } = resolveDrop(data, { kind: 'strip', date }, 0, 0, context());
     if (intent.type === 'duplicate') {
@@ -191,7 +211,9 @@ export function usePlannerKeyboard({
     if (intent.type === 'entry-to-block') {
       keepFocus(`[data-day="${date}"] [data-block-task-id="${origin.task.id}"]`);
     }
-    void apply(intent);
+    void apply(intent).finally(() => {
+      keepFocus(null);
+    });
     return true;
   }
 

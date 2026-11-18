@@ -136,18 +136,20 @@
   opacity: 1;
 }
 
+/* On touch the menu is the one control: its 44px area would overlap the "×" one. */
 @media (pointer: coarse) {
-  .remove {
-    display: inline-flex;
+  .ficha {
+    padding-right: var(--space-8);
   }
 
-  .remove::after {
-    content: '';
-    position: absolute;
-    inset: -13px;
+  .remove,
+  .ficha:hover .remove,
+  .ficha:focus-within .remove {
+    display: none;
   }
 
   .menu {
+    right: 0;
     opacity: 1;
   }
 }

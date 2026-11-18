@@ -115,5 +115,77 @@ for (const { name, size, touch } of VIEWPORTS) {
 
       await expectNoSeriousViolations(page);
     });
+
+    test('an open task menu has no serious violations', async ({ page }) => {
+      const { initiativeId } = await seedBoard(page);
+      await page.goto(`/?iniciativa=${initiativeId}`);
+      await page
+        .getByRole('button', { name: 'Ações da tarefa Comprar tinta', exact: true })
+        .click();
+      await expect(
+        page.getByRole('menu', { name: 'Ações da tarefa Comprar tinta', exact: true }),
+      ).toBeVisible();
+
+      await expectNoSeriousViolations(page);
+    });
+
+    test('the reserve popover has no serious violations', async ({ page }) => {
+      const { taskIds } = await seedBoard(page);
+      await reserve(page.request, taskIds['Lixar parede'] ?? '', '2026-11-18');
+      await page.goto('/semana');
+      await page
+        .locator('[data-strip="2026-11-18"]')
+        .getByRole('button', { name: 'Ações da tarefa Lixar parede', exact: true })
+        .click();
+      await page.getByRole('menuitem', { name: 'Reservar tempo…', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Reservar tempo', exact: true })).toBeVisible();
+
+      await expectNoSeriousViolations(page);
+    });
   });
 }
+
+test.describe('on a phone, in the tabs that are not the default', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  test.beforeEach(async ({ page }) => {
+    await resetDatabase();
+    await page.clock.setFixedTime(new Date(NOW));
+  });
+
+  test('the "Em andamento" state tab has no serious violations', async ({ page }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await page.getByRole('tab', { name: /^Em andamento/ }).click();
+    await expect(page.getByRole('article', { name: 'Lixar parede', exact: true })).toBeVisible();
+
+    await expectNoSeriousViolations(page);
+  });
+
+  test('a day tab other than today has no serious violations', async ({ page }) => {
+    await seedBoard(page);
+    await page.goto('/semana');
+    await page.getByRole('tab', { name: /^19 Qui/ }).click();
+    await expect(page.getByRole('tab', { name: /^19 Qui/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    await expectNoSeriousViolations(page);
+  });
+});
+
+test.describe('on a tablet', () => {
+  test.use({ viewport: { width: 900, height: 1000 }, hasTouch: true });
+
+  test('the open drawer has no serious violations', async ({ page }) => {
+    await resetDatabase();
+    await page.clock.setFixedTime(new Date(NOW));
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await page.getByRole('button', { name: 'Iniciativas', exact: true }).click();
+    await expect(page.getByRole('navigation', { name: 'Iniciativas', exact: true })).toBeVisible();
+
+    await expectNoSeriousViolations(page);
+  });
+});

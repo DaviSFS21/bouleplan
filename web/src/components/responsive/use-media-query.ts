@@ -4,7 +4,8 @@ export const PHONE_QUERY = '(max-width: 767px)';
 export const BELOW_DESKTOP_QUERY = '(max-width: 1023px)';
 export const COARSE_POINTER_QUERY = '(pointer: coarse)';
 
-// Without matchMedia (server, old test environments) the page is the desktop one.
+// The server and the first hydration render are the desktop's; the data screens render after their
+// client fetch, so the phone structure rarely shows a desktop frame first.
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (notify) => {

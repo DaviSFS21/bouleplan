@@ -9,8 +9,6 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
-  type SensorDescriptor,
-  type SensorOptions,
 } from '@dnd-kit/core';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useManyPhases } from '@/api/phases';
@@ -41,8 +39,6 @@ import {
 } from './task-dnd';
 import { STATUSES, statusTitle, tasksIn, visibleTasks } from './task-filter';
 import styles from './task-board.module.css';
-
-const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 
 export interface TaskPanelControl {
   openId: string | null;
@@ -93,13 +89,16 @@ export function TaskBoard({
   const coarse = useIsCoarsePointer();
   const [shownStatus, setShownStatus] = useState<TaskStatus>('to_do');
   const tabsPrefix = useId();
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: columnKeyboardCoordinates,
-      keyboardCodes: KEYBOARD_CODES,
-    }),
-  );
+  const keyboard = useSensor(KeyboardSensor, {
+    coordinateGetter: columnKeyboardCoordinates,
+    keyboardCodes: KEYBOARD_CODES,
+  });
+  const pointer = useSensor(PointerSensor, {
+    activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE },
+  });
+  const fineSensors = useSensors(pointer, keyboard);
+  // A coarse pointer scrolls and taps; the keyboard (an iPad can have one) still moves cards.
+  const touchSensors = useSensors(keyboard);
 
   const showPath = initiative === null;
   const phaseOwners = useMemo(
@@ -274,7 +273,7 @@ export function TaskBoard({
         </p>
       ) : null}
       <DndContext
-        sensors={coarse ? NO_SENSORS : sensors}
+        sensors={coarse ? touchSensors : fineSensors}
         collisionDetection={columnCollision}
         accessibility={{ announcements, screenReaderInstructions }}
         onDragStart={handleDragStart}

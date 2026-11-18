@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Icon } from '@/components/icon/icon';
+import { useModalTarget } from '@/components/modal-host/modal-host';
 import { useIsPhone } from '@/components/responsive/use-media-query';
 import { placeMenu } from './place-menu';
 import styles from './action-menu.module.css';
@@ -52,6 +53,14 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
   const menu = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const sheet = useIsPhone();
+  const modalTarget = useModalTarget();
+  const [sheetSeen, setSheetSeen] = useState(sheet);
+
+  // A menu opened in one mode cannot carry on in the other: it closes when the screen turns.
+  if (sheetSeen !== sheet) {
+    setSheetSeen(sheet);
+    setOpen(false);
+  }
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   function menuItems() {
@@ -132,6 +141,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       case 'Tab':
         if (sheet) {
           event.preventDefault();
+          event.stopPropagation();
           move((index, count) => (index + (event.shiftKey ? -1 : 1) + count) % count);
         } else {
           trigger.current?.focus();
@@ -171,7 +181,15 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       {open
         ? createPortal(
             <>
-              {sheet ? <div className={styles.veil} aria-hidden="true" onClick={dismiss} /> : null}
+              {sheet ? (
+                <button
+                  type="button"
+                  className={styles.veil}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  onClick={dismiss}
+                />
+              ) : null}
               <div
                 ref={menu}
                 id={menuId}
@@ -251,7 +269,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
                 )}
               </div>
             </>,
-            document.body,
+            modalTarget ?? document.body,
           )
         : null}
     </div>

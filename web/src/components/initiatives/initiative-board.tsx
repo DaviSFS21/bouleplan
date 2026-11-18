@@ -19,6 +19,8 @@ interface InitiativeBoardProps {
   // Below the desktop width the index is a drawer, opened from here.
   drawerButton?: { open: boolean; onOpen: () => void };
   drawerOpenerRef?: RefObject<HTMLButtonElement | null>;
+  // With no initiative at all, a narrow screen offers to create the first one from here.
+  onCreateInitiative?: () => void;
   now?: Date;
 }
 
@@ -35,6 +37,7 @@ export function InitiativeBoard({
   taskPanel,
   drawerButton,
   drawerOpenerRef,
+  onCreateInitiative,
   now,
 }: Readonly<InitiativeBoardProps>) {
   let title: ReactNode = 'Todas as tarefas';
@@ -69,6 +72,14 @@ export function InitiativeBoard({
             <Icon icon={Menu} size={18} aria-hidden="true" />
             Iniciativas
           </button>
+        ) : null}
+        {drawerButton && onCreateInitiative && initiatives.length === 0 ? (
+          <div className={styles.firstUse}>
+            <p className={styles.firstUseNote}>Nenhuma iniciativa ainda.</p>
+            <button type="button" className={styles.drawerButton} onClick={onCreateInitiative}>
+              + Nova iniciativa
+            </button>
+          </div>
         ) : null}
         {initiative ? (
           <p className={styles.overline}>

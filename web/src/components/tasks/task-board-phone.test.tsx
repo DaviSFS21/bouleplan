@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InitiativesScreen } from '@/components/initiatives/initiatives-screen';
@@ -102,12 +102,35 @@ describe('moving a card on a touch screen', () => {
     expect(screen.getByRole('button', { name: 'Ações da tarefa Comprar tinta' })).toBeVisible();
   });
 
-  it('has no drag sensors, not even the keyboard one', async () => {
+  it('has no pointer drag, but the keyboard still picks a card up', async () => {
     const { user } = await renderPhoneBoard();
-    screen.getByRole('article', { name: 'Comprar tinta' }).focus();
+    const source = screen.getByRole('article', { name: 'Comprar tinta' });
 
+    act(() => {
+      fireEvent.pointerDown(source, {
+        button: 0,
+        isPrimary: true,
+        pointerId: 1,
+        clientX: 5,
+        clientY: 5,
+      });
+    });
+    for (const offset of [3, 2, 1, 0]) {
+      act(() => {
+        fireEvent.pointerMove(document, {
+          button: 0,
+          isPrimary: true,
+          pointerId: 1,
+          clientX: 60,
+          clientY: 60 - offset,
+        });
+      });
+    }
+    // A drag shows a second copy of the card in the overlay.
+    expect(screen.getAllByText('Comprar tinta')).toHaveLength(1);
+
+    source.focus();
     await user.keyboard(' ');
-
-    expect(screen.queryByText(/está sobre a coluna/)).not.toBeInTheDocument();
+    expect(await screen.findByText(/Comprar tinta está sobre a coluna/)).toBeInTheDocument();
   });
 });

@@ -41,23 +41,24 @@
   outline-offset: 2px;
 }
 
+/* Before hydration the server renders the header; on a phone the bar replaces it. */
 @media (max-width: 767px) {
   .header {
-    height: 0;
-    padding: 0;
-    box-shadow: none;
+    display: none;
   }
+}
 
-  .nav {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 30;
-    background: var(--papel-flutuante);
-    box-shadow: 0 -1px 0 var(--borda);
-  }
+.bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  background: var(--papel-flutuante);
+  box-shadow: 0 -1px 0 var(--borda);
+}
 
+@media (max-width: 767px) {
   .links {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

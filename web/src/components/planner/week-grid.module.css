@@ -116,6 +116,8 @@
     grid-template-columns: 28px repeat(7, 160px);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
+    /* The sticky gutter sits at the padding edge: a snapped day stops after its width and the gap. */
+    scroll-padding-left: calc(var(--space-4) + 28px + 6px);
   }
 
   .day {

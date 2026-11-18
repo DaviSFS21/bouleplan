@@ -118,7 +118,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   const [reserving, setReserving] = useState<ReserveOrigin | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
-  const keptFocus = useRef<string | null>(null);
+  const keptFocus = useRef<{ selector: string; settled: boolean } | null>(null);
   const belowDesktop = useIsBelowDesktop();
   // Touch is for reading the week: moves go through the menus, and the tray is not shown.
   const coarse = useIsCoarsePointer();
@@ -284,14 +284,25 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
 
   // A moved item is drawn again in its new place, so focus is lost until it is there.
   useEffect(() => {
-    const selector = keptFocus.current;
-    if (selector === null) return;
+    const kept = keptFocus.current;
+    if (kept === null) return;
     const lost = !document.activeElement || document.activeElement === document.body;
-    const target = lost ? document.querySelector<HTMLElement>(selector) : null;
-    if (!target) return;
-    keptFocus.current = null;
-    target.focus();
+    const target = lost ? document.querySelector<HTMLElement>(kept.selector) : null;
+    // Once the request is over, the next draw is the last one that can need it.
+    if (target || kept.settled) keptFocus.current = null;
+    target?.focus();
   }, [days]);
+
+  // A press elsewhere says where focus should be.
+  useEffect(() => {
+    function forget() {
+      keptFocus.current = null;
+    }
+    document.addEventListener('pointerdown', forget, true);
+    return () => {
+      document.removeEventListener('pointerdown', forget, true);
+    };
+  }, []);
 
   function requestFocus(finder: () => HTMLElement | null) {
     pendingFocus.current = finder;
@@ -356,7 +367,11 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     context: dropContext,
     apply,
     keepFocus: (selector) => {
-      keptFocus.current = selector;
+      if (selector === null) {
+        if (keptFocus.current) keptFocus.current.settled = true;
+      } else {
+        keptFocus.current = { selector, settled: false };
+      }
     },
   });
   const keyboardMoves: KeyboardMoves = { ...keyboard.moves, startReserve: setReserving };

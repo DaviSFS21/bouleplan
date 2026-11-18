@@ -1,4 +1,6 @@
 .veil {
+  padding: 0;
+  border: 0;
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -13,6 +15,7 @@
   z-index: 60;
   box-sizing: border-box;
   width: min(320px, 85vw);
+  padding-bottom: env(safe-area-inset-bottom);
   overflow-y: auto;
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   background: var(--papel-flutuante);

@@ -2,8 +2,10 @@
 
 import { ChevronLeft, X } from 'lucide-react';
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useState,
   useRef,
   type KeyboardEvent,
   type ReactNode,
@@ -11,6 +13,7 @@ import {
 } from 'react';
 import { trapTab } from '@/components/focus-trap/trap-tab';
 import { Icon } from '@/components/icon/icon';
+import { useRegisterModal } from '@/components/modal-host/modal-host';
 import { useIsPhone } from '@/components/responsive/use-media-query';
 import styles from './side-panel.module.css';
 
@@ -46,6 +49,19 @@ export function SidePanel({
 }: Readonly<SidePanelProps>) {
   const panel = useRef<HTMLElement>(null);
   const phone = useIsPhone();
+  const [node, setNode] = useState<HTMLElement | null>(null);
+  const attach = useCallback((element: HTMLElement | null) => {
+    panel.current = element;
+    setNode(element);
+  }, []);
+  useRegisterModal(phone ? node : null);
+  const wasPhone = useRef(phone);
+
+  // The header swaps its buttons across the breakpoint, which would leave focus on nothing.
+  useEffect(() => {
+    if (wasPhone.current !== phone) panel.current?.focus();
+    wasPhone.current = phone;
+  }, [phone]);
 
   const fallback = useRef(fallbackFocus);
   const prefer = useRef(preferFallback);
@@ -93,7 +109,7 @@ export function SidePanel({
 
   return (
     <aside
-      ref={panel}
+      ref={attach}
       role={phone ? 'dialog' : undefined}
       aria-modal={phone ? true : undefined}
       aria-label={label}

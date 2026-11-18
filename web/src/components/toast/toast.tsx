@@ -10,6 +10,8 @@ import {
   type FocusEvent,
   type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalTarget } from '@/components/modal-host/modal-host';
 import styles from './toast.module.css';
 
 export const TOAST_DURATION_MS = 6000;
@@ -128,6 +130,8 @@ const ToastContext = createContext<ToastApi | null>(null);
 export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [current, setCurrent] = useState<(ToastOptions & { id: number }) | null>(null);
   const nextId = useRef(0);
+  // Outside an aria-modal dialog "Desfazer" would be out of reach, so the region moves inside it.
+  const host = useModalTarget();
 
   const api = useMemo<ToastApi>(
     () => ({
@@ -139,21 +143,30 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
     [],
   );
 
+  const region = (
+    <div
+      role="status"
+      aria-label="Avisos"
+      className={styles.region}
+      data-hosted={host ? '' : undefined}
+    >
+      {current ? (
+        <UndoToast
+          key={current.id}
+          message={current.message}
+          onUndo={current.onUndo}
+          onDismiss={() => {
+            setCurrent(null);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+
   return (
     <ToastContext value={api}>
       {children}
-      <div role="status" aria-label="Avisos" className={styles.region}>
-        {current ? (
-          <UndoToast
-            key={current.id}
-            message={current.message}
-            onUndo={current.onUndo}
-            onDismiss={() => {
-              setCurrent(null);
-            }}
-          />
-        ) : null}
-      </div>
+      {host ? createPortal(region, host) : region}
     </ToastContext>
   );
 }

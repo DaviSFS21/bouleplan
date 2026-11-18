@@ -76,7 +76,7 @@ test.describe('on a phone', () => {
     await expect(tabs.getByRole('tab', { name: 'Feito · 1', exact: true })).toBeFocused();
   });
 
-  test('opens a task full screen above the bar, and "Voltar" returns focus to its card', async ({
+  test('opens a task full screen over the bar, and "Voltar" returns focus to its card', async ({
     page,
   }) => {
     const { initiativeId } = await seedBoard(page);
@@ -88,11 +88,17 @@ test.describe('on a phone', () => {
     await expect(panel).toBeVisible();
     await expect(panel).toHaveAttribute('aria-modal', 'true');
     const area = await box(panel);
-    const bar = await box(page.getByRole('navigation', { name: 'Seções', exact: true }));
     expect(area.x).toBe(0);
     expect(area.width).toBe(390);
     expect(area.y).toBe(0);
-    expect(area.y + area.height).toBeLessThanOrEqual(bar.y + 1);
+    expect(area.y + area.height).toBe(844);
+    const bar = await box(page.getByRole('navigation', { name: 'Seções', exact: true }));
+    expect(
+      await page.evaluate(
+        ([x, y]) => document.elementFromPoint(x ?? 0, y ?? 0)?.closest('[role="dialog"]') !== null,
+        [bar.x + 20, bar.y + 20],
+      ),
+    ).toBe(true);
     await expect(panel.getByRole('button', { name: 'Fechar', exact: true })).toHaveCount(0);
 
     await panel.getByRole('button', { name: 'Voltar', exact: true }).tap();
@@ -222,14 +228,112 @@ test.describe('on a phone', () => {
     expect(area.y + area.height).toBeLessThanOrEqual(bar.y);
   });
 
+  test('keeps the sheet and the toast inside the open panel, where "Desfazer" can be tapped', async ({
+    page,
+  }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await card(page, 'Comprar tinta').tap();
+    const panel = page.getByRole('dialog', { name: 'Tarefa', exact: true });
+
+    await panel.getByRole('button', { name: 'Ações da tarefa', exact: true }).tap();
+    const sheet = panel.getByRole('menu', { name: 'Ações da tarefa', exact: true });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('menuitemradio', { name: 'Em andamento', exact: true }).tap();
+
+    const undo = panel.getByRole('button', { name: 'Desfazer', exact: true });
+    await expect(undo).toBeVisible();
+    const area = await box(undo);
+    expect(area.y + area.height).toBeLessThanOrEqual(844);
+    expect(
+      await undo.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return element.contains(
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+        );
+      }),
+    ).toBe(true);
+    await undo.tap();
+    await expect(page.getByText('Tarefa movida para Em andamento')).toHaveCount(0);
+  });
+
+  test('offers the first initiative from the board when there is none', async ({ page }) => {
+    await page.goto('/');
+
+    await expect(
+      page.getByText('Nenhuma iniciativa ainda.', { exact: true }).first(),
+    ).toBeVisible();
+    await page.getByRole('button', { name: '+ Nova iniciativa', exact: true }).tap();
+
+    const drawer = page.getByRole('dialog', { name: 'Gaveta de iniciativas', exact: true });
+    await expect(drawer.getByLabel('Nome da nova iniciativa', { exact: true })).toBeFocused();
+    await page.keyboard.type('Reforma');
+    await page.keyboard.press('Enter');
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Reforma', exact: true }),
+    ).toBeVisible();
+  });
+
+  test('every control of the open task panel is 44px and clear of its neighbours', async ({
+    page,
+  }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await card(page, 'Comprar tinta').tap();
+    await expect(page.getByRole('dialog', { name: 'Tarefa', exact: true })).toBeVisible();
+
+    expect(await touchProblems(page, '[role="dialog"][aria-label="Tarefa"]')).toEqual([]);
+  });
+
+  test('every control of the open initiative panel is 44px and clear of its neighbours', async ({
+    page,
+  }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}&detalhes=1`);
+    await expect(page.getByRole('dialog', { name: 'Iniciativa', exact: true })).toBeVisible();
+
+    expect(await touchProblems(page, '[role="dialog"][aria-label="Iniciativa"]')).toEqual([]);
+  });
+
+  test('every control of an open sheet is 44px and clear of its neighbours', async ({ page }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await page.getByRole('button', { name: 'Ações da tarefa Comprar tinta', exact: true }).tap();
+    await expect(page.getByRole('menu')).toBeVisible();
+    await page.waitForTimeout(300);
+
+    expect(await touchProblems(page, '[role="menu"]')).toEqual([]);
+  });
+
+  test('the toast and its "Desfazer" are 44px', async ({ page }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    await page.getByRole('button', { name: 'Ações da tarefa Comprar tinta', exact: true }).tap();
+    await page.getByRole('menuitem', { name: 'Arquivar', exact: true }).tap();
+    await expect(page.getByRole('button', { name: 'Desfazer', exact: true })).toBeVisible();
+
+    expect(await touchProblems(page, '[role="status"][aria-label="Avisos"]')).toEqual([]);
+  });
+
+  test('every control of the reserve popover is 44px and clear of its neighbours', async ({
+    page,
+  }) => {
+    const { taskIds } = await seedBoard(page);
+    await reserve(page.request, taskIds['Comprar tinta'] ?? '', TODAY);
+    await page.goto('/semana');
+    await page.getByRole('button', { name: 'Ações da tarefa Comprar tinta', exact: true }).tap();
+    await page.getByRole('menuitem', { name: 'Reservar tempo…', exact: true }).tap();
+    await expect(page.getByRole('dialog', { name: 'Reservar tempo', exact: true })).toBeVisible();
+
+    expect(await touchProblems(page, '[role="dialog"][aria-label="Reservar tempo"]')).toEqual([]);
+  });
+
   test('every control on the board is at least 44px to touch', async ({ page }) => {
     const { initiativeId } = await seedBoard(page);
     await page.goto(`/?iniciativa=${initiativeId}`);
     await expect(card(page, 'Comprar tinta')).toBeVisible();
 
-    const small = await smallTargets(page);
-
-    expect(small).toEqual([]);
+    expect(await touchProblems(page)).toEqual([]);
   });
 
   test('every control on the week is at least 44px to touch', async ({ page }) => {
@@ -238,37 +342,54 @@ test.describe('on a phone', () => {
     await page.goto('/semana');
     await expect(page.locator(`[data-day="${TODAY}"]`)).toBeVisible();
 
-    const small = await smallTargets(page);
-
-    expect(small).toEqual([]);
+    expect(await touchProblems(page)).toEqual([]);
   });
 });
 
-// The hit area of a control is its box, or the box of its ::after, which the menu triggers grow.
-async function smallTargets(page: Page): Promise<string[]> {
-  return page.evaluate((minimum) => {
-    const controls = document.querySelectorAll<HTMLElement>(
-      'a[href], button, input:not([type="hidden"]), select, textarea, [role="tab"]',
-    );
-    const found: string[] = [];
-    for (const element of controls) {
-      const style = getComputedStyle(element);
-      if (style.visibility === 'hidden' || style.display === 'none') continue;
-      const rect = element.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) continue;
-      const after = getComputedStyle(element, '::after');
-      const grown = after.content !== 'none' && after.position === 'absolute';
-      const inset = grown ? Math.abs(parseFloat(after.top)) * 2 : 0;
-      const insetX = grown ? Math.abs(parseFloat(after.left)) * 2 : 0;
-      const label = element.getAttribute('aria-label') ?? element.textContent.trim();
-      if (rect.height + inset < minimum || rect.width + insetX < minimum) {
-        found.push(
-          `${element.tagName.toLowerCase()} "${label}" ${String(Math.round(rect.width + insetX))}x${String(Math.round(rect.height + inset))}`,
+// A control is 44px by its box or by the ::after that grows it, and five points of its box (the
+// quarters and the centre) must hit the control itself: a neighbour's area over it is an overlap.
+async function touchProblems(page: Page, scope = 'body'): Promise<string[]> {
+  return page.evaluate(
+    ([root, minimum]) => {
+      const controls = document
+        .querySelector(root)
+        ?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([aria-hidden="true"]), input:not([type="hidden"]), select, textarea, [role="tab"]',
         );
+      const found: string[] = [];
+      for (const element of controls ?? []) {
+        const style = getComputedStyle(element);
+        if (style.visibility === 'hidden' || style.display === 'none') continue;
+        element.scrollIntoView({ block: 'center' });
+        const rect = element.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) continue;
+        const after = getComputedStyle(element, '::after');
+        const grown = after.content !== 'none' && after.position === 'absolute';
+        const height = rect.height + (grown ? Math.abs(parseFloat(after.top)) * 2 : 0);
+        const width = rect.width + (grown ? Math.abs(parseFloat(after.left)) * 2 : 0);
+        const label = element.getAttribute('aria-label') ?? element.textContent.trim();
+        const name = `${element.tagName.toLowerCase()} "${label}"`;
+        if (height < minimum || width < minimum) {
+          found.push(`${name} ${String(Math.round(width))}x${String(Math.round(height))}`);
+        }
+        // Quarter points stay inside rounded corners.
+        const points = [
+          [rect.left + rect.width / 4, rect.top + rect.height / 4],
+          [rect.left + (rect.width * 3) / 4, rect.top + rect.height / 4],
+          [rect.left + rect.width / 4, rect.top + (rect.height * 3) / 4],
+          [rect.left + (rect.width * 3) / 4, rect.top + (rect.height * 3) / 4],
+          [rect.left + rect.width / 2, rect.top + rect.height / 2],
+        ];
+        const covered = points.some(([x, y]) => {
+          const hit = document.elementFromPoint(x ?? 0, y ?? 0);
+          return hit !== null && !element.contains(hit);
+        });
+        if (covered) found.push(`${name} is covered by another element`);
       }
-    }
-    return found;
-  }, TOUCH_TARGET);
+      return found;
+    },
+    [scope, TOUCH_TARGET] as const,
+  );
 }
 
 test.describe('with reduced motion', () => {
@@ -369,5 +490,32 @@ test.describe('on a tablet', () => {
     await expect(
       page.getByRole('complementary', { name: 'Para planejar', exact: true }),
     ).toBeHidden();
+  });
+
+  test('a snapped day stops beside the hours gutter, not under it', async ({ page }) => {
+    await seedBoard(page);
+    await page.goto('/semana');
+    const week = page.getByRole('group', { name: /^Semana \d+$/ });
+    await expect(page.locator(`[data-day="${TODAY}"]`)).toBeVisible();
+
+    // How far the first day that shows is from the gutter's right edge; it must not be negative.
+    async function gapAfterGutter() {
+      return week.evaluate((element) => {
+        const gutter = element.querySelector('[data-hour]')?.parentElement?.parentElement;
+        const edge = gutter?.getBoundingClientRect().right ?? 0;
+        const days = Array.from(element.querySelectorAll<HTMLElement>('[data-day]'));
+        const first = days
+          .map((day) => day.getBoundingClientRect())
+          .find((rect) => rect.right > edge);
+        return Math.round((first?.left ?? -1000) - edge);
+      });
+    }
+
+    await expect.poll(gapAfterGutter).toBeGreaterThanOrEqual(0);
+
+    await week.evaluate((element) => {
+      element.scrollTo({ left: 330, behavior: 'instant' });
+    });
+    await expect.poll(gapAfterGutter).toBeGreaterThanOrEqual(0);
   });
 });

@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionMenu } from '@/components/action-menu/action-menu';
+import { useToast } from '@/components/toast/toast';
+import { renderWithQuery } from '@/test/render';
 import { PHONE, setViewport } from '@/test/viewport';
 import { SidePanel } from './side-panel';
 
@@ -243,4 +245,92 @@ describe('SidePanel on a phone', () => {
 
     expect(screen.getByRole('button', { name: 'Voltar' })).toHaveFocus();
   });
+
+  it('refocuses the panel when the screen turns, since the header swaps its buttons', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    screen.getByRole('button', { name: 'Voltar' }).focus();
+
+    setViewport({ width: 1440, coarse: false });
+
+    expect(screen.getByRole('complementary', { name: 'Tarefa' })).toHaveFocus();
+  });
+
+  it('keeps the sheet menu inside the modal dialog', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Ações da tarefa' }));
+
+    expect(screen.getByRole('dialog', { name: 'Tarefa' })).toContainElement(
+      screen.getByRole('menu'),
+    );
+  });
+
+  it('keeps Tab inside the sheet, not handing it to the panel behind', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    await user.click(screen.getByRole('button', { name: 'Ações da tarefa' }));
+
+    await user.tab();
+
+    expect(screen.getByRole('menuitem', { name: 'Excluir' })).toHaveFocus();
+  });
+
+  it('shows the toasts inside the dialog, so "Desfazer" stays reachable', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    renderWithQuery(<ToastHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    await user.click(screen.getByRole('button', { name: 'Avisar' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Tarefa' });
+    expect(within(dialog).getByRole('status', { name: 'Avisos' })).toHaveTextContent('Feito');
+    expect(within(dialog).getByRole('button', { name: 'Desfazer' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Voltar' }));
+    expect(screen.getByRole('status', { name: 'Avisos' })).toHaveTextContent('Feito');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
+
+function ToastHarness() {
+  const [open, setOpen] = useState(false);
+  const toast = useToast();
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        Abrir painel
+      </button>
+      {open ? (
+        <SidePanel
+          label="Tarefa"
+          eyebrow="Tarefa"
+          onClose={() => {
+            setOpen(false);
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              toast.show({ message: 'Feito', onUndo: vi.fn() });
+            }}
+          >
+            Avisar
+          </button>
+        </SidePanel>
+      ) : null}
+    </>
+  );
+}

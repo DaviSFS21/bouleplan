@@ -467,4 +467,24 @@ describe('ActionMenu as a bottom sheet on a phone', () => {
 
     expect(screen.getByRole('menu')).toBeInTheDocument();
   });
+
+  it('closes when the screen turns across the phone breakpoint', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+
+    setViewport({ width: 1440, coarse: false });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('keeps the veil out of the tab order and out of the accessibility tree', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+
+    expect(findVeil()).toHaveAttribute('tabindex', '-1');
+    expect(findVeil()).toHaveAttribute('aria-hidden', 'true');
+  });
 });

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { navigateTo } from '@/test/next-navigation';
@@ -133,5 +133,19 @@ describe('the week on a touch screen', () => {
     renderWithQuery(<PlannerScreen now={NOW} />);
 
     expect(await screen.findByRole('button', { name: 'Mostrar na bandeja' })).toBeVisible();
+  });
+
+  it('takes a ficha off the list through its menu, since the "×" is not shown on touch', async () => {
+    const user = await renderWeek();
+    await user.click(dayTab(/quarta-feira/));
+
+    await user.click(
+      within(strip('2026-11-18')).getByRole('button', { name: 'Ações da tarefa Lixar parede' }),
+    );
+    await user.click(screen.getByRole('menuitem', { name: 'Tirar da lista' }));
+
+    await waitFor(() => {
+      expect(within(strip('2026-11-18')).queryByRole('article')).not.toBeInTheDocument();
+    });
   });
 });

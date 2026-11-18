@@ -9,6 +9,7 @@ import {
   block,
   entry,
   paint,
+  smash,
   plannerWorld,
   sand,
   strip,
@@ -122,11 +123,12 @@ describe('moving a block with the keyboard', () => {
     });
     focus(within(agenda('2026-11-16')).getByRole('group', { name: /^Comprar tinta, / }));
     await user.keyboard(ALT('ArrowLeft'));
+    expect(announced()).toHaveTextContent('Início da semana.');
     focus(within(agenda('2026-11-22')).getByRole('group', { name: /^Comprar tinta, / }));
     await user.keyboard(ALT('ArrowRight'));
 
     expect(backend.bodies).toEqual([]);
-    expect(announced().textContent).toBe('');
+    expect(announced()).toHaveTextContent('Fim da semana.');
   });
 
   it('refuses a move into taken time, says so, and sends nothing', async () => {
@@ -203,6 +205,49 @@ describe('moving a block with the keyboard', () => {
       expect(backend.bodies).toHaveLength(1);
     });
     expect(announced()).toHaveTextContent('Tempo reservado em');
+  });
+});
+
+describe('the edges of the day', () => {
+  it('says so at the start and the end of the day instead of staying silent', async () => {
+    const { backend, user } = await renderWeek({
+      items: [
+        block({ startTime: '00:00', endTime: '01:00' }),
+        block({ id: other.id, taskId: sand.id, startTime: '22:45', endTime: '23:45' }),
+      ],
+    });
+    focus(screen.getByRole('group', { name: /^Comprar tinta, / }));
+    await user.keyboard(ALT('ArrowUp'));
+    expect(announced()).toHaveTextContent('Início do dia.');
+
+    focus(screen.getByRole('group', { name: /^Lixar parede, / }));
+    await user.keyboard(ALT('ArrowDown'));
+    expect(announced()).toHaveTextContent('Fim do dia.');
+    await user.keyboard(ALT_SHIFT('ArrowDown'));
+    expect(announced()).toHaveTextContent('Fim do dia: não dá para estender.');
+    expect(backend.bodies).toEqual([]);
+  });
+});
+
+describe('focus after a keyboard move', () => {
+  it('is not stolen later by a block moved within its day', async () => {
+    const second = entry({ id: 'e0000000-0000-4000-8000-0000000000c2', taskId: smash.id });
+    const { user } = await renderWeek({ items: [block(), entry(), second] });
+    focus(dedicated());
+    await user.keyboard(ALT('ArrowDown'));
+    await screen.findByRole('group', { name: 'Comprar tinta, 9:15 – 11:15' });
+
+    await user.click(
+      within(strip('2026-11-18')).getByRole('button', {
+        name: 'Tirar Lixar parede da lista do dia',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(
+        within(strip('2026-11-18')).getByRole('article', { name: 'Quebrar piso' }),
+      ).toHaveFocus();
+    });
   });
 });
 
@@ -308,7 +353,7 @@ describe('moving a ficha with the keyboard', () => {
     await user.keyboard('x');
 
     expect(backend.bodies).toEqual([]);
-    expect(announced().textContent).toBe('');
+    expect(announced()).toHaveTextContent('Fim da semana.');
   });
 
   it('still opens the task with Enter', async () => {
@@ -341,7 +386,10 @@ describe('reserving time from a menu', () => {
     expect(within(day).getAllByRole('option')).toHaveLength(7);
     const start = within(dialog).getByLabelText('Início');
     expect(start).toHaveDisplayValue('9:00');
-    expect(within(start).getAllByRole('option')).toHaveLength(96);
+    // The 4 hours left to reserve must fit before 23:45.
+    expect(within(start).getAllByRole('option')).toHaveLength(80);
+    expect(within(start).queryByRole('option', { name: '20:00' })).not.toBeInTheDocument();
+    expect(within(start).getByRole('option', { name: '19:45' })).toBeInTheDocument();
   });
 
   it('reserves what is left on the chosen day and time, announces it, and undoes', async () => {
@@ -424,10 +472,22 @@ describe('reserving time from a menu', () => {
     await user.click(document.body);
     expect(screen.queryByRole('dialog', { name: 'Reservar tempo' })).not.toBeInTheDocument();
 
-    await openReserve(user);
-    await user.tab({ shift: true });
-    expect(screen.queryByRole('dialog', { name: 'Reservar tempo' })).not.toBeInTheDocument();
     expect(backend.bodies).toEqual([]);
+  });
+
+  it('keeps Tab inside the popover, wrapping from the last control to the first', async () => {
+    const { user } = await renderWeek();
+    const dialog = await openReserve(user);
+
+    await user.tab();
+    await user.tab();
+    await user.tab();
+    expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByLabelText('Dia')).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toHaveFocus();
+    expect(dialog.tagName).toBe('DIV');
   });
 
   it('disables the ficha item while the ficha has a temporary id', async () => {

@@ -119,12 +119,13 @@
 }
 
 @media (max-width: 767px) {
+  /* Above the bottom bar, as the design system asks. */
   .panel {
-    bottom: var(--bar-offset);
+    z-index: 40;
     left: 0;
     width: auto;
     gap: var(--space-4);
-    padding: var(--space-2) var(--space-4) var(--space-6);
+    padding: var(--space-2) var(--space-4) calc(var(--space-6) + env(safe-area-inset-bottom));
     border-radius: 0;
     box-shadow: none;
   }
@@ -139,5 +140,13 @@
     content: '';
     position: absolute;
     inset: -8px;
+  }
+}
+
+@media (pointer: coarse) {
+  .path a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }

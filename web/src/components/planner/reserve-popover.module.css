@@ -82,3 +82,17 @@
 .cancel:hover {
   background: var(--papel-elevado);
 }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+@media (pointer: coarse) {
+  .select,
+  .submit,
+  .cancel {
+    min-height: 44px;
+  }
+}
