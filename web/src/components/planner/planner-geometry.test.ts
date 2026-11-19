@@ -6,12 +6,12 @@ import {
   quarterAt,
   findOverlap,
   fitSpan,
+  focusOffset,
   layoutLanes,
   moveStart,
   overlaps,
   resizeEnd,
   timeFromPointer,
-  visibleHours,
 } from './planner-geometry';
 
 describe('overlaps', () => {
@@ -102,48 +102,6 @@ describe('resizeEnd', () => {
   });
 });
 
-describe('visibleHours', () => {
-  it('defaults to 8h-18h', () => {
-    expect(visibleHours([], null)).toEqual({ startHour: 8, endHour: 18 });
-  });
-
-  it('expands to whole hours around what is scheduled', () => {
-    expect(visibleHours([{ start: 7 * 60 + 30, end: 9 * 60 }], null)).toEqual({
-      startHour: 7,
-      endHour: 18,
-    });
-    expect(visibleHours([{ start: 17 * 60, end: 19 * 60 + 15 }], null)).toEqual({
-      startHour: 8,
-      endHour: 20,
-    });
-    expect(
-      visibleHours(
-        [
-          { start: 0, end: 15 },
-          { start: 1380, end: 1425 },
-        ],
-        null,
-      ),
-    ).toEqual({
-      startHour: 0,
-      endHour: 24,
-    });
-  });
-
-  it('keeps the default when everything fits', () => {
-    expect(visibleHours([{ start: 9 * 60, end: 10 * 60 }], 12 * 60)).toEqual({
-      startHour: 8,
-      endHour: 18,
-    });
-  });
-
-  it('includes the now line', () => {
-    expect(visibleHours([], 6 * 60 + 5)).toEqual({ startHour: 6, endHour: 18 });
-    expect(visibleHours([], 20 * 60 + 5)).toEqual({ startHour: 8, endHour: 21 });
-    expect(visibleHours([], 18 * 60)).toEqual({ startHour: 8, endHour: 18 });
-  });
-});
-
 describe('blockStyle', () => {
   it('positions by the time at 48px per hour, leaving a gap between blocks', () => {
     expect(blockStyle({ start: 9 * 60, end: 9 * 60 + 30 }, 8)).toEqual({ top: 48, height: 20 });
@@ -212,5 +170,19 @@ describe('layoutLanes', () => {
 
   it('handles no blocks', () => {
     expect(layoutLanes([]).size).toBe(0);
+  });
+});
+
+describe('focusOffset', () => {
+  it('starts at 8h', () => {
+    expect(focusOffset(null, 600)).toBe(384);
+    expect(focusOffset(12 * 60, 600)).toBe(384);
+    expect(focusOffset(20 * 60 + 59, 600)).toBe(384);
+  });
+
+  it('centres a now line outside the focal hours', () => {
+    expect(focusOffset(21 * 60, 600)).toBe(708);
+    expect(focusOffset(7 * 60, 600)).toBe(36);
+    expect(focusOffset(60, 600)).toBe(0);
   });
 });

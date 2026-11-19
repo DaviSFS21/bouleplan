@@ -430,11 +430,11 @@ describe('the deadline', () => {
     expect(button.className).toContain('overdue');
   });
 
-  it('says "sem prazo" and saves a date picked on Enter', async () => {
+  it('says "sem prazo" and saves a day picked in the calendar', async () => {
     const { backend, user } = await openTask(sand);
 
     await user.click(inPanel().getByRole('button', { name: 'Prazo: sem prazo' }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-11-20{Enter}');
+    await user.click(screen.getByRole('button', { name: /sexta-feira, 20 de novembro/ }));
 
     await waitFor(() => {
       expect(patches(backend)).toEqual([{ deadline: '2026-11-20' }]);
@@ -447,9 +447,10 @@ describe('the deadline', () => {
     const { backend, user } = await openTask(paint);
 
     await user.click(inPanel().getByRole('button', { name: /^Prazo:/ }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-12-24{Escape}');
+    await user.keyboard('{ArrowRight}{Escape}');
 
     expect(panel()).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: 'Escolher prazo' })).not.toBeInTheDocument();
     expect(patches(backend)).toEqual([]);
     expect(inPanel().getByRole('button', { name: 'Prazo: venceu sex, 6 nov' })).toBeVisible();
   });
@@ -470,7 +471,7 @@ describe('the deadline', () => {
     failPatches('task.deadline.invalid');
 
     await user.click(inPanel().getByRole('button', { name: 'Prazo: sem prazo' }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-11-20{Enter}');
+    await user.click(screen.getByRole('button', { name: /sexta-feira, 20 de novembro/ }));
 
     expect(await inPanel().findByText('Use uma data válida.')).toBeVisible();
     expect(inPanel().getByRole('button', { name: 'Prazo: sem prazo' })).toBeVisible();
@@ -912,7 +913,7 @@ describe('the description', () => {
 describe('the footer', () => {
   it('shows the creation date and a relative time of the last change', async () => {
     const recent = world.tasks.map((item) =>
-      item.id === sand.id ? { ...item, updatedAt: '2026-11-18T10:00:00-03:00' } : item,
+      item.id === sand.id ? { ...item, updatedAt: new Date(2026, 10, 18, 10).toISOString() } : item,
     );
     await openTask(sand, { tasks: recent });
 
@@ -934,7 +935,7 @@ describe('the footer', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     vi.setSystemTime(new Date(2026, 10, 18, 12, 0, 30));
     const recent = world.tasks.map((item) =>
-      item.id === sand.id ? { ...item, updatedAt: '2026-11-18T12:00:00-03:00' } : item,
+      item.id === sand.id ? { ...item, updatedAt: new Date(2026, 10, 18, 12).toISOString() } : item,
     );
     await openTask(sand, { tasks: recent });
     expect(inPanel().getByText(/alterada agora/)).toBeVisible();

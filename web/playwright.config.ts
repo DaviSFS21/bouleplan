@@ -14,6 +14,8 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Motion skips its transform animations; the specs need no waits for them.
+    reducedMotion: 'reduce',
   },
   projects: [
     {

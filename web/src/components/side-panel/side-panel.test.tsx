@@ -1,11 +1,13 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionGlobalConfig } from 'motion/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { ActionMenu } from '@/components/action-menu/action-menu';
+import { Presence } from '@/components/motion/presence';
 import { useToast } from '@/components/toast/toast';
 import { renderWithQuery } from '@/test/render';
-import { PHONE, setViewport } from '@/test/viewport';
+import { PHONE, findVeil, setViewport } from '@/test/viewport';
 import { SidePanel } from './side-panel';
 
 function Harness({ withOpenerRef = false }: Readonly<{ withOpenerRef?: boolean }>) {
@@ -140,6 +142,56 @@ describe('SidePanel', () => {
   });
 });
 
+describe('SidePanel exit animation', () => {
+  function PresenceHarness() {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Abrir painel
+        </button>
+        <Presence>
+          {open ? (
+            <SidePanel
+              label="Detalhes"
+              eyebrow="Iniciativa"
+              onClose={() => {
+                setOpen(false);
+              }}
+            >
+              <p>Conteúdo</p>
+            </SidePanel>
+          ) : null}
+        </Presence>
+      </>
+    );
+  }
+
+  it('hands focus back at once and leaves the leaving panel inert', async () => {
+    MotionGlobalConfig.skipAnimations = false;
+    try {
+      const user = userEvent.setup();
+      render(<PresenceHarness />);
+      await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+      await user.click(screen.getByRole('button', { name: 'Fechar' }));
+
+      expect(screen.getByRole('button', { name: 'Abrir painel' })).toHaveFocus();
+      expect(document.querySelector('aside')).toHaveAttribute('inert');
+      await waitFor(() => {
+        expect(document.querySelector('aside')).toBeNull();
+      });
+    } finally {
+      MotionGlobalConfig.skipAnimations = true;
+    }
+  });
+});
+
 describe('SidePanel eyebrow style', () => {
   it('shows the path style as plain text and keeps links inside it', () => {
     render(
@@ -194,7 +246,7 @@ describe('SidePanel on a phone', () => {
     );
   }
 
-  it('is a full-screen modal dialog with "Voltar" instead of "×"', async () => {
+  it('is a modal bottom sheet with "Voltar" instead of "×"', async () => {
     setViewport(PHONE);
     const user = userEvent.setup();
     render(<PhoneHarness />);
@@ -207,6 +259,33 @@ describe('SidePanel on a phone', () => {
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Fechar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  });
+
+  it('closes when the veil is tapped, and keeps the opener focus', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+
+    await user.click(findVeil());
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir painel' })).toHaveFocus();
+  });
+
+  it('closes when the handle is dragged down', async () => {
+    setViewport(PHONE);
+    const user = userEvent.setup();
+    render(<PhoneHarness />);
+    await user.click(screen.getByRole('button', { name: 'Abrir painel' }));
+    const handle = document.querySelector('[data-sheet-handle]');
+    if (!handle) throw new Error('No handle');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 320 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 320 });
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('puts the path below the header', async () => {

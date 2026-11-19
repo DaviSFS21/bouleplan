@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Initiative } from '@/api/types';
+import { formatDeadline, localToday } from '@/components/deadline-field/deadline-field';
 import { initiative, epic, problemResponse, task } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
@@ -374,17 +375,18 @@ describe('editing in the panel', () => {
     );
   });
 
-  it('sets the overall deadline on Enter and shows it', async () => {
+  it('sets the overall deadline from the calendar and shows it', async () => {
     const user = userEvent.setup();
     const { backend, panel } = await renderOpen();
 
     await user.click(within(panel).getByRole('button', { name: 'Prazo geral: sem prazo' }));
-    await user.type(screen.getByLabelText('Prazo geral'), '2099-12-18{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Hoje' }));
 
+    const today = localToday();
     expect(
-      await within(panel).findByRole('button', { name: 'Prazo geral: sex, 18 dez 2099' }),
+      await within(panel).findByRole('button', { name: `Prazo geral: ${formatDeadline(today)}` }),
     ).toBeInTheDocument();
-    expect(backend.patches).toEqual([{ overallDeadline: '2099-12-18' }]);
+    expect(backend.patches).toEqual([{ overallDeadline: today }]);
   });
 
   it('removes the deadline with "Remover prazo"', async () => {
@@ -405,7 +407,7 @@ describe('editing in the panel', () => {
     server.use(http.patch('*/api/initiatives/:id', () => problemResponse('internal', 500)));
 
     await user.click(within(panel).getByRole('button', { name: 'Prazo geral: sem prazo' }));
-    await user.type(screen.getByLabelText('Prazo geral'), '2099-12-18{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Hoje' }));
 
     expect(await within(panel).findByRole('alert')).toHaveTextContent(
       'Não foi possível salvar. Tente de novo.',

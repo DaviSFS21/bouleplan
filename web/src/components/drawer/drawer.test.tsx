@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionGlobalConfig } from 'motion/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
+import { Presence } from '@/components/motion/presence';
 import { useToast } from '@/components/toast/toast';
 import { renderWithQuery } from '@/test/render';
 import { findVeil } from '@/test/viewport';
@@ -156,5 +158,57 @@ describe('Drawer', () => {
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('Drawer exit animation', () => {
+  function PresenceHarness() {
+    const [open, setOpen] = useState(false);
+    const opener = useRef<HTMLButtonElement>(null);
+    return (
+      <>
+        <button
+          ref={opener}
+          type="button"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Iniciativas
+        </button>
+        <Presence>
+          {open ? (
+            <Drawer
+              label="Gaveta"
+              opener={opener}
+              onClose={() => {
+                setOpen(false);
+              }}
+            >
+              <p>Conteúdo</p>
+            </Drawer>
+          ) : null}
+        </Presence>
+      </>
+    );
+  }
+
+  it('hands focus back at once and leaves the leaving drawer inert', async () => {
+    MotionGlobalConfig.skipAnimations = false;
+    try {
+      const user = userEvent.setup();
+      render(<PresenceHarness />);
+      await user.click(screen.getByRole('button', { name: 'Iniciativas' }));
+
+      await user.click(findVeil());
+
+      expect(screen.getByRole('button', { name: 'Iniciativas' })).toHaveFocus();
+      expect(document.querySelector('[role="dialog"]')).toHaveAttribute('inert');
+      await waitFor(() => {
+        expect(document.querySelector('[role="dialog"]')).toBeNull();
+      });
+    } finally {
+      MotionGlobalConfig.skipAnimations = true;
+    }
   });
 });

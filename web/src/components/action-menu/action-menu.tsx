@@ -1,8 +1,10 @@
 'use client';
 
 import { Check, Ellipsis } from 'lucide-react';
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import {
+  Fragment,
   useEffect,
   useId,
   useLayoutEffect,
@@ -13,7 +15,11 @@ import {
 } from 'react';
 import { Icon } from '@/components/icon/icon';
 import { useModalTarget } from '@/components/modal-host/modal-host';
+import { Presence } from '@/components/motion/presence';
+import { FADE, POP, SLIDE_UP, preset } from '@/components/motion/tokens';
 import { useIsPhone } from '@/components/responsive/use-media-query';
+import { SheetHandle } from '@/components/sheet/sheet-frame';
+import { useSheetDrag } from '@/components/sheet/use-sheet-drag';
 import { placeMenu } from './place-menu';
 import styles from './action-menu.module.css';
 
@@ -156,6 +162,8 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
     trigger.current?.focus();
   }
 
+  const drag = useSheetDrag(menu, dismiss);
+
   function select(item: { onSelect: () => void }) {
     setOpen(false);
     trigger.current?.focus();
@@ -178,26 +186,30 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       >
         {custom?.children ?? <Icon icon={Ellipsis} />}
       </button>
-      {open
-        ? createPortal(
-            <>
+      {createPortal(
+        <Presence>
+          {open ? (
+            <Fragment key="menu">
               {sheet ? (
-                <button
+                <motion.button
                   type="button"
                   className={styles.veil}
                   aria-hidden="true"
                   tabIndex={-1}
                   onClick={dismiss}
+                  {...preset(FADE)}
                 />
               ) : null}
-              <div
+              <motion.div
                 ref={menu}
                 id={menuId}
                 role="menu"
                 aria-label={label}
                 className={[styles.menu, sheet ? styles.sheet : ''].join(' ').trim()}
-                style={sheet ? undefined : position}
+                style={sheet ? { y: drag.y } : { ...position, transformOrigin: 'top left' }}
+                {...preset(sheet ? SLIDE_UP : POP)}
               >
+                {sheet ? <SheetHandle handlers={drag.handlers} /> : null}
                 {items.map((entry, index) =>
                   'separator' in entry ? (
                     <div
@@ -267,11 +279,12 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
                     </button>
                   ),
                 )}
-              </div>
-            </>,
-            modalTarget ?? document.body,
-          )
-        : null}
+              </motion.div>
+            </Fragment>
+          ) : null}
+        </Presence>,
+        modalTarget ?? document.body,
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PHONE, findVeil, setViewport } from '@/test/viewport';
@@ -427,6 +427,21 @@ describe('ActionMenu as a bottom sheet on a phone', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
     expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it('closes when its handle is dragged down', async () => {
+    setViewport(PHONE);
+    const { user, trigger } = setup();
+    await user.click(trigger);
+    const handle = document.querySelector('[data-sheet-handle]');
+    if (!handle) throw new Error('No handle');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 300 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 300 });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it('traps Tab inside the sheet, in both directions', async () => {

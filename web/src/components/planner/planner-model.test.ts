@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { calendarEvent, scheduledItem, task } from '@/test/fixtures';
-import { blockSpans, buildDays, deadlineText, itemSpan, weekSpans } from './planner-model';
+import { blockSpans, buildDays, deadlineText, itemSpan } from './planner-model';
 
 const MON = '2026-11-16';
 const TUE = '2026-11-17';
@@ -147,15 +147,5 @@ describe('spans', () => {
     const [monday] = build({ items: [block] });
 
     expect(monday && blockSpans(monday)).toEqual([{ id: 'b1', start: 540, end: 600 }]);
-  });
-
-  it('lists every block and event of the week', () => {
-    const block = scheduledItem({ taskId: 'p', date: MON, startTime: '07:00', endTime: '08:00' });
-    const event = calendarEvent({ date: TUE, startTime: '19:00', endTime: '20:00' });
-
-    expect(weekSpans(build({ items: [block], events: [event] }))).toEqual([
-      { start: 420, end: 480 },
-      { start: 1140, end: 1200 },
-    ]);
   });
 });

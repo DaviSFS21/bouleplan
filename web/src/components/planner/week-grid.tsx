@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { CalendarEvent } from '@/api/types';
 import { useIsPhone } from '@/components/responsive/use-media-query';
 import { TabStrip, tabPanelProps } from '@/components/tab-strip/tab-strip';
@@ -8,7 +8,7 @@ import { DayColumn, type Draft } from './day-column';
 import { DayStrip } from './day-strip';
 import { dayLabel, dayNumber, WEEKDAYS } from './planner-dates';
 import type { DragData, Preview } from './planner-drop';
-import { pixelsFromMinutes } from './planner-geometry';
+import { focusOffset, pixelsFromMinutes } from './planner-geometry';
 import type { BlockModel, DayModel, EntryModel } from './planner-model';
 import styles from './week-grid.module.css';
 
@@ -26,7 +26,7 @@ interface WeekGridProps {
   overStrip: string | null;
   onOpenTask: (taskId: string, viaKeyboard?: boolean) => void;
   onRemoveEntry: (entry: EntryModel) => void;
-  onRemoveBlock: (block: BlockModel) => void;
+  onEditBlock: (block: BlockModel) => void;
   onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
   onCommitDraft: (title: string) => void;
@@ -46,7 +46,7 @@ export function WeekGrid({
   overStrip,
   onOpenTask,
   onRemoveEntry,
-  onRemoveBlock,
+  onEditBlock,
   onOpenEvent,
   onDraw,
   onCommitDraft,
@@ -55,11 +55,32 @@ export function WeekGrid({
   const phone = useIsPhone();
   const prefix = useId();
   const [picked, setPicked] = useState<string | null>(null);
+  const week = useRef<HTMLDivElement>(null);
+  const clock = useRef(nowMinutes);
+  const weekStart = days[0]?.date;
   // The phone shows one day: the picked one, else today, else the first.
   const shown =
     days.find(({ date }) => date === picked)?.date ??
     (days.some(({ date }) => date === today) ? today : (days[0]?.date ?? ''));
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, index) => startHour + index);
+
+  useEffect(() => {
+    clock.current = nowMinutes;
+  }, [nowMinutes]);
+
+  // Each week opens on its focal hours, or on the now line when that lies outside them.
+  useEffect(() => {
+    const scroller = week.current;
+    const agenda = scroller?.querySelector<HTMLElement>('[data-day]');
+    if (!scroller || !agenda) return;
+    const head = scroller.querySelector<HTMLElement>('[data-week-head]');
+    const top =
+      agenda.getBoundingClientRect().top -
+      scroller.getBoundingClientRect().top +
+      scroller.scrollTop;
+    scroller.scrollTop =
+      top - (head?.offsetHeight ?? 0) + focusOffset(clock.current, scroller.clientHeight);
+  }, [weekStart]);
   const carries = dragging?.kind === 'tray' || dragging?.kind === 'ficha';
   return (
     <div className={styles.scroller}>
@@ -88,7 +109,7 @@ export function WeekGrid({
           tabClassName={styles.dayTab}
         />
       ) : null}
-      <div role="group" aria-label={label} className={styles.week}>
+      <div ref={week} data-week-scroller="" role="group" aria-label={label} className={styles.week}>
         <div className={styles.hours} aria-hidden="true">
           <div className={styles.labels}>
             {hours.map((hour) => (
@@ -114,7 +135,11 @@ export function WeekGrid({
                 {...(phone ? tabPanelProps(prefix, shown) : {})}
                 className={styles.day}
               >
-                <div className={styles.head} aria-current={isToday ? 'date' : undefined}>
+                <div
+                  className={styles.head}
+                  data-week-head
+                  aria-current={isToday ? 'date' : undefined}
+                >
                   <span className={[styles.number, isToday ? styles.today : ''].join(' ').trim()}>
                     {dayNumber(day.date)}
                   </span>
@@ -136,7 +161,7 @@ export function WeekGrid({
                   preview={preview}
                   draft={draft}
                   onOpenTask={onOpenTask}
-                  onRemoveBlock={onRemoveBlock}
+                  onEditBlock={onEditBlock}
                   onOpenEvent={onOpenEvent}
                   onDraw={onDraw}
                   onCommitDraft={onCommitDraft}

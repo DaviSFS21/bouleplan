@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { pickDate } from './pick-date';
 import { resetDatabase } from './reset-database';
 
 const HOUR_PX = 48;
 
-// A fixed Wednesday morning in a fixed zone: the agenda shows 8h to 18h and every target is derived from it.
+// A fixed Wednesday morning in a fixed zone: the agenda draws the whole day and every target is derived from it.
 const NOW = '2026-11-18T10:30:00-03:00';
 const TODAY = '2026-11-18';
-const FIRST_HOUR = 8;
 
 test.use({ timezoneId: 'America/Sao_Paulo', viewport: { width: 1280, height: 900 } });
 
@@ -69,11 +69,7 @@ async function seed(page: Page, tasks: Seed[]) {
       await expect(box).toHaveValue(`${effort}h`);
     }
     if (deadline) {
-      await panel(page)
-        .getByRole('button', { name: /^Prazo:/ })
-        .click();
-      await panel(page).getByLabel('Prazo', { exact: true }).fill(deadline);
-      await panel(page).getByLabel('Prazo', { exact: true }).press('Enter');
+      await pickDate(page, panel(page).getByRole('button', { name: /^Prazo:/ }), deadline);
       await expect(panel(page).getByRole('button', { name: /^Prazo: vence/ })).toBeVisible();
     }
     await panel(page).getByRole('button', { name: 'Fechar', exact: true }).click();
@@ -98,12 +94,46 @@ async function dragTo(page: Page, source: Locator, x: number, y: number) {
   await page.mouse.up();
 }
 
-// A point in today's column, at the given hour of the day.
+function weekScroller(page: Page): Locator {
+  return page.getByRole('group', { name: /^Semana \d+$/ });
+}
+
+async function scrollWeekTo(page: Page, top: number) {
+  await weekScroller(page).evaluate((element, value) => {
+    element.scrollTop = value;
+  }, top);
+}
+
+// A point in today's column, at the given hour of the day, scrolled into the week's view.
 async function atHour(page: Page, hour: number): Promise<{ x: number; y: number }> {
-  await today(page).scrollIntoViewIfNeeded();
+  const view = await weekScroller(page).boundingBox();
+  const first = await today(page).boundingBox();
+  if (!view || !first) throw new Error('The week must be on screen.');
+  const y = first.y + hour * HOUR_PX + 4;
+  if (y < view.y + 100 || y > view.y + view.height - 40) {
+    await scrollWeekTo(
+      page,
+      (await weekScroller(page).evaluate((element) => element.scrollTop)) +
+        y -
+        view.y -
+        view.height / 2,
+    );
+  }
   const box = await today(page).boundingBox();
   if (!box) throw new Error('Today must be on screen.');
-  return { x: box.x + box.width / 2, y: box.y + (hour - FIRST_HOUR) * HOUR_PX + 4 };
+  return { x: box.x + box.width / 2, y: box.y + hour * HOUR_PX + 4 };
+}
+
+// Waits until the block's bottom edge sits at the given hour, so a drag never starts from a stale frame.
+async function expectBlockEndAt(page: Page, hour: number) {
+  await expect
+    .poll(async () => {
+      const column = await today(page).boundingBox();
+      const handle = await page.locator('[data-resize-handle]').boundingBox();
+      if (!column || !handle) return Infinity;
+      return Math.abs(handle.y + handle.height - column.y - hour * HOUR_PX);
+    })
+    .toBeLessThan(12);
 }
 
 async function dropOnHour(page: Page, source: Locator, hour: number) {
@@ -135,6 +165,7 @@ test('adds a task to the list of a day by dragging it, and to today by the menu'
   await seed(page, [{ title: 'Comprar tinta' }, { title: 'Lixar parede' }]);
   await openWeek(page);
 
+  await scrollWeekTo(page, 0);
   const list = await todayList(page).boundingBox();
   if (!list) throw new Error("Today's list must be on screen.");
   await dragTo(page, trayItem(page, 'Comprar tinta'), list.x + list.width / 2, list.y + 20);
@@ -163,17 +194,22 @@ test('turns a ficha into a block, then moves and resizes it', async ({ page }) =
   const ficha = todayList(page).getByRole('article', { name: 'Comprar tinta', exact: true });
   await expect(ficha).toBeVisible();
 
+  await scrollWeekTo(page, 0);
   await dropOnHour(page, ficha, 9);
 
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();
   await expect(todayList(page).getByRole('article')).toHaveCount(0);
 
+  await scrollWeekTo(page, 6 * HOUR_PX);
+  await expectBlockEndAt(page, 11);
   const moving = block(page, 'Comprar tinta, 9:00 – 11:00');
   const box = await moving.boundingBox();
   if (!box) throw new Error('The block must be on screen.');
   await dragTo(page, moving, box.x + box.width / 2, box.y + box.height / 2 + HOUR_PX * 2);
   await expect(block(page, 'Comprar tinta, 11:00 – 13:00')).toBeVisible();
 
+  await scrollWeekTo(page, 8 * HOUR_PX);
+  await expectBlockEndAt(page, 13);
   const handle = page.locator('[data-resize-handle]');
   const handleBox = await handle.boundingBox();
   if (!handleBox) throw new Error('The handle must be on screen.');

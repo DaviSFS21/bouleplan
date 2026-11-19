@@ -1,6 +1,7 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
+import { motion } from 'motion/react';
 import {
   useRef,
   useState,
@@ -8,10 +9,12 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type Ref,
 } from 'react';
 import type { Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { InlineText } from '@/components/inline-text/inline-text';
+import { ITEM, LAYOUT_TRANSITION, preset } from '@/components/motion/tokens';
 import { BlockedSelo, PrioritySelo } from '@/components/selo/selo';
 import { deadlineLabel } from './task-deadline';
 import type { DraggedTask } from './task-dnd';
@@ -30,6 +33,8 @@ interface TaskCardProps {
   isOpen?: boolean;
   // False when there is nowhere to drop, so no drag instructions are announced.
   draggable?: boolean;
+  // Lets the list measure the card as it leaves.
+  ref?: Ref<HTMLLIElement>;
 }
 
 // Pointer and key events from the menu and the title field must not open the task.
@@ -96,6 +101,7 @@ export function TaskCard({
   actions,
   isOpen = false,
   draggable = true,
+  ref,
 }: Readonly<TaskCardProps>) {
   const [editing, setEditing] = useState(false);
   const card = useRef<HTMLElement | null>(null);
@@ -171,7 +177,15 @@ export function TaskCard({
   ) : undefined;
 
   return (
-    <li className={styles.item}>
+    // The shared id carries the card from one column to another; a card being dragged stays put.
+    <motion.li
+      ref={ref}
+      className={styles.item}
+      layout={isDragging ? false : 'position'}
+      layoutId={`task-card-${task.id}`}
+      transition={LAYOUT_TRANSITION}
+      {...preset(ITEM)}
+    >
       <article
         {...listeners}
         onKeyDown={handleKeyDown}
@@ -205,6 +219,6 @@ export function TaskCard({
           }
         />
       </article>
-    </li>
+    </motion.li>
   );
 }

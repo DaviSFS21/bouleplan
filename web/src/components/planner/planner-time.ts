@@ -1,4 +1,8 @@
 export const HOUR_HEIGHT = 48;
+export const DAY_START_HOUR = 0;
+export const DAY_END_HOUR = 24;
+export const FOCUS_START_HOUR = 8;
+export const FOCUS_END_HOUR = 21;
 export const QUARTER = 15;
 export const MAX_END = 23 * 60 + 45;
 export const DEFAULT_BLOCK = 60;
@@ -23,6 +27,14 @@ export function formatApiTime(minutes: number): string {
 export function formatRange(start: number, end: number, spaced = false): string {
   const dash = spaced ? ' – ' : '–';
   return `${formatClock(start)}${dash}${formatClock(end)}`;
+}
+
+// "2h", "1h30" or "45min".
+export function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${String(rest)}min`;
+  return rest === 0 ? `${String(hours)}h` : `${String(hours)}h${pad(rest)}`;
 }
 
 export function snapMinutes(minutes: number): number {

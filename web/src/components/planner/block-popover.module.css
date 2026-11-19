@@ -1,0 +1,50 @@
+/* The shell comes from Floating; only the width is the popover's own. */
+.popover {
+  width: 280px;
+}
+
+.head {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.link {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--tinta);
+  font: var(--type-titulo-tarefa);
+  text-align: left;
+  text-decoration: underline;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.meta {
+  margin: 0;
+  color: var(--tinta-muted);
+  font: var(--type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (pointer: coarse) {
+  .link {
+    min-height: 44px;
+  }
+}

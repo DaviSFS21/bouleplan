@@ -67,6 +67,14 @@ describe('QuestionField', () => {
     expect(screen.getByLabelText('O que foi bom?')).toBe(field);
   });
 
+  it('invites a calm answer while the field is empty', () => {
+    setup({ value: '' });
+
+    expect(screen.getByPlaceholderText('Escreva com calma…')).toBe(
+      screen.getByRole('textbox', { name: 'O que foi bom?' }),
+    );
+  });
+
   it('saves 800 ms after the last keystroke, not before', () => {
     // Timers that only move when the test moves them, so a slow machine cannot blur the 800 ms.
     vi.useFakeTimers();

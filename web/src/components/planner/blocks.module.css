@@ -73,19 +73,6 @@
   font-weight: 500;
 }
 
-.menu {
-  position: absolute;
-  top: 0;
-  right: 0;
-  opacity: 0;
-}
-
-.dedicated:hover .menu,
-.dedicated:focus-within .menu,
-.menu:has([aria-expanded='true']) {
-  opacity: 1;
-}
-
 .handle {
   position: absolute;
   right: 0;
@@ -145,7 +132,6 @@
 .deadlines {
   position: absolute;
   right: 0;
-  bottom: 0;
   left: 0;
   z-index: 3;
   display: flex;
@@ -213,10 +199,6 @@
 }
 
 @media (pointer: coarse) {
-  .menu {
-    opacity: 1;
-  }
-
   .handle {
     display: none;
   }

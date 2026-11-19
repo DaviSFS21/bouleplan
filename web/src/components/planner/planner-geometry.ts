@@ -1,7 +1,12 @@
-import { HOUR_HEIGHT, MAX_END, QUARTER, snapMinutes } from './planner-time';
+import {
+  FOCUS_END_HOUR,
+  FOCUS_START_HOUR,
+  HOUR_HEIGHT,
+  MAX_END,
+  QUARTER,
+  snapMinutes,
+} from './planner-time';
 
-const DEFAULT_START_HOUR = 8;
-const DEFAULT_END_HOUR = 18;
 const BLOCK_GAP = 4;
 const MIN_BLOCK_HEIGHT = 8;
 
@@ -72,21 +77,6 @@ export function resizeEnd(span: Span, deltaY: number, others: readonly Identifie
   return Math.min(Math.max(wanted, span.start + QUARTER), Math.max(limit, span.start + QUARTER));
 }
 
-export function visibleHours(
-  spans: readonly Span[],
-  nowMinutes: number | null,
-): { startHour: number; endHour: number } {
-  const starts = [...spans.map((span) => span.start), ...(nowMinutes === null ? [] : [nowMinutes])];
-  const ends = [...spans.map((span) => span.end), ...(nowMinutes === null ? [] : [nowMinutes])];
-  return {
-    startHour: Math.min(DEFAULT_START_HOUR, ...starts.map((value) => Math.floor(value / 60))),
-    endHour: Math.min(
-      24,
-      Math.max(DEFAULT_END_HOUR, ...ends.map((value) => Math.ceil(value / 60))),
-    ),
-  };
-}
-
 export function blockStyle(span: Span, startHour: number): { top: number; height: number } {
   const top = pixelsFromMinutes(span.start - startHour * 60);
   const height = pixelsFromMinutes(span.end - span.start) - BLOCK_GAP;
@@ -127,4 +117,13 @@ export function layoutLanes(spans: readonly IdentifiedSpan[]): Map<string, Lane>
   }
   close();
   return lanes;
+}
+
+// Where the day starts in view: the first focal hour, or the now line when it lies outside them.
+export function focusOffset(nowMinutes: number | null, viewport: number): number {
+  const outside =
+    nowMinutes !== null &&
+    (nowMinutes < FOCUS_START_HOUR * 60 || nowMinutes >= FOCUS_END_HOUR * 60);
+  if (!outside) return pixelsFromMinutes(FOCUS_START_HOUR * 60);
+  return Math.max(0, pixelsFromMinutes(nowMinutes) - viewport / 2);
 }

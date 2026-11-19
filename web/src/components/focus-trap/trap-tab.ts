@@ -1,9 +1,12 @@
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// A roving or programmatic tabindex of -1 is not a tab stop.
+const TAB_STOP = ':not([tabindex="-1"])';
+
 export function focusableIn(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (element) => element.closest('[hidden], [inert]') === null,
+    (element) => element.closest('[hidden], [inert]') === null && element.matches(TAB_STOP),
   );
 }
 

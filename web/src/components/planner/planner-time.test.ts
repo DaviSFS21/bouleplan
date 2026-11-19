@@ -3,6 +3,7 @@ import {
   durationFor,
   formatApiTime,
   formatClock,
+  formatDuration,
   formatHours,
   formatRange,
   parseTime,
@@ -82,5 +83,18 @@ describe('durationFor', () => {
 
   it('never exceeds the longest block of a day', () => {
     expect(durationFor(3000)).toBe(1425);
+  });
+});
+
+describe('formatDuration', () => {
+  it.each([
+    [15, '15min'],
+    [45, '45min'],
+    [60, '1h'],
+    [90, '1h30'],
+    [105, '1h45'],
+    [120, '2h'],
+  ])('writes %d minutes as %s', (minutes, text) => {
+    expect(formatDuration(minutes)).toBe(text);
   });
 });

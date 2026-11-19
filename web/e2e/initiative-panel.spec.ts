@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { pickDate } from './pick-date';
 import { resetDatabase } from './reset-database';
 
 test.beforeEach(async ({ page }) => {
@@ -97,10 +98,13 @@ test('sets a deadline', async ({ page }) => {
   await createInitiative(page, 'Horta');
   await openPanel(page, 'Horta');
 
-  await panel(page).getByRole('button', { name: 'Prazo geral: sem prazo' }).click();
-  const input = panel(page).getByLabel('Prazo geral');
-  await input.fill('2099-12-18');
-  await patched(page, () => input.press('Enter'));
+  await patched(page, () =>
+    pickDate(
+      page,
+      panel(page).getByRole('button', { name: 'Prazo geral: sem prazo' }),
+      '2099-12-18',
+    ),
+  );
 
   await expect(
     panel(page).getByRole('button', { name: /^Prazo geral: \p{L}{3}, 18 dez 2099$/u }),

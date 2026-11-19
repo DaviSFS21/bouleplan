@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { BLANK_EVENT_TITLE_MESSAGE } from '@/api/messages';
 import { isPending } from '@/api/planner';
 import type { CalendarEvent } from '@/api/types';
 import { placeMenu } from '@/components/action-menu/place-menu';
 import { InlineText } from '@/components/inline-text/inline-text';
+import { POP, preset } from '@/components/motion/tokens';
+import { useIsPhone } from '@/components/responsive/use-media-query';
+import { Sheet } from '@/components/sheet/sheet';
 import { formatRange, parseTime } from './planner-time';
 import styles from './event-popover.module.css';
 
@@ -23,6 +27,7 @@ function anchorOf(id: string): HTMLElement | null {
 
 export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<EventPopoverProps>) {
   const box = useRef<HTMLDivElement>(null);
+  const phone = useIsPhone();
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const pending = isPending(event.id);
   const eventId = event.id;
@@ -30,6 +35,7 @@ export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<Ev
 
   // The block is rendered again when the server gives the event its id, so it is looked up each time.
   useLayoutEffect(() => {
+    if (phone) return;
     function reposition() {
       const anchor = anchorOf(eventId);
       const size = box.current?.getBoundingClientRect();
@@ -49,7 +55,7 @@ export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<Ev
       window.removeEventListener('scroll', reposition, true);
       window.removeEventListener('resize', reposition);
     };
-  }, [eventId]);
+  }, [eventId, phone]);
 
   useEffect(() => {
     const element = box.current;
@@ -64,6 +70,7 @@ export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<Ev
   }, []);
 
   useEffect(() => {
+    if (phone) return;
     function closeOnOutsidePointer(pointer: PointerEvent) {
       const target = pointer.target;
       if (!(target instanceof Node)) return;
@@ -76,27 +83,10 @@ export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<Ev
     return () => {
       document.removeEventListener('pointerdown', closeOnOutsidePointer);
     };
-  }, [eventId, onClose]);
+  }, [eventId, onClose, phone]);
 
-  return createPortal(
-    <div
-      ref={box}
-      role="dialog"
-      aria-label="Compromisso"
-      tabIndex={-1}
-      className={styles.popover}
-      style={position}
-      onKeyDown={(keyboard) => {
-        if (keyboard.key === 'Escape') {
-          keyboard.stopPropagation();
-          onClose();
-        }
-      }}
-      onBlur={(blur) => {
-        const next = blur.relatedTarget;
-        if (next instanceof Node && !blur.currentTarget.contains(next)) onClose();
-      }}
-    >
+  const content = (
+    <div className={styles.stack}>
       {pending ? (
         <p className={styles.title}>{event.title}</p>
       ) : (
@@ -116,7 +106,39 @@ export function EventPopover({ event, onClose, onRename, onDelete }: Readonly<Ev
       <button type="button" className={styles.delete} disabled={pending} onClick={onDelete}>
         Excluir
       </button>
-    </div>,
+    </div>
+  );
+
+  if (phone) {
+    return (
+      <Sheet open label="Compromisso" onClose={onClose}>
+        {content}
+      </Sheet>
+    );
+  }
+
+  return createPortal(
+    <motion.div
+      ref={box}
+      role="dialog"
+      aria-label="Compromisso"
+      tabIndex={-1}
+      className={styles.popover}
+      style={{ ...position, transformOrigin: 'top left' }}
+      {...preset(POP)}
+      onKeyDown={(keyboard) => {
+        if (keyboard.key === 'Escape') {
+          keyboard.stopPropagation();
+          onClose();
+        }
+      }}
+      onBlur={(blur) => {
+        const next = blur.relatedTarget;
+        if (next instanceof Node && !blur.currentTarget.contains(next)) onClose();
+      }}
+    >
+      {content}
+    </motion.div>,
     document.body,
   );
 }

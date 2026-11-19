@@ -93,13 +93,3 @@ export function buildDays({ dates, events, items, tasks, colors, atRisk }: Model
 export function blockSpans(day: DayModel): IdentifiedSpan[] {
   return day.blocks.map(({ item, span }) => ({ id: item.id, ...span }));
 }
-
-export function weekSpans(days: readonly DayModel[]): Span[] {
-  return days.flatMap((day) => [
-    ...day.blocks.map(({ span }) => span),
-    ...day.events.map((event) => ({
-      start: parseTime(event.startTime),
-      end: parseTime(event.endTime),
-    })),
-  ]);
-}

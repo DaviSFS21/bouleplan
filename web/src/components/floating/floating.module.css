@@ -1,0 +1,9 @@
+.popover {
+  position: fixed;
+  z-index: 100;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--papel-flutuante);
+  box-shadow: var(--sombra-flutuante);
+}

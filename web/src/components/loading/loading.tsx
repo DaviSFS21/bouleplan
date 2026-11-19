@@ -1,12 +1,16 @@
 import styles from './loading.module.css';
 
+// Below this size the divided line loses its gap, so only the ring remains, as the brand asks.
+const RING_ONLY_BELOW = 32;
+
 export function Loading({ size = 40 }: Readonly<{ size?: number }>) {
+  const ringOnly = size < RING_ONLY_BELOW;
   return (
     <svg
       className={styles.loading}
       width={size}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox={ringOnly ? '0 0 24 16.1' : '0 0 24 24'}
       fill="none"
       strokeLinecap="round"
       role="img"
@@ -24,36 +28,61 @@ export function Loading({ size = 40 }: Readonly<{ size?: number }>) {
           transform="rotate(-90 12 8.05)"
         />
       </g>
-      <line className={styles.track} x1="5.8" y1="18.55" x2="7.8" y2="18.55" strokeWidth="2.3" />
-      <line className={styles.track} x1="11.9" y1="18.55" x2="18.2" y2="18.55" strokeWidth="2.3" />
-      <line className={styles.track} x1="5.8" y1="22.15" x2="18.2" y2="22.15" strokeWidth="2.3" />
-      <line
-        className={[styles.ink, styles.fill, styles.fillA].join(' ')}
-        pathLength="1"
-        x1="5.8"
-        y1="18.55"
-        x2="7.8"
-        y2="18.55"
-        strokeWidth="2.3"
-      />
-      <line
-        className={[styles.ink, styles.fill, styles.fillB].join(' ')}
-        pathLength="1"
-        x1="11.9"
-        y1="18.55"
-        x2="18.2"
-        y2="18.55"
-        strokeWidth="2.3"
-      />
-      <line
-        className={[styles.ink, styles.fill, styles.fillC].join(' ')}
-        pathLength="1"
-        x1="5.8"
-        y1="22.15"
-        x2="18.2"
-        y2="22.15"
-        strokeWidth="2.3"
-      />
+      {ringOnly ? null : (
+        <>
+          <line
+            className={styles.track}
+            x1="5.8"
+            y1="18.55"
+            x2="7.8"
+            y2="18.55"
+            strokeWidth="2.3"
+          />
+          <line
+            className={styles.track}
+            x1="11.9"
+            y1="18.55"
+            x2="18.2"
+            y2="18.55"
+            strokeWidth="2.3"
+          />
+          <line
+            className={styles.track}
+            x1="5.8"
+            y1="22.15"
+            x2="18.2"
+            y2="22.15"
+            strokeWidth="2.3"
+          />
+          <line
+            className={[styles.ink, styles.fill, styles.fillA].join(' ')}
+            pathLength="1"
+            x1="5.8"
+            y1="18.55"
+            x2="7.8"
+            y2="18.55"
+            strokeWidth="2.3"
+          />
+          <line
+            className={[styles.ink, styles.fill, styles.fillB].join(' ')}
+            pathLength="1"
+            x1="11.9"
+            y1="18.55"
+            x2="18.2"
+            y2="18.55"
+            strokeWidth="2.3"
+          />
+          <line
+            className={[styles.ink, styles.fill, styles.fillC].join(' ')}
+            pathLength="1"
+            x1="5.8"
+            y1="22.15"
+            x2="18.2"
+            y2="22.15"
+            strokeWidth="2.3"
+          />
+        </>
+      )}
     </svg>
   );
 }

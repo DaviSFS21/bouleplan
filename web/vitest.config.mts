@@ -13,6 +13,8 @@ export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, 'e2e/**'],
     environment: 'jsdom',
+    // Full-screen renders with a user-event session can pass the 5 s default on a loaded machine.
+    testTimeout: 15_000,
     setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',

@@ -1,8 +1,11 @@
 'use client';
 
 import { useDroppable } from '@dnd-kit/core';
+import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import type { Task, TaskStatus } from '@/api/types';
+import { Presence } from '@/components/motion/presence';
+import { FADE, preset } from '@/components/motion/tokens';
 import { TaskCard } from './task-card';
 import type { TaskActions } from './task-menu';
 import { statusTitle } from './task-filter';
@@ -56,16 +59,19 @@ export function TaskColumn({
   }
 
   return (
-    <section
+    <motion.section
       ref={setNodeRef}
+      {...preset(FADE)}
       {...tabPanel}
       className={styles.column}
       aria-label={tabPanel ? undefined : title}
       data-column={status}
     >
       <h2 className={styles.title}>{`${title} · ${String(tasks.length)}`}</h2>
-      <ul className={styles.list}>{cards}</ul>
+      <ul className={styles.list}>
+        <Presence mode="popLayout">{cards}</Presence>
+      </ul>
       {quickCreate}
-    </section>
+    </motion.section>
   );
 }

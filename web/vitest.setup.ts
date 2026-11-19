@@ -1,10 +1,14 @@
 import { cleanup, configure } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach } from 'vitest';
+import { MotionGlobalConfig } from 'motion/react';
 import { server } from '@/test/server';
 
 // A loaded machine running many files at once can take over a second to settle a request.
 configure({ asyncUtilTimeout: 3000 });
+
+// Tests must not wait on animation frames or exit animations.
+MotionGlobalConfig.skipAnimations = true;
 
 // Node's Request rejects relative URLs; browsers resolve them against the page origin.
 const NativeRequest = globalThis.Request;

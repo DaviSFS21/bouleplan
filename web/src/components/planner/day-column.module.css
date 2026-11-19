@@ -17,3 +17,12 @@
 .over {
   box-shadow: inset 0 0 0 1px var(--tinta-muted);
 }
+
+/* The hours outside the focal range sit darker, so the working day reads first. */
+.shade {
+  position: absolute;
+  right: 0;
+  left: 0;
+  background: var(--papel-elevado);
+  pointer-events: none;
+}
