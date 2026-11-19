@@ -164,49 +164,7 @@ export function useUpdateEpic() {
   );
 }
 
-export function useArchiveEpic() {
-  const queryClient = useQueryClient();
-  return useMemo(
-    () => ({
-      mutateAsync: (epic: Epic) =>
-        runScoped(
-          queryClient,
-          epic,
-          epic.id,
-          (id) => unwrap(api.POST('/epics/{id}/archive', { params: { path: { id } } })),
-          (archived) => {
-            setList(queryClient, epic.initiativeId, (list) => removeFromList(list, archived.id));
-            hideTasksOfEpic(queryClient, epic.id);
-            refetchTasks(queryClient);
-          },
-        ),
-    }),
-    [queryClient],
-  );
-}
-
-export function useUnarchiveEpic() {
-  const queryClient = useQueryClient();
-  return useMemo(
-    () => ({
-      mutateAsync: (epic: Epic) =>
-        runScoped(
-          queryClient,
-          epic,
-          epic.id,
-          (id) => unwrap(api.POST('/epics/{id}/unarchive', { params: { path: { id } } })),
-          (restored) => {
-            setList(queryClient, epic.initiativeId, (list) => addToList(list, restored));
-            showTasksOfEpic(queryClient, epic.id);
-            refetchTasks(queryClient);
-          },
-        ),
-    }),
-    [queryClient],
-  );
-}
-
-export function useDeleteEpic() {
+function useEpicLeave(leave: (id: string) => Promise<unknown>) {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
@@ -216,37 +174,55 @@ export function useDeleteEpic() {
           epic,
           epic.id,
           async (id) => {
-            await unwrap(api.DELETE('/epics/{id}', { params: { path: { id } } }));
+            await leave(id);
             return id;
           },
-          (deleted) => {
-            setList(queryClient, epic.initiativeId, (list) => removeFromList(list, deleted));
+          (left) => {
+            setList(queryClient, epic.initiativeId, (list) => removeFromList(list, left));
             hideTasksOfEpic(queryClient, epic.id);
             refetchTasks(queryClient);
           },
         ),
     }),
-    [queryClient],
+    [queryClient, leave],
   );
 }
 
-export function useRestoreEpic() {
+function useEpicReturn(back: (id: string) => Promise<Epic>) {
   const queryClient = useQueryClient();
   return useMemo(
     () => ({
       mutateAsync: (epic: Epic) =>
-        runScoped(
-          queryClient,
-          epic,
-          epic.id,
-          (id) => unwrap(api.POST('/epics/{id}/restore', { params: { path: { id } } })),
-          (restored) => {
-            setList(queryClient, epic.initiativeId, (list) => addToList(list, restored));
-            showTasksOfEpic(queryClient, epic.id);
-            refetchTasks(queryClient);
-          },
-        ),
+        runScoped(queryClient, epic, epic.id, back, (restored) => {
+          setList(queryClient, epic.initiativeId, (list) => addToList(list, restored));
+          showTasksOfEpic(queryClient, epic.id);
+          refetchTasks(queryClient);
+        }),
     }),
-    [queryClient],
+    [queryClient, back],
   );
+}
+
+const archiveEpic = (id: string) =>
+  unwrap(api.POST('/epics/{id}/archive', { params: { path: { id } } }));
+const deleteEpic = (id: string) => unwrap(api.DELETE('/epics/{id}', { params: { path: { id } } }));
+const unarchiveEpic = (id: string) =>
+  unwrap(api.POST('/epics/{id}/unarchive', { params: { path: { id } } }));
+const restoreEpic = (id: string) =>
+  unwrap(api.POST('/epics/{id}/restore', { params: { path: { id } } }));
+
+export function useArchiveEpic() {
+  return useEpicLeave(archiveEpic);
+}
+
+export function useUnarchiveEpic() {
+  return useEpicReturn(unarchiveEpic);
+}
+
+export function useDeleteEpic() {
+  return useEpicLeave(deleteEpic);
+}
+
+export function useRestoreEpic() {
+  return useEpicReturn(restoreEpic);
 }
