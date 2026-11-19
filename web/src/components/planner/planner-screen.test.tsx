@@ -249,7 +249,7 @@ describe('the agenda', () => {
 
     const dedicated = screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' });
     expect(dedicated).toHaveStyle({ top: '432px', height: '92px' });
-    expect(dedicated.querySelector('[data-priority]')).toHaveAttribute('data-priority', 'P1');
+    expect(dedicated).toHaveAccessibleDescription('Prioridade P1');
 
     const list = screen.getByRole('region', { name: 'Lista de quarta-feira, 18 de novembro' });
     expect(within(list).getByRole('article', { name: 'Lixar parede' })).toBeVisible();

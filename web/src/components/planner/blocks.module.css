@@ -24,7 +24,7 @@
 }
 
 .priority::before {
-  /* Drawn, not written: the block's name already says what the label would repeat. */
+  /* Drawn, not written: axe compares the name with the visible text, and the label is the name. */
   content: attr(data-priority);
 }
 

@@ -32,12 +32,12 @@ function OpenSheet({ onClose, label, initialFocus, children }: Readonly<Omit<She
   useRestoreFocus(present, (previous) => [previous]);
 
   useLayoutEffect(() => {
-    if (!node) return;
+    if (!node || !present) return;
     const field = initialFocus?.current;
     // A child that took focus itself, such as a calendar grid, keeps it.
     if (!field && node.contains(document.activeElement)) return;
     (field ?? node).focus();
-  }, [node, initialFocus]);
+  }, [node, initialFocus, present]);
 
   return createPortal(
     <SheetFrame label={label} onClose={onClose} onNode={attach}>

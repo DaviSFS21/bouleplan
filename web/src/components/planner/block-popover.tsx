@@ -2,10 +2,8 @@
 
 import { useCallback, useId, useRef, useState, type RefObject, type SubmitEvent } from 'react';
 import { isPending } from '@/api/planner';
-import { Floating } from '@/components/floating/floating';
-import { useIsPhone } from '@/components/responsive/use-media-query';
+import { Popover } from '@/components/floating/popover';
 import { PrioritySelo } from '@/components/selo/selo';
-import { Sheet } from '@/components/sheet/sheet';
 import { NO_ROOM_MESSAGE } from './keyboard-moves';
 import { dayLabel } from './planner-dates';
 import type { Span } from './planner-geometry';
@@ -155,7 +153,6 @@ function BlockForm({
 }
 
 export function BlockPopover(props: Readonly<BlockPopoverProps>) {
-  const phone = useIsPhone();
   const first = useRef<HTMLSelectElement>(null);
   const { block, onClose } = props;
   const blockId = block.item.id;
@@ -163,23 +160,15 @@ export function BlockPopover(props: Readonly<BlockPopoverProps>) {
     () => document.querySelector<HTMLElement>(`[data-block-id="${blockId}"]`),
     [blockId],
   );
-  const form = <BlockForm {...props} first={first} />;
-  if (phone) {
-    return (
-      <Sheet open label={block.task.title} onClose={onClose} initialFocus={first}>
-        {form}
-      </Sheet>
-    );
-  }
   return (
-    <Floating
+    <Popover
       anchor={anchor}
       label={block.task.title}
       onClose={onClose}
       initialFocus={first}
       className={styles.popover}
     >
-      {form}
-    </Floating>
+      <BlockForm {...props} first={first} />
+    </Popover>
   );
 }

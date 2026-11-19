@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { seedInitiative, type World } from './api-seed';
+import { dragDown } from './drag-sheet';
 import { resetDatabase } from './reset-database';
 
 const NOW = '2026-11-20T10:30:00-03:00';
@@ -27,6 +28,44 @@ function card(page: Page, title: string): Locator {
 async function settled(page: Page) {
   await page.waitForFunction(() => document.getAnimations().length === 0);
 }
+
+test.describe('the initiative sheet with a description being typed, on a phone', () => {
+  test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
+
+  async function typeDescription(page: Page) {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}&detalhes=1`);
+    const sheet = page.getByRole('dialog', { name: 'Iniciativa', exact: true });
+    await sheet
+      .getByRole('textbox', { name: 'Descrição', exact: true })
+      .fill('Pintar tudo em dezembro');
+    return { sheet, url: `/?iniciativa=${initiativeId}&detalhes=1` };
+  }
+
+  test('keeps it when the veil is tapped', async ({ page }) => {
+    const { sheet, url } = await typeDescription(page);
+
+    await page.touchscreen.tap(195, 20);
+    await expect(sheet).toHaveCount(0);
+
+    await page.goto(url);
+    await expect(page.getByRole('textbox', { name: 'Descrição', exact: true })).toHaveValue(
+      'Pintar tudo em dezembro',
+    );
+  });
+
+  test('keeps it when the handle is dragged down', async ({ page }) => {
+    const { sheet, url } = await typeDescription(page);
+
+    await dragDown(page, sheet.locator('[data-sheet-handle]'), 260);
+    await expect(sheet).toHaveCount(0);
+
+    await page.goto(url);
+    await expect(page.getByRole('textbox', { name: 'Descrição', exact: true })).toHaveValue(
+      'Pintar tudo em dezembro',
+    );
+  });
+});
 
 test.describe('a calendar sheet inside the task sheet, on a phone', () => {
   test.use({ viewport: PHONE, hasTouch: true, isMobile: true });
@@ -108,6 +147,61 @@ test.describe('with the real animations', () => {
     await page.keyboard.press('Escape');
 
     await expect(popover).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+});
+
+test.describe('reopening at once, while the first one still fades out', () => {
+  test.use({ reducedMotion: 'no-preference', viewport: { width: 1280, height: 800 } });
+
+  test('an action menu is interactive again, with focus inside, and closes alone', async ({
+    page,
+  }) => {
+    const { initiativeId } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}`);
+    const trigger = page.getByRole('button', {
+      name: 'Ações da tarefa Comprar tinta',
+      exact: true,
+    });
+    await trigger.click();
+    const menu = page.getByRole('menu', { name: 'Ações da tarefa Comprar tinta', exact: true });
+    await expect(menu).toBeVisible();
+    await settled(page);
+
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
+
+    await expect(menu).toBeVisible();
+    await settled(page);
+    await expect(menu).not.toHaveAttribute('inert');
+    expect(await menu.evaluate((element) => element.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test('the calendar keeps focus inside, and Escape closes only it', async ({ page }) => {
+    const { initiativeId, taskIds } = await seedBoard(page);
+    await page.goto(`/?iniciativa=${initiativeId}&tarefa=${taskIds['Lixar parede'] ?? ''}`);
+    const panel = page.getByRole('complementary', { name: 'Tarefa', exact: true });
+    const trigger = panel.getByRole('button', { name: /^Prazo:/ });
+    await trigger.click();
+    const popover = page.getByRole('dialog', { name: 'Escolher prazo', exact: true });
+    await expect(popover).toBeVisible();
+    await settled(page);
+
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Enter');
+
+    await expect(popover).toBeVisible();
+    await settled(page);
+    await expect(popover).not.toHaveAttribute('inert');
+    expect(await popover.evaluate((element) => element.contains(document.activeElement))).toBe(
+      true,
+    );
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await expect(panel).toBeVisible();
     await expect(trigger).toBeFocused();
   });
 });

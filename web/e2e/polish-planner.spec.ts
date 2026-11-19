@@ -91,7 +91,34 @@ test.describe('the week at desktop size', () => {
     const named = await head.boundingBox();
     if (!view || !named) throw new Error('The week must be on screen.');
     expect(named.y).toBeGreaterThanOrEqual(view.y - 1);
-    expect(named.y).toBeLessThan(view.y + 20);
+    expect(named.y).toBeLessThan(view.y + 2);
+  });
+
+  test('covers the hour labels under the day names at any scroll', async ({ page }) => {
+    await seedWeek(page);
+    await page.goto('/semana');
+    await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();
+
+    for (const top of [330, 700]) {
+      await week(page).evaluate((element, value) => {
+        element.scrollTop = value;
+      }, top);
+      const view = await week(page).boundingBox();
+      const head = await page.locator('[data-week-head]').first().boundingBox();
+      if (!view || !head) throw new Error('The week must be on screen.');
+      const bottom = head.y + head.height;
+      const hidden = await page.locator('[data-hour]').evaluateAll(
+        (labels, band) =>
+          labels.flatMap((label) => {
+            const box = label.getBoundingClientRect();
+            const covered = box.bottom > band.top && box.top < band.bottom;
+            const inView = box.height > 0 && document.elementFromPoint(box.left + 2, box.top + 2);
+            return covered && inView && inView === label ? [label.textContent] : [];
+          }),
+        { top: view.y, bottom },
+      );
+      expect(hidden).toEqual([]);
+    }
   });
 
   test('edits a block in its popover, refuses an overlap and saves', async ({ page }) => {

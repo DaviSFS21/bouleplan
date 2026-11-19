@@ -37,7 +37,7 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  height: calc(var(--space-10) + var(--space-1));
   cursor: grab;
   touch-action: none;
 }

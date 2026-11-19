@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectNoSeriousViolations } from './axe';
 import { seedInitiative, type World } from './api-seed';
+import { box, dragDown } from './drag-sheet';
 import { resetDatabase } from './reset-database';
 
 const NOW = '2026-11-20T10:30:00-03:00';
@@ -22,25 +23,6 @@ async function seedBoard(page: Page): Promise<World> {
 
 function card(page: Page, title: string): Locator {
   return page.getByRole('article', { name: title, exact: true });
-}
-
-async function box(locator: Locator) {
-  const found = await locator.boundingBox();
-  if (!found) throw new Error('Expected the element to have a box.');
-  return found;
-}
-
-// Presses the handle, drags it down by `distance` pixels in steps and lets go.
-async function dragDown(page: Page, handle: Locator, distance: number) {
-  const area = await box(handle);
-  const x = area.x + area.width / 2;
-  const y = area.y + area.height / 2;
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  for (let step = 1; step <= 6; step += 1) {
-    await page.mouse.move(x, y + (distance * step) / 6);
-  }
-  await page.mouse.up();
 }
 
 test.describe('the header on a desktop', () => {

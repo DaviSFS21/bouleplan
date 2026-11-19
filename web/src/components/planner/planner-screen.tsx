@@ -96,9 +96,8 @@ function releaseFocus() {
 }
 
 // A block moved off the phone's day is not drawn; its day's tab is the nearest place.
-function dayTabOfBlock(selector: string, days: readonly DayModel[]): HTMLElement | null {
-  const id = /data-block-id="([^"]+)"/.exec(selector)?.[1];
-  const date = days.find((day) => day.blocks.some(({ item }) => item.id === id))?.date;
+function dayTabOfBlock(blockId: string | undefined, days: readonly DayModel[]): HTMLElement | null {
+  const date = days.find((day) => day.blocks.some(({ item }) => item.id === blockId))?.date;
   return date ? document.querySelector<HTMLElement>(`[role="tab"][id$="-tab-${date}"]`) : null;
 }
 
@@ -152,7 +151,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
   // dnd-kit adds the scroll of the week to its translation, so the pointer is read directly.
   const pointer = useRef<PointerTrack | null>(null);
-  const keptFocus = useRef<{ selector: string; settled: boolean } | null>(null);
+  const keptFocus = useRef<{ selector: string; blockId?: string; settled: boolean } | null>(null);
   const belowDesktop = useIsBelowDesktop();
   // Touch is for reading the week: moves go through the menus, and the tray is not shown.
   const coarse = useIsCoarsePointer();
@@ -326,7 +325,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     if (kept === null) return;
     const lost = focusIsLost();
     const target = lost
-      ? (document.querySelector<HTMLElement>(kept.selector) ?? dayTabOfBlock(kept.selector, days))
+      ? (document.querySelector<HTMLElement>(kept.selector) ?? dayTabOfBlock(kept.blockId, days))
       : null;
     // Once the request is over, the next draw is the last one that can need it.
     if (target || kept.settled) keptFocus.current = null;
@@ -422,11 +421,11 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     startHour,
     context: dropContext,
     apply,
-    keepFocus: (selector) => {
+    keepFocus: (selector, blockId) => {
       if (selector === null) {
         if (keptFocus.current) keptFocus.current.settled = true;
       } else {
-        keptFocus.current = { selector, settled: false };
+        keptFocus.current = { selector, blockId, settled: false };
       }
     },
   });

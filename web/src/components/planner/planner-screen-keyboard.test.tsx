@@ -62,6 +62,7 @@ describe('a block as the trigger of its popover', () => {
     focus(dedicated());
     expect(dedicated()).toHaveAttribute('aria-haspopup', 'dialog');
     expect(dedicated()).toHaveAttribute('aria-expanded', 'false');
+    expect(dedicated()).toHaveAccessibleDescription('Prioridade P1');
 
     await user.keyboard(' ');
 

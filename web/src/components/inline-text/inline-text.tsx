@@ -112,7 +112,7 @@ export function InlineText({
     onChange: handleChange,
     onBlur: handleBlur,
     onKeyDown: handleKeyDown,
-    ...CANCEL_ON_DISMISS,
+    ...(multiline ? {} : CANCEL_ON_DISMISS),
   };
 
   return (

@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MotionGlobalConfig } from 'motion/react';
 import { useRef, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { Presence } from '@/components/motion/presence';
 import { findVeil } from '@/test/viewport';
 import { Sheet } from './sheet';
 
@@ -266,5 +268,61 @@ describe('a sheet inside a sheet', () => {
     await openBoth();
 
     expect(screen.getByRole('button', { name: 'Dia' })).toHaveFocus();
+  });
+});
+
+describe('a sheet reopened while it leaves', () => {
+  function Reopenable() {
+    const [open, setOpen] = useState(false);
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Abrir
+        </button>
+        <Presence>
+          {open ? (
+            <Sheet
+              key="sheet"
+              label="Editar"
+              onClose={() => {
+                setOpen(false);
+              }}
+            >
+              <p>Texto</p>
+            </Sheet>
+          ) : null}
+        </Presence>
+      </>
+    );
+  }
+
+  it('takes focus again, and gives it back to the opener when closed', async () => {
+    MotionGlobalConfig.skipAnimations = false;
+    try {
+      const user = userEvent.setup();
+      render(<Reopenable />);
+      await user.click(screen.getByRole('button', { name: 'Abrir' }));
+      await user.keyboard('{Escape}');
+      expect(screen.getByRole('button', { name: 'Abrir' })).toHaveFocus();
+
+      await user.keyboard('{Enter}');
+
+      const dialog = screen.getByRole('dialog', { name: 'Editar' });
+      await waitFor(() => {
+        expect(dialog).toHaveFocus();
+      });
+      await user.keyboard('{Escape}');
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+      expect(screen.getByRole('button', { name: 'Abrir' })).toHaveFocus();
+    } finally {
+      MotionGlobalConfig.skipAnimations = true;
+    }
   });
 });

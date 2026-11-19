@@ -237,6 +237,7 @@ test('refuses a block over another one', async ({ page }) => {
     { title: 'Lixar parede', effort: '1' },
   ]);
   await openWeek(page);
+  await scrollWeekTo(page, 0);
   await dropOnHour(page, trayItem(page, 'Comprar tinta'), 9);
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();
 
@@ -296,6 +297,7 @@ test('warns about a deadline without reserved time until the effort is reserved'
     page.getByRole('button', { name: /^prazo · Comprar tinta · faltam 2h/ }),
   ).toBeVisible();
 
+  await scrollWeekTo(page, 0);
   await dropOnHour(page, trayItem(page, 'Comprar tinta'), 9);
 
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();

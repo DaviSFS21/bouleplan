@@ -70,12 +70,13 @@ export function Floating({
   );
 
   useEffect(() => {
+    if (!present) return;
     const element = box.current;
     const field = initialFocus?.current;
     // A child that took focus itself, such as a calendar grid, keeps it.
     if (!field && element?.contains(document.activeElement) === true) return;
     (field ?? element)?.focus();
-  }, [initialFocus]);
+  }, [initialFocus, present]);
 
   useEffect(() => {
     function closeOnOutsidePointer(pointer: PointerEvent) {

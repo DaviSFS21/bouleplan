@@ -1,7 +1,14 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import { isPending } from '@/api/planner';
 import { BLOCKED_DROP_MESSAGE } from '@/api/messages';
 import type { CalendarEvent } from '@/api/types';
@@ -61,6 +68,7 @@ export function DedicatedBlock({
     data: { kind: 'resize', item, task } satisfies DragData,
     disabled,
   });
+  const priorityId = useId();
   const keyboard = useKeyboardMoves();
   const range = formatRange(shown.start, shown.end, true);
 
@@ -95,6 +103,7 @@ export function DedicatedBlock({
       aria-haspopup="dialog"
       aria-expanded={editing}
       aria-label={`${task.title}, ${range}`}
+      aria-describedby={priorityId}
       className={join(styles.event, styles.dedicated, moving && styles.source)}
       style={
         {
@@ -116,6 +125,7 @@ export function DedicatedBlock({
         />
         <span className={styles.titleText}>{task.title}</span>
       </div>
+      <span id={priorityId} hidden>{`Prioridade ${task.priority}`}</span>
       <span
         {...handleListeners}
         ref={(element) => {

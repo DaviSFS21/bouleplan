@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Initiative } from '@/api/types';
@@ -8,6 +9,7 @@ import { initiative, epic, problemResponse, task } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
+import { PHONE, findVeil, setViewport } from '@/test/viewport';
 import { InitiativePanel } from './initiative-panel';
 import { InitiativesScreen } from './initiatives-screen';
 
@@ -971,5 +973,46 @@ describe('description trimming and per-initiative pending color', () => {
 
     expect(within(panel).getByRole('button', { name: 'Rosa' })).toBeInTheDocument();
     gates.get(horta.id)?.release();
+  });
+});
+
+describe('leaving the sheet on a phone with a description being typed', () => {
+  async function typeDescription() {
+    setViewport(PHONE);
+    const backend = serve([reforma, horta]);
+    navigateTo(detailsUrl(reforma.id));
+    renderWithQuery(<InitiativesScreen />);
+    const sheet = await screen.findByRole('dialog', { name: 'Iniciativa' });
+    const user = userEvent.setup();
+    await user.type(within(sheet).getByRole('textbox', { name: 'Descrição' }), 'rascunho');
+    return { backend, user };
+  }
+
+  afterEach(() => {
+    setViewport({ width: 1440, coarse: false });
+  });
+
+  it('saves it when the veil is tapped', async () => {
+    const { backend, user } = await typeDescription();
+
+    await user.click(findVeil());
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: 'rascunho' }]);
+    });
+  });
+
+  it('saves it when the handle is dragged down', async () => {
+    const { backend } = await typeDescription();
+    const handle = document.querySelector('[data-sheet-handle]');
+    if (!handle) throw new Error('No handle');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 320 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 320 });
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: 'rascunho' }]);
+    });
   });
 });

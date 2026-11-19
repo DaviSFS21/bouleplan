@@ -40,4 +40,25 @@ describe('InertOnExit', () => {
       MotionGlobalConfig.skipAnimations = true;
     }
   });
+
+  it('wakes the element again when the child returns while it is leaving', async () => {
+    MotionGlobalConfig.skipAnimations = false;
+    try {
+      const { rerender } = render(<Layer shown />);
+      const button = screen.getByRole('button', { name: 'Dentro' });
+
+      rerender(<Layer shown={false} />);
+      await waitFor(() => {
+        expect(button.parentElement).toHaveAttribute('inert');
+      });
+      rerender(<Layer shown />);
+
+      await waitFor(() => {
+        expect(button.parentElement).not.toHaveAttribute('inert');
+      });
+      expect(button).toBeInTheDocument();
+    } finally {
+      MotionGlobalConfig.skipAnimations = true;
+    }
+  });
 });
