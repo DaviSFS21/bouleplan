@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Calendar } from '@/components/date-picker/calendar';
 import { DatePopover } from '@/components/date-picker/date-popover';
 import { localToday } from '@/components/deadline-field/deadline-field';
+import { Presence } from '@/components/motion/presence';
 import { Icon } from '@/components/icon/icon';
 import { currentWeekStart, stepWeek, weekRange, weekStartOf, weekText } from './task-week';
 import styles from './task-panel.module.css';
@@ -92,24 +93,26 @@ export function WeekField({ value, now, onChange }: Readonly<WeekFieldProps>) {
           </button>
         )}
       </span>
-      {open ? (
-        <DatePopover anchor={anchor} label="Escolher semana" onClose={close}>
-          <Calendar
-            weekly
-            value={value}
-            today={localToday(now)}
-            onPick={(day) => {
-              setOpen(false);
-              const start = weekStartOf(day);
-              if (start !== value) onChange(start);
-            }}
-            onClear={() => {
-              setOpen(false);
-              if (value !== null) onChange(null);
-            }}
-          />
-        </DatePopover>
-      ) : null}
+      <Presence>
+        {open ? (
+          <DatePopover key="week" anchor={anchor} label="Escolher semana" onClose={close}>
+            <Calendar
+              weekly
+              value={value}
+              today={localToday(now)}
+              onPick={(day) => {
+                setOpen(false);
+                const start = weekStartOf(day);
+                if (start !== value) onChange(start);
+              }}
+              onClear={() => {
+                setOpen(false);
+                if (value !== null) onChange(null);
+              }}
+            />
+          </DatePopover>
+        ) : null}
+      </Presence>
     </div>
   );
 }

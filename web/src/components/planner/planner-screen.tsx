@@ -31,6 +31,7 @@ import {
   WEEK_PARAM,
 } from '@/components/initiatives/url-params';
 import { Loading } from '@/components/loading/loading';
+import { focusIsLost } from '@/components/focus-trap/focus-lost';
 import { Presence } from '@/components/motion/presence';
 import { useIsBelowDesktop, useIsCoarsePointer } from '@/components/responsive/use-media-query';
 import { StatusStrip } from '@/components/status-strip/status-strip';
@@ -63,7 +64,13 @@ import {
   type Preview,
   type Resolution,
 } from './planner-drop';
-import { blockSpans, buildDays, type BlockModel, type EntryModel } from './planner-model';
+import {
+  blockSpans,
+  buildDays,
+  type BlockModel,
+  type DayModel,
+  type EntryModel,
+} from './planner-model';
 import { RISK_FILTER, atRiskTasks, trayTasks } from './planner-tasks';
 import { DAY_END_HOUR, DAY_START_HOUR } from './planner-time';
 import { ReservePopover } from './reserve-popover';
@@ -86,6 +93,13 @@ function agendaTop(date: string, measured: number): number {
 // A popover keeps focus while it fades out, which would hide that focus was lost.
 function releaseFocus() {
   if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
+
+// A block moved off the phone's day is not drawn; its day's tab is the nearest place.
+function dayTabOfBlock(selector: string, days: readonly DayModel[]): HTMLElement | null {
+  const id = /data-block-id="([^"]+)"/.exec(selector)?.[1];
+  const date = days.find((day) => day.blocks.some(({ item }) => item.id === id))?.date;
+  return date ? document.querySelector<HTMLElement>(`[role="tab"][id$="-tab-${date}"]`) : null;
 }
 
 interface PointerTrack {
@@ -301,7 +315,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     const finder = pendingFocus.current;
     if (!finder) return;
     pendingFocus.current = null;
-    const lost = !document.activeElement || document.activeElement === document.body;
+    const lost = focusIsLost();
     const target = finder();
     if (target && lost) target.focus();
   }, [focusTick]);
@@ -310,8 +324,10 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   useEffect(() => {
     const kept = keptFocus.current;
     if (kept === null) return;
-    const lost = !document.activeElement || document.activeElement === document.body;
-    const target = lost ? document.querySelector<HTMLElement>(kept.selector) : null;
+    const lost = focusIsLost();
+    const target = lost
+      ? (document.querySelector<HTMLElement>(kept.selector) ?? dayTabOfBlock(kept.selector, days))
+      : null;
     // Once the request is over, the next draw is the last one that can need it.
     if (target || kept.settled) keptFocus.current = null;
     target?.focus();
@@ -650,6 +666,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
               onRemoveEntry={(entry) => {
                 void removeEntry(entry);
               }}
+              editing={editing}
               onEditBlock={(block) => {
                 setEditing(block.item.id);
               }}
@@ -715,7 +732,10 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
             }}
             onSave={(date, span) => {
               const saved = keyboard.placeBlock(editedBlock, date, span);
-              if (saved) setEditing(null);
+              if (saved) {
+                releaseFocus();
+                setEditing(null);
+              }
               return saved;
             }}
             onRemove={() => {

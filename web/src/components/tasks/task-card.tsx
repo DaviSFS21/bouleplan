@@ -1,7 +1,7 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { motion } from 'motion/react';
+import { motion, useIsPresent } from 'motion/react';
 import {
   useRef,
   useState,
@@ -14,7 +14,7 @@ import {
 import type { Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { InlineText } from '@/components/inline-text/inline-text';
-import { ITEM, LAYOUT_TRANSITION, preset } from '@/components/motion/tokens';
+import { ITEM, LAYOUT_TRANSITION, preset, sharedLayout } from '@/components/motion/tokens';
 import { BlockedSelo, PrioritySelo } from '@/components/selo/selo';
 import { deadlineLabel } from './task-deadline';
 import type { DraggedTask } from './task-dnd';
@@ -106,6 +106,7 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const card = useRef<HTMLElement | null>(null);
   const returnFocus = useRef(false);
+  const present = useIsPresent();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging, active } =
     useDraggable({
       id: task.id,
@@ -181,9 +182,9 @@ export function TaskCard({
     <motion.li
       ref={ref}
       className={styles.item}
-      layout={isDragging ? false : 'position'}
-      layoutId={`task-card-${task.id}`}
+      inert={!present}
       transition={LAYOUT_TRANSITION}
+      {...sharedLayout(`task-card-${task.id}`, isDragging)}
       {...preset(ITEM)}
     >
       <article

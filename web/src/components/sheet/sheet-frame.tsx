@@ -10,7 +10,7 @@ import styles from './sheet.module.css';
 interface SheetFrameProps {
   label: string;
   onClose: () => void;
-  // Receives the dialog element; keep it stable, as it runs again whenever it changes.
+  // Keep it stable: it runs again whenever it changes.
   onNode?: (element: HTMLDivElement | null) => void;
   children: ReactNode;
 }
@@ -28,8 +28,7 @@ export function SheetHandle({ handlers }: Readonly<{ handlers: SheetDrag['handle
   );
 }
 
-// The visual shell and the gestures of a phone sheet: veil, drag handle and a scrolling body.
-// Focus and keys belong to the caller, because panels and sheets restore focus differently.
+// Veil, drag handle and scrolling body of a phone sheet; focus and keys are the caller's.
 export function SheetFrame({ label, onClose, onNode, children }: Readonly<SheetFrameProps>) {
   const present = useIsPresent();
   const sheet = useRef<HTMLDivElement>(null);
@@ -75,9 +74,7 @@ export function SheetFrame({ label, onClose, onNode, children }: Readonly<SheetF
         style={{ y }}
         {...preset(SLIDE_UP)}
       >
-        <div className={styles.handle} data-sheet-handle="" onMouseDown={keepFocus} {...handlers}>
-          <span className={styles.grip} />
-        </div>
+        <SheetHandle handlers={handlers} />
         <div className={styles.body}>{children}</div>
       </motion.div>
     </div>

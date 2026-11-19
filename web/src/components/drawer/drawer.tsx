@@ -3,13 +3,13 @@
 import { motion, useIsPresent } from 'motion/react';
 import {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useRestoreFocus } from '@/components/focus-trap/use-restore-focus';
 import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
 import { useRegisterModal } from '@/components/modal-host/modal-host';
 import { FADE, SLIDE_LEFT, preset } from '@/components/motion/tokens';
@@ -32,28 +32,11 @@ export function Drawer({ label, opener, onClose, children }: Readonly<DrawerProp
   const present = useIsPresent();
   useRegisterModal(present ? node : null);
 
-  const restoreFocus = useRef<() => void>(() => undefined);
-
+  // The opener is the button now rendered, which can be another element than the one clicked.
+  useRestoreFocus(present, (previous) => [opener.current, previous]);
   useLayoutEffect(() => {
-    const previous = document.activeElement;
-    // The opener is the button now rendered, which can be another element than the one clicked.
-    const currentOpener = () => opener.current;
     panel.current?.focus();
-    let restored = false;
-    const restore = () => {
-      if (restored) return;
-      restored = true;
-      const target = currentOpener() ?? previous;
-      if (target instanceof HTMLElement && target.isConnected) target.focus();
-    };
-    restoreFocus.current = restore;
-    return restore;
-  }, [opener]);
-
-  // An exit animation keeps the drawer mounted for a moment: focus must not wait for it.
-  useEffect(() => {
-    if (!present) restoreFocus.current();
-  }, [present]);
+  }, []);
 
   useModalKeys(node, { onEscape: onClose, trap: true });
 

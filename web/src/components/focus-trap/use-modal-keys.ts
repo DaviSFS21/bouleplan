@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { ownsKeys } from '@/components/modal-host/modal-host';
 import { isCancellingEdit } from './cancel-editing';
 import { trapTab } from './trap-tab';
 
@@ -19,6 +20,7 @@ export function useModalKeys(
     function handle(event: KeyboardEvent) {
       if (isCancellingEdit()) return;
       if (!(event.target instanceof Node) || !modal?.contains(event.target)) return;
+      if (!ownsKeys(modal, event.target)) return;
       if (event.key === 'Escape') escape.current();
       else if (trap) trapTab(event, modal);
     }

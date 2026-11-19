@@ -11,6 +11,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { Icon } from '@/components/icon/icon';
+import { CANCEL_ON_DISMISS } from '@/components/focus-trap/cancel-editing';
 import styles from './inline-text.module.css';
 
 interface InlineTextProps {
@@ -111,6 +112,7 @@ export function InlineText({
     onChange: handleChange,
     onBlur: handleBlur,
     onKeyDown: handleKeyDown,
+    ...CANCEL_ON_DISMISS,
   };
 
   return (

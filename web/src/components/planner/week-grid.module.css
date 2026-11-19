@@ -2,12 +2,11 @@
   display: grid;
   flex: 1;
   grid-template-columns: 28px repeat(7, minmax(0, 1fr));
-  grid-template-rows: 44px auto auto;
+  grid-template-rows: calc(var(--space-10) + var(--space-1)) auto auto;
   column-gap: 6px;
   min-width: 0;
   padding: var(--space-4);
-  /* The whole day is drawn; the week scrolls inside, with the day names kept in view. */
-  max-height: max(480px, calc(100dvh - 200px));
+  max-height: max(calc(var(--space-12) * 10), calc(100dvh - var(--space-16) * 3 - var(--space-2)));
   overflow-y: auto;
   border-radius: var(--radius-lg);
   background: var(--papel-elevado);
@@ -32,7 +31,7 @@
   background: var(--papel-elevado);
   align-items: baseline;
   gap: 6px;
-  height: 44px;
+  height: calc(var(--space-10) + var(--space-1));
 }
 
 .day > :nth-child(2) {
@@ -59,6 +58,16 @@
   font: var(--type-sobretitulo);
   letter-spacing: var(--type-sobretitulo-tracking);
   text-transform: uppercase;
+}
+
+.corner {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  grid-area: 1 / 1 / span 3;
+  align-self: start;
+  height: calc(var(--space-10) + var(--space-1));
+  background: var(--papel-elevado);
 }
 
 .labels {

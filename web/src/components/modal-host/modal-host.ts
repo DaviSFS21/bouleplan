@@ -34,3 +34,8 @@ export function useRegisterModal(element: HTMLElement | null) {
     };
   }, [element]);
 }
+
+// True unless the event comes from a modal opened inside this one, which then owns the keys.
+export function ownsKeys(modal: HTMLElement, target: Node): boolean {
+  return !stack.some((other) => other !== modal && modal.contains(other) && other.contains(target));
+}

@@ -23,6 +23,11 @@
   font: var(--type-rotulo);
 }
 
+.priority::before {
+  /* Drawn, not written: the block's name already says what the label would repeat. */
+  content: attr(data-priority);
+}
+
 .titleText {
   min-width: 0;
   overflow: hidden;

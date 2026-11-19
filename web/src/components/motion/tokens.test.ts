@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MotionGlobalConfig } from 'motion/react';
-import { DURATION, EASE, FADE, preset } from './tokens';
+import { DURATION, EASE, FADE, preset, sharedLayout } from './tokens';
 
 const css = readFileSync(resolve(process.cwd(), 'src/styles/globals.css'), 'utf8');
 
@@ -32,6 +32,18 @@ describe('motion tokens', () => {
     MotionGlobalConfig.skipAnimations = false;
     try {
       expect(preset(FADE).initial).toEqual({ opacity: 0 });
+    } finally {
+      MotionGlobalConfig.skipAnimations = true;
+    }
+  });
+
+  it('shares a card layout only while animating, and keeps a dragged one still', () => {
+    expect(sharedLayout('card-1', false)).toEqual({});
+
+    MotionGlobalConfig.skipAnimations = false;
+    try {
+      expect(sharedLayout('card-1', false)).toEqual({ layout: 'position', layoutId: 'card-1' });
+      expect(sharedLayout('card-1', true)).toEqual({ layout: false, layoutId: 'card-1' });
     } finally {
       MotionGlobalConfig.skipAnimations = true;
     }

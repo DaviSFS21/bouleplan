@@ -11,6 +11,7 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useRestoreFocus } from '@/components/focus-trap/use-restore-focus';
 import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
 import { Icon } from '@/components/icon/icon';
 import { useRegisterModal } from '@/components/modal-host/modal-host';
@@ -78,36 +79,15 @@ export function SidePanel({
     if (focusSignal > 0) panel.current?.focus();
   }, [focusSignal]);
 
-  const restoreFocus = useRef<() => void>(() => undefined);
-
-  // Layout effects run before any child effect, so this still sees the opener, not a field a child focused.
+  // The opener ref follows the header button now rendered, which can differ from the one clicked.
+  const openedFromRef = useRef(false);
+  const opened = useRestoreFocus(present, (previous) => {
+    const first = openedFromRef.current ? (opener?.current ?? null) : previous;
+    return prefer.current ? [fallback.current?.(), first] : [first, fallback.current?.()];
+  });
   useLayoutEffect(() => {
-    const previous = document.activeElement;
-    const currentOpener = () => opener?.current ?? null;
-    const openedFromRef = currentOpener() === previous;
-    let restored = false;
-    const restore = () => {
-      if (restored) return;
-      restored = true;
-      // The opener ref follows the header button now rendered, which can differ from the one clicked.
-      const first = openedFromRef ? currentOpener() : previous;
-      const candidates = prefer.current
-        ? [fallback.current?.(), first]
-        : [first, fallback.current?.()];
-      const target = candidates.find(
-        (element): element is HTMLElement =>
-          element instanceof HTMLElement && element.isConnected && element !== document.body,
-      );
-      target?.focus();
-    };
-    restoreFocus.current = restore;
-    return restore;
-  }, [opener]);
-
-  // An exit animation keeps the panel mounted for a moment: focus must not wait for it.
-  useEffect(() => {
-    if (!present) restoreFocus.current();
-  }, [present]);
+    openedFromRef.current = (opener?.current ?? null) === opened;
+  }, [opener, opened]);
 
   useEffect(() => {
     if (!panel.current?.contains(document.activeElement)) panel.current?.focus();

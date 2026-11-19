@@ -35,7 +35,7 @@ const other = block({
 });
 
 async function open(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' }));
+  await user.click(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
   return screen.findByRole('dialog', { name: 'Comprar tinta' });
 }
 
@@ -101,13 +101,15 @@ describe('the block popover', () => {
     expect(screen.getByRole('status', { name: 'Movimentos da agenda' })).toHaveTextContent(
       'Bloco movido para qui, 13:00–15:00.',
     );
-    const moved = await screen.findByRole('group', { name: 'Comprar tinta, 13:00 – 15:00' });
+    const moved = await screen.findByRole('button', { name: 'Comprar tinta, 13:00 – 15:00' });
     await waitFor(() => {
       expect(moved).toHaveFocus();
     });
 
     await user.click(screen.getByRole('button', { name: 'Desfazer' }));
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }),
+    ).toBeVisible();
   });
 
   it('refuses a time taken by another block, sends nothing and stays open', async () => {
@@ -145,7 +147,7 @@ describe('the block popover', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' })).toHaveFocus();
     expect(backend.calls).toEqual([]);
   });
 
@@ -179,7 +181,7 @@ describe('the block popover', () => {
     setViewport(PHONE);
     const { user } = await renderWeek({ items: [block()] });
 
-    await user.click(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' }));
+    await user.click(await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Comprar tinta' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');

@@ -1,5 +1,6 @@
 'use client';
 
+import { focusIsLost } from '@/components/focus-trap/focus-lost';
 import {
   DndContext,
   DragOverlay,
@@ -133,8 +134,7 @@ export function TaskBoard({
       ? column?.querySelector<HTMLElement>(`[data-task-id="${request.taskId}"]`)
       : column?.querySelector<HTMLElement>('[data-quick-create]');
     // A slow answer must not take focus from wherever the person went meanwhile.
-    const lost = !document.activeElement || document.activeElement === document.body;
-    if (target && lost) target.focus();
+    if (target && focusIsLost()) target.focus();
     if (target || request.taskId === null) pendingFocus.current = null;
   }, [focusTick, tasks]);
 

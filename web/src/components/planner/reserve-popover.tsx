@@ -1,13 +1,7 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { motion } from 'motion/react';
-import { createPortal } from 'react-dom';
-import { placeMenu } from '@/components/action-menu/place-menu';
-import { trapTab } from '@/components/focus-trap/trap-tab';
-import { POP, preset } from '@/components/motion/tokens';
-import { useIsPhone } from '@/components/responsive/use-media-query';
-import { Sheet } from '@/components/sheet/sheet';
+import { useCallback, useId, useRef, useState, type SubmitEvent } from 'react';
+import { Popover } from '@/components/floating/popover';
 import { NO_ROOM_MESSAGE, type ReserveOrigin } from './keyboard-moves';
 import { remainingMinutes } from './planner-tasks';
 import { dayLabel } from './planner-dates';
@@ -40,47 +34,17 @@ export function ReservePopover({
   onReserve,
   onCancel,
 }: Readonly<ReservePopoverProps>) {
-  const box = useRef<HTMLDivElement>(null);
-  const phone = useIsPhone();
   const first = useRef<HTMLSelectElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const [date, setDate] = useState(initialDate);
   const starts = startsFor(durationFor(remainingMinutes(origin.task)));
   const [start, setStart] = useState(Math.min(DEFAULT_START, starts.at(-1) ?? 0));
   const [refused, setRefused] = useState(false);
   const ids = { day: useId(), start: useId() };
 
-  useLayoutEffect(() => {
-    if (phone) return;
-    const element = document.querySelector<HTMLElement>(anchorSelector);
-    const size = box.current?.getBoundingClientRect();
-    if (!element || !size) return;
-    setPosition(
-      placeMenu(element.getBoundingClientRect(), size, {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }),
-    );
-  }, [anchorSelector, phone]);
-
-  useEffect(() => {
-    first.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (phone) return;
-    function closeOnOutsidePointer(pointer: PointerEvent) {
-      const target = pointer.target;
-      if (!(target instanceof Node)) return;
-      const anchor = document.querySelector(anchorSelector);
-      if (box.current?.contains(target) === true || anchor?.contains(target) === true) return;
-      onCancel();
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePointer);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePointer);
-    };
-  }, [anchorSelector, onCancel, phone]);
+  const anchor = useCallback(
+    () => document.querySelector<HTMLElement>(anchorSelector),
+    [anchorSelector],
+  );
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -139,36 +103,15 @@ export function ReservePopover({
     </form>
   );
 
-  if (phone) {
-    return (
-      <Sheet open label="Reservar tempo" initialFocus={first} onClose={onCancel}>
-        {form}
-      </Sheet>
-    );
-  }
-
-  return createPortal(
-    <motion.div
-      ref={box}
-      role="dialog"
-      aria-label="Reservar tempo"
+  return (
+    <Popover
+      anchor={anchor}
+      label="Reservar tempo"
       className={styles.popover}
-      style={{ ...position, transformOrigin: 'top left' }}
-      {...preset(POP)}
-      onKeyDown={(keyboard) => {
-        trapTab(keyboard, box.current);
-        if (keyboard.key === 'Escape') {
-          keyboard.stopPropagation();
-          onCancel();
-        }
-      }}
-      onBlur={(blur) => {
-        const next = blur.relatedTarget;
-        if (next instanceof Node && !blur.currentTarget.contains(next)) onCancel();
-      }}
+      initialFocus={first}
+      onClose={onCancel}
     >
       {form}
-    </motion.div>,
-    document.body,
+    </Popover>
   );
 }

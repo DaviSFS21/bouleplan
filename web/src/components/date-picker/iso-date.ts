@@ -4,7 +4,7 @@ export const MAX_YEAR = 9999;
 const ISO = /^(\d+)-(\d{2})-(\d{2})$/;
 
 // Calendar days live at local noon so a daylight-saving shift never moves them.
-function atNoon(year: number, month: number, day: number): Date {
+export function atNoon(year: number, month: number, day: number): Date {
   const date = new Date(2000, month, day, 12);
   date.setFullYear(year, month, day);
   return date;

@@ -17,6 +17,10 @@ describe('formatDeadline', () => {
     expect(formatDeadline('2025-12-19', '2026-11-17')).toBe('sex, 19 dez 2025');
   });
 
+  it('keeps the weekday of the first years, which Date would map to the 1900s', () => {
+    expect(formatDeadline('0001-01-15', '2026-11-17')).toBe('seg, 15 jan 1');
+  });
+
   it('defaults to the real current date', () => {
     expect(formatDeadline('2099-12-18')).toBe('sex, 18 dez 2099');
   });

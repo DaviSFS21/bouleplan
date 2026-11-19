@@ -5,7 +5,7 @@ import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type MouseEv
 import { isPending } from '@/api/planner';
 import { BLOCKED_DROP_MESSAGE } from '@/api/messages';
 import type { CalendarEvent } from '@/api/types';
-import { PrioritySelo } from '@/components/selo/selo';
+import { seloClassName } from '@/components/selo/selo';
 import type { DragData } from './planner-drop';
 import { arrowStep, useKeyboardMoves } from './keyboard-moves';
 import { blockStyle, type Lane, type Span } from './planner-geometry';
@@ -35,6 +35,7 @@ interface DedicatedBlockProps {
   span?: Span;
   lane: Lane;
   moving: boolean;
+  editing: boolean;
   onEdit: (block: BlockModel) => void;
 }
 
@@ -44,6 +45,7 @@ export function DedicatedBlock({
   span,
   lane,
   moving,
+  editing,
   onEdit,
 }: Readonly<DedicatedBlockProps>) {
   const { item, task, color } = model;
@@ -72,7 +74,7 @@ export function DedicatedBlock({
       else if (step.days === 0) keyboard.resizeBlock({ item, task }, step.quarters);
       return;
     }
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+    if ((event.key === 'Enter' || event.key === ' ') && !event.nativeEvent.isComposing) {
       event.preventDefault();
       onEdit(model);
     }
@@ -88,8 +90,10 @@ export function DedicatedBlock({
       ref={(element) => {
         block.setNodeRef(element);
       }}
-      role="group"
+      role="button"
       tabIndex={0}
+      aria-haspopup="dialog"
+      aria-expanded={editing}
       aria-label={`${task.title}, ${range}`}
       className={join(styles.event, styles.dedicated, moving && styles.source)}
       style={
@@ -105,7 +109,11 @@ export function DedicatedBlock({
       onClick={handleClick}
     >
       <div className={styles.title}>
-        <PrioritySelo priority={task.priority} mini />
+        <span
+          aria-hidden="true"
+          className={join(seloClassName(task.priority, true), styles.priority)}
+          data-priority={task.priority}
+        />
         <span className={styles.titleText}>{task.title}</span>
       </div>
       <span

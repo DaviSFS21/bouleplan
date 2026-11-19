@@ -26,6 +26,7 @@ interface WeekGridProps {
   overStrip: string | null;
   onOpenTask: (taskId: string, viaKeyboard?: boolean) => void;
   onRemoveEntry: (entry: EntryModel) => void;
+  editing: string | null;
   onEditBlock: (block: BlockModel) => void;
   onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
@@ -46,6 +47,7 @@ export function WeekGrid({
   overStrip,
   onOpenTask,
   onRemoveEntry,
+  editing,
   onEditBlock,
   onOpenEvent,
   onDraw,
@@ -111,6 +113,7 @@ export function WeekGrid({
       ) : null}
       <div ref={week} data-week-scroller="" role="group" aria-label={label} className={styles.week}>
         <div className={styles.hours} aria-hidden="true">
+          <div className={styles.corner} />
           <div className={styles.labels}>
             {hours.map((hour) => (
               <div
@@ -161,6 +164,7 @@ export function WeekGrid({
                   preview={preview}
                   draft={draft}
                   onOpenTask={onOpenTask}
+                  editing={editing}
                   onEditBlock={onEditBlock}
                   onOpenEvent={onOpenEvent}
                   onDraw={onDraw}

@@ -3,6 +3,7 @@
 import { CircleAlert } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Icon } from '@/components/icon/icon';
+import { CANCEL_ON_DISMISS } from '@/components/focus-trap/cancel-editing';
 import styles from './quick-create-field.module.css';
 
 const DEFAULT_MAX_LENGTH = 200;
@@ -133,6 +134,7 @@ export function QuickCreateField({
         ref={input}
         className={error ? [styles.input, styles.inputError].join(' ') : styles.input}
         type="text"
+        {...CANCEL_ON_DISMISS}
         maxLength={maxLength}
         placeholder={placeholder}
         aria-label={inputLabel}

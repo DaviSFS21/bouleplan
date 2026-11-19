@@ -1,5 +1,6 @@
 'use client';
 
+import { motion, useIsPresent } from 'motion/react';
 import {
   useEffect,
   useLayoutEffect,
@@ -11,7 +12,9 @@ import {
 import { createPortal } from 'react-dom';
 import { placeMenu } from '@/components/action-menu/place-menu';
 import { trapTab } from '@/components/focus-trap/trap-tab';
+import { useRestoreFocus } from '@/components/focus-trap/use-restore-focus';
 import { useModalTarget } from '@/components/modal-host/modal-host';
+import { POP, preset } from '@/components/motion/tokens';
 import styles from './floating.module.css';
 
 interface FloatingProps {
@@ -25,8 +28,7 @@ interface FloatingProps {
   children: ReactNode;
 }
 
-// A dialog next to its anchor: it follows scrolling, traps Tab, closes on Escape or a press
-// outside, and gives focus back to the anchor.
+// A dialog next to its anchor, closed by Escape or a press outside.
 export function Floating({
   anchor,
   label,
@@ -37,6 +39,7 @@ export function Floating({
 }: Readonly<FloatingProps>) {
   const box = useRef<HTMLDivElement>(null);
   const host = useModalTarget();
+  const present = useIsPresent();
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useLayoutEffect(() => {
@@ -60,15 +63,19 @@ export function Floating({
     };
   }, [anchor]);
 
+  useRestoreFocus(
+    present,
+    () => [anchor()],
+    () => box.current,
+  );
+
   useEffect(() => {
     const element = box.current;
-    initialFocus?.current?.focus();
-    return () => {
-      const target = anchor();
-      const lost = !document.activeElement || document.activeElement === document.body;
-      if (target && (lost || element?.contains(document.activeElement) === true)) target.focus();
-    };
-  }, [anchor, initialFocus]);
+    const field = initialFocus?.current;
+    // A child that took focus itself, such as a calendar grid, keeps it.
+    if (!field && element?.contains(document.activeElement) === true) return;
+    (field ?? element)?.focus();
+  }, [initialFocus]);
 
   useEffect(() => {
     function closeOnOutsidePointer(pointer: PointerEvent) {
@@ -84,12 +91,15 @@ export function Floating({
   }, [anchor, onClose]);
 
   return createPortal(
-    <div
+    <motion.div
       ref={box}
       role="dialog"
       aria-label={label}
+      tabIndex={-1}
+      inert={!present}
       className={[styles.popover, className ?? ''].join(' ').trim()}
-      style={position}
+      style={{ ...position, transformOrigin: 'top left' }}
+      {...preset(POP)}
       onKeyDown={(keyboard) => {
         trapTab(keyboard, box.current);
         if (keyboard.key === 'Escape') {
@@ -99,7 +109,7 @@ export function Floating({
       }}
     >
       {children}
-    </div>,
+    </motion.div>,
     host ?? document.body,
   );
 }

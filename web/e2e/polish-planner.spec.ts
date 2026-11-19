@@ -6,6 +6,7 @@ import { resetDatabase } from './reset-database';
 
 const NOW = '2026-11-18T10:30:00-03:00';
 const TODAY = '2026-11-18';
+const TOMORROW = '2026-11-19';
 const HOUR_PX = 48;
 
 test.use({ timezoneId: 'America/Sao_Paulo', reducedMotion: 'reduce' });
@@ -16,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 function block(page: Page, name: string): Locator {
-  return page.getByRole('group', { name, exact: true });
+  return page.getByRole('button', { name, exact: true });
 }
 
 function week(page: Page): Locator {
@@ -123,7 +124,7 @@ test.describe('the week at desktop size', () => {
     await expect(
       page
         .locator('[data-day="2026-11-19"]')
-        .getByRole('group', { name: 'Comprar tinta, 13:00 – 15:30' }),
+        .getByRole('button', { name: 'Comprar tinta, 13:00 – 15:30' }),
     ).toBeVisible();
     await expect(dialog).toHaveCount(0);
     expect(writes).toEqual(['PATCH']);
@@ -220,6 +221,9 @@ test.describe('the date picker at desktop size', () => {
     ).toBeVisible();
 
     await pickDate(page, panel.getByRole('button', { name: /^Prazo:/ }), '0001-01-15');
+    await expect(
+      panel.getByRole('button', { name: 'Prazo: venceu seg, 15 jan 1', exact: true }),
+    ).toBeVisible();
     await panel.getByRole('button', { name: /^Prazo:/ }).click();
     await expect(page.getByRole('button', { name: 'Ir para o mês anterior' })).toHaveAttribute(
       'aria-disabled',
@@ -298,5 +302,21 @@ test.describe('on a phone', () => {
 
     await expect(picker).toHaveCount(0);
     await expect(panel.getByRole('button', { name: /^Prazo: vence sex, 20 nov/ })).toBeVisible();
+  });
+
+  test('gives focus to the tab of the day a block was moved to', async ({ page }) => {
+    await seedWeek(page);
+    await page.goto('/semana');
+    await block(page, 'Comprar tinta, 9:00 – 11:00').tap();
+
+    const sheet = page.getByRole('dialog', { name: 'Comprar tinta', exact: true });
+    await sheet.getByLabel('Dia', { exact: true }).selectOption(TOMORROW);
+    await sheet.getByRole('button', { name: 'Salvar', exact: true }).tap();
+
+    await expect(sheet).toHaveCount(0);
+    await expect(page.getByRole('tab', { name: /quinta-feira/ })).toBeFocused();
+    await expect(page.getByRole('status', { name: 'Movimentos da agenda' })).toHaveText(
+      'Bloco movido para qui, 9:00–11:00.',
+    );
   });
 });

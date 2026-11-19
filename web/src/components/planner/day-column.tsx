@@ -39,6 +39,7 @@ interface DayColumnProps {
   preview: Preview | null;
   draft: Draft | null;
   onOpenTask: (taskId: string) => void;
+  editing: string | null;
   onEditBlock: (block: BlockModel) => void;
   onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
@@ -54,6 +55,7 @@ export function DayColumn({
   preview,
   draft,
   onOpenTask,
+  editing,
   onEditBlock,
   onOpenEvent,
   onDraw,
@@ -159,6 +161,7 @@ export function DayColumn({
           lane={lanes.get(block.item.id) ?? { column: 0, columns: 1 }}
           span={resizing?.sourceId === block.item.id ? resizing.span : undefined}
           moving={preview?.sourceId === block.item.id && !preview.resizing}
+          editing={editing === block.item.id}
           onEdit={onEditBlock}
         />
       ))}

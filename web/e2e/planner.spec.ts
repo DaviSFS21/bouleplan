@@ -4,7 +4,7 @@ import { resetDatabase } from './reset-database';
 
 const HOUR_PX = 48;
 
-// A fixed Wednesday morning in a fixed zone: the agenda draws the whole day and every target is derived from it.
+// A fixed Wednesday morning in a fixed zone; every target is derived from it.
 const NOW = '2026-11-18T10:30:00-03:00';
 const TODAY = '2026-11-18';
 
@@ -124,16 +124,26 @@ async function atHour(page: Page, hour: number): Promise<{ x: number; y: number 
   return { x: box.x + box.width / 2, y: box.y + hour * HOUR_PX + 4 };
 }
 
-// Waits until the block's bottom edge sits at the given hour, so a drag never starts from a stale frame.
-async function expectBlockEndAt(page: Page, hour: number) {
+// Runs a gesture and waits for the PATCH it sends to be answered.
+async function untilSaved(page: Page, gesture: () => Promise<void>) {
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' && response.url().includes('/scheduled-items/'),
+  );
+  await gesture();
+  await saved;
+}
+
+// A block is inset 2px at each end.
+async function expectBlockBottom(page: Page, name: string, hour: number) {
   await expect
     .poll(async () => {
       const column = await today(page).boundingBox();
-      const handle = await page.locator('[data-resize-handle]').boundingBox();
-      if (!column || !handle) return Infinity;
-      return Math.abs(handle.y + handle.height - column.y - hour * HOUR_PX);
+      const box = await block(page, name).boundingBox();
+      if (!column || !box) return Infinity;
+      return Math.abs(box.y + box.height - (column.y + hour * HOUR_PX - 2));
     })
-    .toBeLessThan(12);
+    .toBeLessThanOrEqual(1);
 }
 
 async function dropOnHour(page: Page, source: Locator, hour: number) {
@@ -142,7 +152,7 @@ async function dropOnHour(page: Page, source: Locator, hour: number) {
 }
 
 function block(page: Page, name: string): Locator {
-  return page.getByRole('group', { name, exact: true });
+  return page.getByRole('button', { name, exact: true });
 }
 
 test('navigates to the week', async ({ page }) => {
@@ -195,25 +205,29 @@ test('turns a ficha into a block, then moves and resizes it', async ({ page }) =
   await expect(ficha).toBeVisible();
 
   await scrollWeekTo(page, 0);
-  await dropOnHour(page, ficha, 9);
+  await untilSaved(page, () => dropOnHour(page, ficha, 9));
 
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();
   await expect(todayList(page).getByRole('article')).toHaveCount(0);
 
   await scrollWeekTo(page, 6 * HOUR_PX);
-  await expectBlockEndAt(page, 11);
+  await expectBlockBottom(page, 'Comprar tinta, 9:00 – 11:00', 11);
   const moving = block(page, 'Comprar tinta, 9:00 – 11:00');
   const box = await moving.boundingBox();
   if (!box) throw new Error('The block must be on screen.');
-  await dragTo(page, moving, box.x + box.width / 2, box.y + box.height / 2 + HOUR_PX * 2);
+  await untilSaved(page, () =>
+    dragTo(page, moving, box.x + box.width / 2, box.y + box.height / 2 + HOUR_PX * 2),
+  );
   await expect(block(page, 'Comprar tinta, 11:00 – 13:00')).toBeVisible();
 
   await scrollWeekTo(page, 8 * HOUR_PX);
-  await expectBlockEndAt(page, 13);
+  await expectBlockBottom(page, 'Comprar tinta, 11:00 – 13:00', 13);
   const handle = page.locator('[data-resize-handle]');
   const handleBox = await handle.boundingBox();
   if (!handleBox) throw new Error('The handle must be on screen.');
-  await dragTo(page, handle, handleBox.x + 4, handleBox.y + handleBox.height / 2 + HOUR_PX / 2);
+  await untilSaved(page, () =>
+    dragTo(page, handle, handleBox.x + 4, handleBox.y + handleBox.height / 2 + HOUR_PX / 2),
+  );
   await expect(block(page, 'Comprar tinta, 11:00 – 13:30')).toBeVisible();
 });
 
@@ -237,7 +251,7 @@ test('refuses a block over another one', async ({ page }) => {
   ).toBeVisible();
   await page.mouse.up();
 
-  await expect(page.getByRole('group', { name: /^Lixar parede, / })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Lixar parede, / })).toHaveCount(0);
   await expect(block(page, 'Comprar tinta, 9:00 – 11:00')).toBeVisible();
 });
 

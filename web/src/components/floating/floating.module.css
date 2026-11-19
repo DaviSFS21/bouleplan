@@ -7,3 +7,7 @@
   background: var(--papel-flutuante);
   box-shadow: var(--sombra-flutuante);
 }
+
+.popover:focus {
+  outline: none;
+}

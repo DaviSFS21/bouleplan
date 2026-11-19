@@ -3,6 +3,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { Calendar } from '@/components/date-picker/calendar';
 import { DatePopover } from '@/components/date-picker/date-popover';
+import { atNoon } from '@/components/date-picker/iso-date';
+import { Presence } from '@/components/motion/presence';
 import styles from './deadline-field.module.css';
 
 const FORMAT = new Intl.DateTimeFormat('pt-BR', {
@@ -12,10 +14,9 @@ const FORMAT = new Intl.DateTimeFormat('pt-BR', {
 });
 
 export function formatDeadline(iso: string, today: string = localToday()): string {
-  const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
-  const parts = new Map(
-    FORMAT.formatToParts(new Date(year, month - 1, day)).map((part) => [part.type, part.value]),
-  );
+  const [year = 0, month = 1, day = 1] = iso.split('-').map((part) => Number(part));
+  const date = atNoon(year, month - 1, day);
+  const parts = new Map(FORMAT.formatToParts(date).map((part) => [part.type, part.value]));
   const weekday = parts.get('weekday')?.replace('.', '') ?? '';
   const monthName = parts.get('month')?.replace('.', '') ?? '';
   const label = `${weekday}, ${parts.get('day') ?? ''} ${monthName}`;
@@ -87,18 +88,25 @@ export function DeadlineField({
           Remover prazo
         </button>
       ) : null}
-      {open ? (
-        <DatePopover anchor={anchor} label={`Escolher ${label.toLowerCase()}`} onClose={close}>
-          <Calendar
-            value={value}
-            today={today}
-            onPick={choose}
-            onClear={() => {
-              choose(null);
-            }}
-          />
-        </DatePopover>
-      ) : null}
+      <Presence>
+        {open ? (
+          <DatePopover
+            key="date"
+            anchor={anchor}
+            label={`Escolher ${label.toLowerCase()}`}
+            onClose={close}
+          >
+            <Calendar
+              value={value}
+              today={today}
+              onPick={choose}
+              onClear={() => {
+                choose(null);
+              }}
+            />
+          </DatePopover>
+        ) : null}
+      </Presence>
     </div>
   );
 }

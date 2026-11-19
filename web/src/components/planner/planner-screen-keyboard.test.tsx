@@ -40,7 +40,7 @@ async function renderWeek(world: Parameters<typeof servePlannerApi>[0] = {}) {
 const ALT = (key: string) => `{Alt>}{${key}}{/Alt}`;
 const ALT_SHIFT = (key: string) => `{Alt>}{Shift>}{${key}}{/Shift}{/Alt}`;
 
-const dedicated = (name = /^Comprar tinta, /) => screen.getByRole('group', { name });
+const dedicated = (name = /^Comprar tinta, /) => screen.getByRole('button', { name });
 const announced = () => screen.getByRole('status', { name: 'Movimentos da agenda' });
 
 function focus(element: HTMLElement) {
@@ -56,6 +56,28 @@ const other = block({
   endTime: '12:00',
 });
 
+describe('a block as the trigger of its popover', () => {
+  it('announces the dialog, and opens with Enter and Space', async () => {
+    const { user } = await renderWeek({ items: [block()] });
+    focus(dedicated());
+    expect(dedicated()).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(dedicated()).toHaveAttribute('aria-expanded', 'false');
+
+    await user.keyboard(' ');
+
+    expect(await screen.findByRole('dialog', { name: 'Comprar tinta' })).toBeVisible();
+    expect(dedicated()).toHaveAttribute('aria-expanded', 'true');
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByRole('dialog', { name: 'Comprar tinta' })).toBeVisible();
+  });
+});
+
 describe('moving a block with the keyboard', () => {
   it('moves it a quarter hour down with Alt+Down, announces it, and undoes', async () => {
     const { backend, user } = await renderWeek({ items: [block()] });
@@ -63,14 +85,16 @@ describe('moving a block with the keyboard', () => {
 
     await user.keyboard(ALT('ArrowDown'));
 
-    const moved = await screen.findByRole('group', { name: 'Comprar tinta, 9:15 – 11:15' });
+    const moved = await screen.findByRole('button', { name: 'Comprar tinta, 9:15 – 11:15' });
     expect(backend.bodies).toEqual([{ startTime: '09:15', endTime: '11:15' }]);
     expect(announced()).toHaveTextContent('Bloco movido para ter, 9:15–11:15.');
     expect(moved).toHaveFocus();
     expect(await screen.findByText('Tempo movido')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Desfazer' }));
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }),
+    ).toBeVisible();
     expect(backend.bodies.at(-1)).toEqual({
       date: '2026-11-17',
       startTime: '09:00',
@@ -84,7 +108,9 @@ describe('moving a block with the keyboard', () => {
 
     await user.keyboard(ALT('ArrowUp'));
 
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 8:45 – 10:45' })).toHaveFocus();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 8:45 – 10:45' }),
+    ).toHaveFocus();
     expect(backend.bodies).toEqual([{ startTime: '08:45', endTime: '10:45' }]);
     expect(announced()).toHaveTextContent('Bloco movido para ter, 8:45–10:45.');
   });
@@ -101,7 +127,7 @@ describe('moving a block with the keyboard', () => {
     expect(backend.bodies).toEqual([{ date: '2026-11-18', startTime: '09:00', endTime: '11:00' }]);
     expect(announced()).toHaveTextContent('Bloco movido para qua, 9:00–11:00.');
     expect(
-      within(agenda('2026-11-18')).getByRole('group', {
+      within(agenda('2026-11-18')).getByRole('button', {
         name: /^Comprar tinta, /,
       }),
     ).toBeVisible();
@@ -121,10 +147,10 @@ describe('moving a block with the keyboard', () => {
     const { backend, user } = await renderWeek({
       items: [block({ date: '2026-11-16' }), block({ id: other.id, date: '2026-11-22' })],
     });
-    focus(within(agenda('2026-11-16')).getByRole('group', { name: /^Comprar tinta, / }));
+    focus(within(agenda('2026-11-16')).getByRole('button', { name: /^Comprar tinta, / }));
     await user.keyboard(ALT('ArrowLeft'));
     expect(announced()).toHaveTextContent('Início da semana.');
-    focus(within(agenda('2026-11-22')).getByRole('group', { name: /^Comprar tinta, / }));
+    focus(within(agenda('2026-11-22')).getByRole('button', { name: /^Comprar tinta, / }));
     await user.keyboard(ALT('ArrowRight'));
 
     expect(backend.bodies).toEqual([]);
@@ -195,7 +221,7 @@ describe('moving a block with the keyboard', () => {
     );
     await user.click(screen.getByRole('menuitem', { name: 'Reservar tempo…' }));
     await user.click(screen.getByRole('button', { name: 'Reservar' }));
-    const created = await screen.findByRole('group', { name: /^Comprar tinta, / });
+    const created = await screen.findByRole('button', { name: /^Comprar tinta, / });
     focus(created);
 
     await user.keyboard(ALT('ArrowDown'));
@@ -216,11 +242,11 @@ describe('the edges of the day', () => {
         block({ id: other.id, taskId: sand.id, startTime: '22:45', endTime: '23:45' }),
       ],
     });
-    focus(screen.getByRole('group', { name: /^Comprar tinta, / }));
+    focus(screen.getByRole('button', { name: /^Comprar tinta, / }));
     await user.keyboard(ALT('ArrowUp'));
     expect(announced()).toHaveTextContent('Início do dia.');
 
-    focus(screen.getByRole('group', { name: /^Lixar parede, / }));
+    focus(screen.getByRole('button', { name: /^Lixar parede, / }));
     await user.keyboard(ALT('ArrowDown'));
     expect(announced()).toHaveTextContent('Fim do dia.');
     await user.keyboard(ALT_SHIFT('ArrowDown'));
@@ -235,7 +261,7 @@ describe('focus after a keyboard move', () => {
     const { user } = await renderWeek({ items: [block(), entry(), second] });
     focus(dedicated());
     await user.keyboard(ALT('ArrowDown'));
-    await screen.findByRole('group', { name: 'Comprar tinta, 9:15 – 11:15' });
+    await screen.findByRole('button', { name: 'Comprar tinta, 9:15 – 11:15' });
 
     await user.click(
       within(strip('2026-11-18')).getByRole('button', {
@@ -257,7 +283,9 @@ describe('resizing a block with the keyboard', () => {
     focus(dedicated());
 
     await user.keyboard(ALT_SHIFT('ArrowDown'));
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:15' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:15' }),
+    ).toBeVisible();
     expect(announced()).toHaveTextContent('Duração ajustada: ter, 9:00–11:15.');
 
     await user.keyboard(ALT_SHIFT('ArrowUp'));
@@ -401,7 +429,7 @@ describe('reserving time from a menu', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Reservar' }));
 
     expect(
-      await screen.findByRole('group', { name: 'Comprar tinta, 14:00 – 18:00' }),
+      await screen.findByRole('button', { name: 'Comprar tinta, 14:00 – 18:00' }),
     ).toBeVisible();
     expect(backend.bodies).toEqual([
       { taskId: paint.id, date: '2026-11-18', startTime: '14:00', endTime: '18:00' },
@@ -412,7 +440,7 @@ describe('reserving time from a menu', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Desfazer' }));
     await waitFor(() => {
-      expect(screen.queryByRole('group', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
     });
   });
 
@@ -450,7 +478,7 @@ describe('reserving time from a menu', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Reservar' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('group', { name: 'Lixar parede, 9:00 – 10:00' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Lixar parede, 9:00 – 10:00' })).toHaveFocus();
     });
     expect(backend.bodies).toEqual([{ startTime: '09:00', endTime: '10:00' }]);
     expect(announced()).toHaveTextContent('Tempo reservado em qua, 9:00–10:00.');

@@ -8,6 +8,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -15,6 +16,7 @@ import {
 } from 'react';
 import { Icon } from '@/components/icon/icon';
 import { useModalTarget } from '@/components/modal-host/modal-host';
+import { InertOnExit } from '@/components/motion/inert-on-exit';
 import { Presence } from '@/components/motion/presence';
 import { FADE, POP, SLIDE_UP, preset } from '@/components/motion/tokens';
 import { useIsPhone } from '@/components/responsive/use-media-query';
@@ -57,6 +59,8 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const veil = useRef<HTMLButtonElement>(null);
+  const leaving = useMemo(() => [veil, menu], []);
   const menuId = useId();
   const sheet = useIsPhone();
   const modalTarget = useModalTarget();
@@ -192,6 +196,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
             <Fragment key="menu">
               {sheet ? (
                 <motion.button
+                  ref={veil}
                   type="button"
                   className={styles.veil}
                   aria-hidden="true"
@@ -209,6 +214,7 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
                 style={sheet ? { y: drag.y } : { ...position, transformOrigin: 'top left' }}
                 {...preset(sheet ? SLIDE_UP : POP)}
               >
+                <InertOnExit targets={leaving} />
                 {sheet ? <SheetHandle handlers={drag.handlers} /> : null}
                 {items.map((entry, index) =>
                   'separator' in entry ? (

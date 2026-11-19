@@ -213,7 +213,7 @@ describe('the agenda', () => {
       events: [{ ...daily, startTime: '22:00', endTime: '22:30' }],
     });
 
-    expect(screen.getByRole('group', { name: 'Comprar tinta, 6:30 – 7:15' })).toHaveStyle({
+    expect(screen.getByRole('button', { name: 'Comprar tinta, 6:30 – 7:15' })).toHaveStyle({
       top: '312px',
     });
     expect(screen.getByRole('button', { name: 'Daily, 22:00 – 22:30' })).toHaveStyle({
@@ -247,9 +247,9 @@ describe('the agenda', () => {
     expect(event).toHaveTextContent('Daily');
     expect(event).not.toHaveTextContent('9:00');
 
-    const dedicated = screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' });
+    const dedicated = screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' });
     expect(dedicated).toHaveStyle({ top: '432px', height: '92px' });
-    expect(within(dedicated).getByText('P1')).toBeVisible();
+    expect(dedicated.querySelector('[data-priority]')).toHaveAttribute('data-priority', 'P1');
 
     const list = screen.getByRole('region', { name: 'Lista de quarta-feira, 18 de novembro' });
     expect(within(list).getByRole('article', { name: 'Lixar parede' })).toBeVisible();
@@ -276,7 +276,7 @@ describe('the agenda', () => {
       items: [block({ taskId: 'a1a1a1a1-0000-4000-8000-0000000000ff' })],
     });
 
-    expect(screen.queryByRole('group', { name: /Comprar tinta/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
   });
 });
 

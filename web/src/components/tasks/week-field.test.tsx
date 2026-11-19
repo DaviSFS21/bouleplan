@@ -32,6 +32,25 @@ describe('the week calendar', () => {
     ]);
   });
 
+  it('starts the grid on Monday and marks the week selected for assistive technology', async () => {
+    const { dialog } = await openPicker('2026-11-18');
+
+    const heads = Array.from(dialog.querySelectorAll('th')).map((head) => head.textContent);
+    expect(heads).toEqual(['S', 'T', 'Q', 'Q', 'S', 'S', 'D']);
+    const selected = Array.from(dialog.querySelectorAll('td[aria-selected="true"]')).map((cell) =>
+      cell.getAttribute('data-day'),
+    );
+    expect(selected).toEqual([
+      '2026-11-16',
+      '2026-11-17',
+      '2026-11-18',
+      '2026-11-19',
+      '2026-11-20',
+      '2026-11-21',
+      '2026-11-22',
+    ]);
+  });
+
   it('plans the week of any day that is clicked and returns focus to the button', async () => {
     const { user, onChange } = await openPicker(null);
 

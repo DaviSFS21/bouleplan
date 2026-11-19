@@ -29,7 +29,6 @@ export function formatRange(start: number, end: number, spaced = false): string 
   return `${formatClock(start)}${dash}${formatClock(end)}`;
 }
 
-// "2h", "1h30" or "45min".
 export function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

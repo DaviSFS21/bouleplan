@@ -25,7 +25,7 @@ export async function pickDate(page: Page, trigger: Locator, iso: string) {
   )
     .trim()
     .split(' ');
-  const [year = 0, month = 1] = iso.split('-').map(Number);
+  const [year = 0, month = 1] = iso.split('-').map((part) => Number(part));
   const gap = (year - Number(shownYear)) * 12 + (month - 1 - MONTHS.indexOf(shownMonth));
   const years = Math.trunc(gap / 12);
   const months = gap % 12;

@@ -48,30 +48,43 @@ export function Calendar({
   const parsed = value === null ? null : parseIso(value);
   const outside = value !== null && parsed === null;
   const todayDate = parseIso(today) ?? new Date();
-  const week = weekly && value !== null ? weekDates(weekStartOf(value)).map(parseIso) : [];
-  const inWeek = week.filter((day) => day !== null).map((day) => toIso(day));
+  const week =
+    weekly && value !== null ? weekDates(weekStartOf(value)).map((day) => parseIso(day)) : [];
+  const inWeek = week.filter((day) => day !== null);
+  const shared = {
+    locale: ptBR,
+    weekStartsOn: weekly ? 1 : 0,
+    defaultMonth: parsed ?? todayDate,
+    startMonth: firstMonth(),
+    endMonth: lastMonth(),
+    today: todayDate,
+    autoFocus: true,
+    formatters: { formatWeekdayName: (day: Date) => WEEKDAY_INITIAL.format(day).toUpperCase() },
+    classNames: weekly ? { ...CLASS_NAMES, selected: styles.week } : CLASS_NAMES,
+  } as const;
 
   return (
     <div className={styles.calendar}>
-      <DayPicker
-        mode="single"
-        required
-        selected={weekly ? undefined : (parsed ?? undefined)}
-        onSelect={(day) => {
-          onPick(toIso(day));
-        }}
-        locale={ptBR}
-        weekStartsOn={0}
-        defaultMonth={parsed ?? todayDate}
-        startMonth={firstMonth()}
-        endMonth={lastMonth()}
-        today={todayDate}
-        autoFocus
-        formatters={{ formatWeekdayName: (day) => WEEKDAY_INITIAL.format(day).toUpperCase() }}
-        modifiers={{ week: (day) => inWeek.includes(toIso(day)) }}
-        classNames={CLASS_NAMES}
-        modifiersClassNames={{ week: styles.week ?? '' }}
-      />
+      {weekly ? (
+        <DayPicker
+          {...shared}
+          mode="multiple"
+          selected={inWeek}
+          onSelect={(_days, day) => {
+            onPick(toIso(day));
+          }}
+        />
+      ) : (
+        <DayPicker
+          {...shared}
+          mode="single"
+          required
+          selected={parsed ?? undefined}
+          onSelect={(day) => {
+            onPick(toIso(day));
+          }}
+        />
+      )}
       {outside ? (
         <p role="alert" className={styles.error}>
           {RANGE_MESSAGE}

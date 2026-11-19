@@ -20,7 +20,12 @@ describe('shouldDismiss', () => {
   });
 
   it('closes on a short flick', () => {
-    expect(shouldDismiss(10, 0.6, 400)).toBe(true);
-    expect(shouldDismiss(10, 0.59, 400)).toBe(false);
+    expect(shouldDismiss(20, 0.6, 400)).toBe(true);
+    expect(shouldDismiss(20, 0.59, 400)).toBe(false);
+  });
+
+  it('does not take a wobbling tap for a flick', () => {
+    expect(shouldDismiss(3, 2, 400)).toBe(false);
+    expect(shouldDismiss(19, 2, 400)).toBe(false);
   });
 });

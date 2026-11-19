@@ -6,7 +6,7 @@ import { useMediaQuery } from '@/components/responsive/use-media-query';
 
 export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
-// Reduced motion also drops fades: a veil or menu that lingers while it fades out still blocks the page.
+// Reduced motion also drops fades, so nothing lingers over the page while it fades out.
 export function MotionProvider({ children }: Readonly<{ children: ReactNode }>) {
   const reduced = useMediaQuery(REDUCED_MOTION_QUERY);
   useEffect(() => {

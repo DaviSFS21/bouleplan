@@ -3,15 +3,27 @@ import { useRef, type PointerEvent } from 'react';
 import { ENTER } from '@/components/motion/tokens';
 import { shouldDismiss } from './dismiss';
 
-// A pause before lifting the finger cancels a flick.
-const RESTING_MS = 100;
+// A flick's speed is averaged over this window.
+const WINDOW_MS = 100;
+
+interface Sample {
+  y: number;
+  time: number;
+}
 
 interface Gesture {
   pointerId: number;
   startY: number;
-  lastY: number;
-  lastTime: number;
-  velocity: number;
+  samples: Sample[];
+}
+
+// px/ms downward over the recent window, 0 after a pause.
+function velocityAt(samples: readonly Sample[], now: number): number {
+  const recent = samples.filter((sample) => now - sample.time <= WINDOW_MS);
+  const first = recent[0];
+  const last = recent.at(-1);
+  if (!first || !last || last.time === first.time) return 0;
+  return (last.y - first.y) / (last.time - first.time);
 }
 
 export interface SheetDrag {
@@ -24,7 +36,7 @@ export interface SheetDrag {
   };
 }
 
-// The sheet follows the pointer down only; it closes past the threshold or on a flick, else springs back.
+// Follows the pointer down; closes past the threshold or on a flick, else springs back.
 export function useSheetDrag(
   sheet: { current: HTMLElement | null },
   onDismiss: () => void,
@@ -45,9 +57,7 @@ export function useSheetDrag(
         gesture.current = {
           pointerId: event.pointerId,
           startY: event.clientY,
-          lastY: event.clientY,
-          lastTime: event.timeStamp,
-          velocity: 0,
+          samples: [{ y: event.clientY, time: event.timeStamp }],
         };
         // jsdom has no pointer capture.
         if ('setPointerCapture' in event.currentTarget) {
@@ -57,10 +67,7 @@ export function useSheetDrag(
       onPointerMove: (event) => {
         const current = gesture.current;
         if (current?.pointerId !== event.pointerId) return;
-        const elapsed = Math.max(event.timeStamp - current.lastTime, 1);
-        current.velocity = (event.clientY - current.lastY) / elapsed;
-        current.lastY = event.clientY;
-        current.lastTime = event.timeStamp;
+        current.samples.push({ y: event.clientY, time: event.timeStamp });
         y.set(Math.max(0, event.clientY - current.startY));
       },
       onPointerUp: (event) => {
@@ -68,8 +75,8 @@ export function useSheetDrag(
         if (current?.pointerId !== event.pointerId) return;
         gesture.current = null;
         const height = sheet.current?.getBoundingClientRect().height ?? 0;
-        const resting = event.timeStamp - current.lastTime > RESTING_MS;
-        if (shouldDismiss(y.get(), resting ? 0 : current.velocity, height)) onDismiss();
+        const velocity = velocityAt(current.samples, event.timeStamp);
+        if (shouldDismiss(y.get(), velocity, height)) onDismiss();
         else settle();
       },
       onPointerCancel: (event) => {

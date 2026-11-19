@@ -119,7 +119,7 @@ export function layoutLanes(spans: readonly IdentifiedSpan[]): Map<string, Lane>
   return lanes;
 }
 
-// Where the day starts in view: the first focal hour, or the now line when it lies outside them.
+// Scroll offset: the first focal hour, or the now line when it lies outside the focal range.
 export function focusOffset(nowMinutes: number | null, viewport: number): number {
   const outside =
     nowMinutes !== null &&

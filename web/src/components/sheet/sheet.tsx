@@ -1,14 +1,16 @@
 'use client';
 
+import { useIsPresent } from 'motion/react';
 import { useCallback, useLayoutEffect, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalKeys } from '@/components/focus-trap/use-modal-keys';
-import { Presence } from '@/components/motion/presence';
+import { useRestoreFocus } from '@/components/focus-trap/use-restore-focus';
 import { useModalTarget, useRegisterModal } from '@/components/modal-host/modal-host';
 import { SheetFrame } from './sheet-frame';
 
 interface SheetProps {
-  open: boolean;
+  // To animate out, mount it inside a Presence instead.
+  open?: boolean;
   onClose: () => void;
   // The accessible name of the dialog.
   label: string;
@@ -21,19 +23,20 @@ function OpenSheet({ onClose, label, initialFocus, children }: Readonly<Omit<She
   // Fixed at mount: once this sheet registers itself, the target would be the sheet.
   const [host] = useState(useModalTarget());
   const [node, setNode] = useState<HTMLDivElement | null>(null);
+  const present = useIsPresent();
   const attach = useCallback((element: HTMLDivElement | null) => {
     setNode(element);
   }, []);
-  useRegisterModal(node);
+  useRegisterModal(present ? node : null);
   useModalKeys(node, { onEscape: onClose, trap: true });
+  useRestoreFocus(present, (previous) => [previous]);
 
   useLayoutEffect(() => {
     if (!node) return;
-    const previous = document.activeElement;
-    (initialFocus?.current ?? node).focus();
-    return () => {
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
-    };
+    const field = initialFocus?.current;
+    // A child that took focus itself, such as a calendar grid, keeps it.
+    if (!field && node.contains(document.activeElement)) return;
+    (field ?? node).focus();
   }, [node, initialFocus]);
 
   return createPortal(
@@ -44,8 +47,7 @@ function OpenSheet({ onClose, label, initialFocus, children }: Readonly<Omit<She
   );
 }
 
-// A bottom sheet for phones: drag the handle down or tap the veil to close. Keep the content
-// short of its own scroll: the sheet scrolls it from about 90% of the viewport.
-export function Sheet({ open, ...rest }: Readonly<SheetProps>) {
-  return <Presence>{open ? <OpenSheet {...rest} /> : null}</Presence>;
+// A bottom sheet for phones, closed by the handle, the veil or Escape.
+export function Sheet({ open = true, ...rest }: Readonly<SheetProps>) {
+  return open ? <OpenSheet {...rest} /> : null;
 }

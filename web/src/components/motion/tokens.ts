@@ -64,7 +64,14 @@ interface Preset {
   readonly exit: object;
 }
 
-// With animations skipped (tests) the element starts in its final state instead of waiting a frame.
-export function preset<T extends Preset>(value: T): T | (Omit<T, 'initial'> & { initial: false }) {
-  return MotionGlobalConfig.skipAnimations === true ? { ...value, initial: false } : value;
+// With animations skipped there is no initial or exit, so a child starts final and leaves at once.
+export function preset<T extends Preset>(value: T): T | { animate: T['animate']; initial: false } {
+  if (MotionGlobalConfig.skipAnimations !== true) return value;
+  return { animate: value.animate, initial: false };
+}
+
+// Follows a card across lists; none while skipped, so a card that leaves is removed at once.
+export function sharedLayout(id: string, still: boolean) {
+  if (MotionGlobalConfig.skipAnimations === true) return {};
+  return { layout: still ? (false as const) : ('position' as const), layoutId: id };
 }

@@ -39,7 +39,8 @@ function pointer(target: Element, type: string, clientY: number, timeStamp: numb
   Object.defineProperties(event, {
     pointerId: { value: 1 },
     pointerType: { value: 'touch' },
-    timeStamp: { value: timeStamp },
+    // React reads a timestamp of 0 as missing.
+    timeStamp: { value: timeStamp + 1 },
   });
   fireEvent(target, event);
 }
@@ -48,6 +49,52 @@ function handle(): Element {
   const element = document.querySelector('[data-sheet-handle]');
   if (!element) throw new Error('No handle');
   return element;
+}
+
+function Nested() {
+  const [outer, setOuter] = useState(false);
+  const [inner, setInner] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setOuter(true);
+        }}
+      >
+        Abrir fora
+      </button>
+      {outer ? (
+        <Sheet
+          label="Fora"
+          onClose={() => {
+            setOuter(false);
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setInner(true);
+            }}
+          >
+            Abrir dentro
+          </button>
+          {inner ? (
+            <Sheet
+              label="Dentro"
+              onClose={() => {
+                setInner(false);
+              }}
+            >
+              <button type="button" autoFocus>
+                Dia
+              </button>
+            </Sheet>
+          ) : null}
+        </Sheet>
+      ) : null}
+    </>
+  );
 }
 
 describe('Sheet', () => {
@@ -180,5 +227,44 @@ describe('Sheet', () => {
     pointer(handle(), 'pointerup', 400, 200);
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('does not take a wobbling tap for a flick', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Harness onClose={onClose} />);
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+
+    pointer(handle(), 'pointerdown', 100, 0);
+    pointer(handle(), 'pointermove', 103, 5);
+    pointer(handle(), 'pointerup', 103, 10);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe('a sheet inside a sheet', () => {
+  async function openBoth() {
+    const user = userEvent.setup();
+    render(<Nested />);
+    await user.click(screen.getByRole('button', { name: 'Abrir fora' }));
+    await user.click(screen.getByRole('button', { name: 'Abrir dentro' }));
+    return user;
+  }
+
+  it('closes only the inner one on Escape, and focus goes back to what opened it', async () => {
+    const user = await openBoth();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('dialog', { name: 'Dentro' })).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Fora' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Abrir dentro' })).toHaveFocus();
+  });
+
+  it('leaves focus on the child that took it, instead of the dialog', async () => {
+    await openBoth();
+
+    expect(screen.getByRole('button', { name: 'Dia' })).toHaveFocus();
   });
 });
