@@ -5,7 +5,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 ## Way of working
 - **Autonomous mode** (since 2026-11-17): the owner does not review code step by step. Work slice by slice to the end of the roadmap: plan, implement (parallel agents), verify (all CI checks plus end-to-end tests), independent review, fix, pull request, green CI. Decide product questions from Notion and the design system and record each decision in the pull request description. Stop only for real blockers (credentials, GitHub settings, a decision that contradicts Notion).
 - Agents per slice: implementers (backend and frontend, in parallel, Sonnet), a verifier that only tests (Sonnet: every CI check plus Playwright end-to-end), and an independent reviewer that sees only the diff and the slice spec (Fable). Blocking findings go back to the implementer, at most two rounds.
-- Roadmap: initiatives; initiative panel; phases; task kanban; task panel and blockers; weekly planner (with a proposed design for the deadline-without-reserved-time alert); mobile and accessibility; Introspecto; production containers. Integrations and AI are out of scope.
+- Roadmap: initiatives; initiative panel; phases (renamed to epics in step 11); task kanban; task panel and blockers; weekly planner (with a proposed design for the deadline-without-reserved-time alert); mobile and accessibility; Introspecto; production containers. Integrations and AI are out of scope.
 - Each roadmap step gets its own branch and pull request. Branches are named `step-N/topic` in English kebab-case (for example `step-1/foundation`, `step-2/create-initiatives`). Choose the name before the first push: renaming a branch on GitHub by deleting it closes its open pull request. Open the pull request as a **draft** as soon as the step starts, keep its sub-step checklist up to date, and mark it ready for review only when the step is done.
 - **Vertical slices**: one feature end to end (domain → API → screen) at a time.
 - **TDD**: write the test before the code.
@@ -14,7 +14,7 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - **Everything in the repository is in English**: identifiers, comments, Javadoc/TSDoc, test names, config and CI comments, READMEs, ADRs, commit messages and pull request descriptions.
 - The only exception is **user-facing UI text**, which is in Brazilian Portuguese (`pt-BR`).
 - Write few comments. Comment only a non-obvious *why* in one short line; never restate what the code or config says. Reasoning belongs in commit messages and pull request descriptions.
-- Table and column names follow the ERD (`initiative`, `phase`, `task`, `scheduled_item`…).
+- Table and column names follow the ERD (`initiative`, `epic`, `task`, `scheduled_item`…).
 
 ## Backend (`api/`)
 - Java 21, imperative Quarkus (never reactive), Panache, PostgreSQL, Flyway (Flyway owns the schema; Hibernate never generates tables).
@@ -31,8 +31,8 @@ Personal monorepo: `api/` (Quarkus) and `web/` (Next.js). Read the root `README.
 - The UI follows the Bouléplan Design System: always use its tokens, never hard-coded colors or sizes.
 
 ## Data model (MVP)
-Eight tables: `app_user`, `initiative`, `phase`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`, `introspection`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
-- Every task points to a `phase`; an initiative without named phases gets an implicit phase (`is_implicit = true`), which the UI hides.
+Eight tables: `app_user`, `initiative`, `epic`, `task`, `task_blocker`, `scheduled_item`, `calendar_event`, `introspection`. The ERD and modeling decisions live in Notion ("Técnico & Roadmap" page), which is the source of truth. The points most likely to cause mistakes:
+- Every task points to an `epic` ("Épico" in the UI; called phase before step 11); an initiative without named epics gets an implicit epic (`is_implicit = true`), which the UI hides.
 - `is_blocked` is the task's own situation, independent of `status` (`to_do`, `in_progress`, `done`) and of `task_blocker`.
 - Archive and delete are reversible (`archived_at`, `deleted_at`); only the item acted on gets the timestamp.
 - `initiative.color` stores the token name, never the hex value.
