@@ -14,7 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-/** A goal or project that groups phases and tasks. */
+/** A goal or project that groups epics and tasks. */
 @SuppressWarnings(
     "PMD.TooManyMethods") // the entity carries the business rules and a getter per column
 @Entity

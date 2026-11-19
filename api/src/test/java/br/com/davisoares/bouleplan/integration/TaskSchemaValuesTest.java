@@ -26,7 +26,7 @@ class TaskSchemaValuesTest {
     UUID initiativeId = createInitiative.create("Study").getId();
     rows =
         new TaskRows(
-            entityManager, UUID.fromString(TestData.insertImplicitPhase(initiativeId.toString())));
+            entityManager, UUID.fromString(TestData.insertImplicitEpic(initiativeId.toString())));
   }
 
   @Test

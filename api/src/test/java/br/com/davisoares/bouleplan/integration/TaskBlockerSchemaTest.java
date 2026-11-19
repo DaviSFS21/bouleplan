@@ -31,7 +31,7 @@ class TaskBlockerSchemaTest {
     UUID initiativeId = createInitiative.create("Study").getId();
     rows =
         new TaskBlockerRows(
-            entityManager, UUID.fromString(TestData.insertImplicitPhase(initiativeId.toString())));
+            entityManager, UUID.fromString(TestData.insertImplicitEpic(initiativeId.toString())));
     first = rows.insertTask();
     second = rows.insertTask();
   }

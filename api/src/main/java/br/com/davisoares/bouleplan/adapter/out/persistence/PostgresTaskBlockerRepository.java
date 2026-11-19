@@ -70,7 +70,7 @@ public class PostgresTaskBlockerRepository implements TaskBlockerRepository {
             .createNativeQuery(
                 "select b.blocking_task_id, b.blocked_task_id from task_blocker b"
                     + " join task t on t.id = b.blocking_task_id"
-                    + " join phase p on p.id = t.phase_id"
+                    + " join epic p on p.id = t.epic_id"
                     + " join initiative i on i.id = p.initiative_id"
                     + " where i.user_id = :user")
             .setParameter("user", userId)

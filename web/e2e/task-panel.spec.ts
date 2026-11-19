@@ -116,27 +116,27 @@ test('edits the title, state, priority, deadline, effort and week', async ({ pag
   await expect(group(page, 'Semana').getByText(/^Planejada na semana \d+/)).toBeVisible();
 });
 
-test('moves a task between phases of its initiative', async ({ page }) => {
+test('moves a task between epics of its initiative', async ({ page }) => {
   await seed(page);
   const index = page.getByRole('navigation', { name: 'Iniciativas', exact: true });
   await index.getByRole('button', { name: 'Ações de Reforma', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Nova fase', exact: true }).click();
-  const phase = index.getByLabel('Nome da nova fase', { exact: true });
-  await phase.fill('Demolição');
-  await phase.press('Enter');
+  await page.getByRole('menuitem', { name: 'Novo épico', exact: true }).click();
+  const epic = index.getByLabel('Nome do novo épico', { exact: true });
+  await epic.fill('Demolição');
+  await epic.press('Enter');
   await expect(
-    index.getByRole('button', { name: 'Fase 1 · Demolição', exact: true }),
+    index.getByRole('button', { name: 'Épico 1 · Demolição', exact: true }),
   ).toBeVisible();
 
   await card(page, 'Comprar tinta').click();
-  await panel(page).getByRole('button', { name: 'Fase: Sem fase', exact: true }).click();
-  await page.getByRole('menuitemradio', { name: 'Fase 1 · Demolição', exact: true }).click();
+  await panel(page).getByRole('button', { name: 'Épico: Sem épico', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'Épico 1 · Demolição', exact: true }).click();
 
   await expect(
-    panel(page).getByRole('button', { name: 'Fase: Fase 1 · Demolição', exact: true }),
+    panel(page).getByRole('button', { name: 'Épico: Épico 1 · Demolição', exact: true }),
   ).toBeVisible();
   await expect(
-    panel(page).getByRole('link', { name: 'Fase 1 · Demolição', exact: true }),
+    panel(page).getByRole('link', { name: 'Épico 1 · Demolição', exact: true }),
   ).toBeVisible();
 });
 

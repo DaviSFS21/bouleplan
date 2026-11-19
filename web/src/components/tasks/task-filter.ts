@@ -1,5 +1,5 @@
 import { compareTasks } from '@/api/tasks';
-import type { Initiative, Phase, Task, TaskStatus } from '@/api/types';
+import type { Initiative, Epic, Task, TaskStatus } from '@/api/types';
 
 const STATUS_TITLES: Readonly<Record<TaskStatus, string>> = {
   to_do: 'A fazer',
@@ -16,9 +16,9 @@ export function statusTitle(status: TaskStatus): string {
 export function visibleTasks(
   tasks: readonly Task[],
   initiative: Initiative | null,
-  phase: Phase | null,
+  epic: Epic | null,
 ): Task[] {
-  if (phase) return tasks.filter((task) => task.phaseId === phase.id);
+  if (epic) return tasks.filter((task) => task.epicId === epic.id);
   if (initiative) return tasks.filter((task) => task.initiativeId === initiative.id);
   return [...tasks];
 }
@@ -53,8 +53,8 @@ export function progressByInitiative(tasks: readonly Task[] | undefined) {
   return progressBy(tasks, (task) => task.initiativeId);
 }
 
-export function progressByPhase(tasks: readonly Task[] | undefined) {
-  return progressBy(tasks, (task) => task.phaseId);
+export function progressByEpic(tasks: readonly Task[] | undefined) {
+  return progressBy(tasks, (task) => task.epicId);
 }
 
 export const NO_PROGRESS: Progress = { done: 0, total: 0 };

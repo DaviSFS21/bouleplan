@@ -44,8 +44,8 @@ final class TaskApi {
     return JsonPath.from(create(initiativeId, title)).getString("id");
   }
 
-  static String createIdInPhase(String initiativeId, String title, String phaseId) {
-    return post(initiativeId, "{\"title\": \"" + title + "\", \"phaseId\": \"" + phaseId + "\"}")
+  static String createIdInEpic(String initiativeId, String title, String epicId) {
+    return post(initiativeId, "{\"title\": \"" + title + "\", \"epicId\": \"" + epicId + "\"}")
         .statusCode(201)
         .extract()
         .path("id");

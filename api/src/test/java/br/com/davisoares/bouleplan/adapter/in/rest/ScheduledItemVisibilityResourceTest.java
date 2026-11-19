@@ -19,7 +19,7 @@ class ScheduledItemVisibilityResourceTest {
   @Inject EntityManager entityManager;
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
   private String taskId;
   private String blockId;
   private String entryId;
@@ -28,8 +28,8 @@ class ScheduledItemVisibilityResourceTest {
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
-    taskId = TaskApi.createIdInPhase(initiativeId, "Write", phaseId);
+    epicId = EpicApi.createId(initiativeId, "Design");
+    taskId = TaskApi.createIdInEpic(initiativeId, "Write", epicId);
     blockId = PlannerApi.createBlockId(taskId, PlannerApi.TUESDAY, "09:00", "10:00");
     entryId = PlannerApi.createDayListId(taskId, PlannerApi.TUESDAY);
   }
@@ -65,16 +65,16 @@ class ScheduledItemVisibilityResourceTest {
   }
 
   @Test
-  @DisplayName("an archived or deleted phase hides the items of its tasks")
-  void phase() {
-    PhaseActions.archive(phaseId).statusCode(200);
+  @DisplayName("an archived or deleted epic hides the items of its tasks")
+  void epic() {
+    EpicActions.archive(epicId).statusCode(200);
     assertHidden();
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
     assertBack();
 
-    PhaseActions.delete(phaseId).statusCode(204);
+    EpicActions.delete(epicId).statusCode(204);
     assertHidden();
-    PhaseActions.restore(phaseId).statusCode(200);
+    EpicActions.restore(epicId).statusCode(200);
     assertBack();
   }
 

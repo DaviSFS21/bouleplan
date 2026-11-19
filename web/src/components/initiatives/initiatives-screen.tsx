@@ -13,26 +13,26 @@ import {
 } from '@/api/initiatives';
 import {
   ARCHIVE_INITIATIVE_FAILED_MESSAGE,
-  ARCHIVE_PHASE_FAILED_MESSAGE,
-  BLANK_PHASE_NAME_MESSAGE,
+  ARCHIVE_EPIC_FAILED_MESSAGE,
+  BLANK_EPIC_NAME_MESSAGE,
   DELETE_INITIATIVE_FAILED_MESSAGE,
-  DELETE_PHASE_FAILED_MESSAGE,
+  DELETE_EPIC_FAILED_MESSAGE,
   UNDO_FAILED_MESSAGE,
-  phaseCountSuffix,
-  renamePhaseMessage,
+  epicCountSuffix,
+  renameEpicMessage,
 } from '@/api/messages';
 import {
-  fetchPhaseCount,
-  useArchivePhase,
-  useCreatePhase,
-  useDeletePhase,
-  usePhases,
-  useRestorePhase,
-  useUnarchivePhase,
-  useUpdatePhase,
-} from '@/api/phases';
+  fetchEpicCount,
+  useArchiveEpic,
+  useCreateEpic,
+  useDeleteEpic,
+  useEpics,
+  useRestoreEpic,
+  useUnarchiveEpic,
+  useUpdateEpic,
+} from '@/api/epics';
 import { useTasks } from '@/api/tasks';
-import type { Phase } from '@/api/types';
+import type { Epic } from '@/api/types';
 import { useToast } from '@/components/toast/toast';
 import { Drawer } from '@/components/drawer/drawer';
 import { Loading } from '@/components/loading/loading';
@@ -41,7 +41,13 @@ import { InitiativeBoard } from './initiative-board';
 import { InitiativeIndex, type FocusRequest } from './initiative-index';
 import { InitiativePanel, type PanelIntent, type PanelRequest } from './initiative-panel';
 import type { TaskPanelControl } from '@/components/tasks/task-board';
-import { DETAILS_PARAM, PHASE_PARAM, SELECTION_PARAM, TASK_PARAM } from './url-params';
+import {
+  DETAILS_PARAM,
+  EPIC_PARAM,
+  LEGACY_EPIC_PARAM,
+  SELECTION_PARAM,
+  TASK_PARAM,
+} from './url-params';
 import styles from './initiatives-screen.module.css';
 
 export function InitiativesFallback() {
@@ -73,13 +79,13 @@ export function InitiativesScreen() {
     ({ id, initiativeId }) => id === taskParam && liveInitiatives.has(initiativeId),
   );
   const openTaskId = knownTask?.id ?? null;
-  const phasesQuery = usePhases(selectedInitiativeId);
-  const createPhase = useCreatePhase();
-  const updatePhase = useUpdatePhase();
-  const archivePhase = useArchivePhase();
-  const unarchivePhase = useUnarchivePhase();
-  const deletePhase = useDeletePhase();
-  const restorePhase = useRestorePhase();
+  const epicsQuery = useEpics(selectedInitiativeId);
+  const createEpic = useCreateEpic();
+  const updateEpic = useUpdateEpic();
+  const archiveEpic = useArchiveEpic();
+  const unarchiveEpic = useUnarchiveEpic();
+  const deleteEpic = useDeleteEpic();
+  const restoreEpic = useRestoreEpic();
 
   const toast = useToast();
   const archiveInitiative = useArchiveInitiative();
@@ -89,7 +95,7 @@ export function InitiativesScreen() {
   const [actionError, setActionError] = useState<{ message: string; search: string } | null>(null);
   const [request, setRequest] = useState<PanelRequest | null>(null);
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
-  const [newPhaseRequest, setNewPhaseRequest] = useState<{
+  const [newEpicRequest, setNewEpicRequest] = useState<{
     initiativeId: string;
     nonce: number;
   } | null>(null);
@@ -116,15 +122,15 @@ export function InitiativesScreen() {
     setRequest(null);
   }, []);
 
-  const phasesFailed = phasesQuery.isError && !phasesQuery.data;
+  const epicsFailed = epicsQuery.isError && !epicsQuery.data;
 
-  // The phase section is not rendered while the phases are failed, so it cannot consume the intent.
-  if (phasesFailed && newPhaseRequest?.initiativeId === selectedInitiativeId) {
-    setNewPhaseRequest(null);
+  // The epic section is not rendered while the epics are failed, so it cannot consume the intent.
+  if (epicsFailed && newEpicRequest?.initiativeId === selectedInitiativeId) {
+    setNewEpicRequest(null);
   }
 
-  const clearNewPhaseRequest = useCallback(() => {
-    setNewPhaseRequest(null);
+  const clearNewEpicRequest = useCallback(() => {
+    setNewEpicRequest(null);
   }, []);
 
   const settled = data !== undefined && tasksQuery.data !== undefined && !tasksQuery.isFetching;
@@ -138,6 +144,16 @@ export function InitiativesScreen() {
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [dropTaskParam, router, pathname]);
+
+  const legacyEpicParam = searchParams.get(LEGACY_EPIC_PARAM);
+
+  useEffect(() => {
+    if (legacyEpicParam === null) return;
+    const params = new URLSearchParams(window.location.search);
+    params.delete(LEGACY_EPIC_PARAM);
+    if (!params.has(EPIC_PARAM)) params.set(EPIC_PARAM, legacyEpicParam);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [legacyEpicParam, router, pathname]);
 
   function currentParams() {
     return new URLSearchParams(window.location.search);
@@ -155,9 +171,9 @@ export function InitiativesScreen() {
   }
 
   function select(id: string | null) {
-    setNewPhaseRequest(null);
+    setNewEpicRequest(null);
     navigate((params) => {
-      params.delete(PHASE_PARAM);
+      params.delete(EPIC_PARAM);
       if (id === null) {
         params.delete(SELECTION_PARAM);
         params.delete(DETAILS_PARAM);
@@ -168,11 +184,11 @@ export function InitiativesScreen() {
   }
 
   function openDetails(id: string, intent: PanelIntent = null) {
-    setNewPhaseRequest(null);
+    setNewEpicRequest(null);
     counter.current += 1;
     setRequest(intent === null ? null : { intent, id: counter.current, target: id });
     navigate((params) => {
-      if (params.get(SELECTION_PARAM) !== id) params.delete(PHASE_PARAM);
+      if (params.get(SELECTION_PARAM) !== id) params.delete(EPIC_PARAM);
       params.set(SELECTION_PARAM, id);
       params.set(DETAILS_PARAM, '1');
       params.delete(TASK_PARAM);
@@ -201,11 +217,11 @@ export function InitiativesScreen() {
     openTask(id);
   }
 
-  function selectTaskPath(initiativeId: string, phaseId: string | null) {
+  function selectTaskPath(initiativeId: string, epicId: string | null) {
     navigate((params) => {
       params.set(SELECTION_PARAM, initiativeId);
-      if (phaseId === null) params.delete(PHASE_PARAM);
-      else params.set(PHASE_PARAM, phaseId);
+      if (epicId === null) params.delete(EPIC_PARAM);
+      else params.set(EPIC_PARAM, epicId);
     });
   }
 
@@ -240,7 +256,7 @@ export function InitiativesScreen() {
       return;
     }
     const wasSelected = currentParams().get(SELECTION_PARAM) === id;
-    const phaseFilter = wasSelected ? currentParams().get(PHASE_PARAM) : null;
+    const epicFilter = wasSelected ? currentParams().get(EPIC_PARAM) : null;
     if (wasSelected) select(null);
     counter.current += 1;
     setFocusRequest({ id: neighbour?.id ?? null, nonce: counter.current });
@@ -253,7 +269,7 @@ export function InitiativesScreen() {
             navigate((params) => {
               params.set(SELECTION_PARAM, id);
               params.delete(DETAILS_PARAM);
-              if (phaseFilter) params.set(PHASE_PARAM, phaseFilter);
+              if (epicFilter) params.set(EPIC_PARAM, epicFilter);
             });
           },
           () => {
@@ -276,9 +292,9 @@ export function InitiativesScreen() {
 
   function archive(id: string) {
     return leaveOnce(id, async () => {
-      const count = await fetchPhaseCount(queryClient, id);
+      const count = await fetchEpicCount(queryClient, id);
       await leave(id, archiveInitiative.mutateAsync, unarchiveInitiative.mutateAsync, {
-        done: `Iniciativa arquivada${phaseCountSuffix(count)}`,
+        done: `Iniciativa arquivada${epicCountSuffix(count)}`,
         failed: ARCHIVE_INITIATIVE_FAILED_MESSAGE,
       });
     });
@@ -286,9 +302,9 @@ export function InitiativesScreen() {
 
   function remove(id: string) {
     return leaveOnce(id, async () => {
-      const count = await fetchPhaseCount(queryClient, id);
+      const count = await fetchEpicCount(queryClient, id);
       await leave(id, deleteInitiative.mutateAsync, restoreInitiative.mutateAsync, {
-        done: `Iniciativa excluída${phaseCountSuffix(count)}`,
+        done: `Iniciativa excluída${epicCountSuffix(count)}`,
         failed: DELETE_INITIATIVE_FAILED_MESSAGE,
       });
     });
@@ -324,73 +340,74 @@ export function InitiativesScreen() {
 
   const detailsOpen =
     selected !== null && searchParams.get(DETAILS_PARAM) === '1' && openTaskId === null;
-  const phases = phasesQuery.data;
-  const filteredPhase = phases?.find(({ id }) => id === searchParams.get(PHASE_PARAM)) ?? null;
+  const epics = epicsQuery.data;
+  const filteredEpic =
+    epics?.find(({ id }) => id === (searchParams.get(EPIC_PARAM) ?? legacyEpicParam)) ?? null;
 
-  function newPhaseIn(id: string) {
+  function newEpicIn(id: string) {
     navigate((params) => {
       if (params.get(SELECTION_PARAM) !== id) {
-        params.delete(PHASE_PARAM);
+        params.delete(EPIC_PARAM);
         params.set(SELECTION_PARAM, id);
       }
     });
     counter.current += 1;
-    setNewPhaseRequest({ initiativeId: id, nonce: counter.current });
+    setNewEpicRequest({ initiativeId: id, nonce: counter.current });
   }
 
-  function selectPhase(id: string | null) {
+  function selectEpic(id: string | null) {
     navigate((params) => {
-      if (id === null) params.delete(PHASE_PARAM);
-      else params.set(PHASE_PARAM, id);
+      if (id === null) params.delete(EPIC_PARAM);
+      else params.set(EPIC_PARAM, id);
     });
   }
 
-  async function createPhaseIn(initiativeId: string, name: string) {
-    await createPhase.mutateAsync({ initiativeId, name });
+  async function createEpicIn(initiativeId: string, name: string) {
+    await createEpic.mutateAsync({ initiativeId, name });
   }
 
-  async function renamePhase(phase: Phase, name: string) {
+  async function renameEpic(epic: Epic, name: string) {
     if (name === '') {
-      reportError(BLANK_PHASE_NAME_MESSAGE);
+      reportError(BLANK_EPIC_NAME_MESSAGE);
       return;
     }
     setActionError(null);
     try {
-      await updatePhase.mutateAsync({ phase, name });
+      await updateEpic.mutateAsync({ epic, name });
     } catch (failure) {
-      reportError(renamePhaseMessage(failure));
+      reportError(renameEpicMessage(failure));
     }
   }
 
-  async function leavePhase(
-    phase: Phase,
-    action: (phase: Phase) => Promise<unknown>,
-    undo: (phase: Phase) => Promise<unknown>,
+  async function leaveEpic(
+    epic: Epic,
+    action: (epic: Epic) => Promise<unknown>,
+    undo: (epic: Epic) => Promise<unknown>,
     messages: { done: string; failed: string },
   ) {
-    const list = phases ?? [];
-    const position = list.findIndex(({ id }) => id === phase.id);
+    const list = epics ?? [];
+    const position = list.findIndex(({ id }) => id === epic.id);
     const neighbour = list[position + 1] ?? list[position - 1];
     setActionError(null);
     try {
-      await action(phase);
+      await action(epic);
     } catch {
       reportError(messages.failed);
       return;
     }
-    const wasFiltered = currentParams().get(PHASE_PARAM) === phase.id;
-    if (wasFiltered) selectPhase(null);
+    const wasFiltered = currentParams().get(EPIC_PARAM) === epic.id;
+    if (wasFiltered) selectEpic(null);
     counter.current += 1;
-    setFocusRequest({ id: phase.initiativeId, phaseId: neighbour?.id, nonce: counter.current });
+    setFocusRequest({ id: epic.initiativeId, epicId: neighbour?.id, nonce: counter.current });
     toast.show({
       message: messages.done,
       onUndo: () => {
-        undo(phase).then(
+        undo(epic).then(
           () => {
             if (!wasFiltered) return;
             navigate((params) => {
-              if (params.get(SELECTION_PARAM) === phase.initiativeId) {
-                params.set(PHASE_PARAM, phase.id);
+              if (params.get(SELECTION_PARAM) === epic.initiativeId) {
+                params.set(EPIC_PARAM, epic.id);
               }
             });
           },
@@ -435,32 +452,32 @@ export function InitiativesScreen() {
       onDelete={(id) => {
         void remove(id);
       }}
-      onNewPhase={newPhaseIn}
-      phaseIndex={{
-        phases,
-        failed: phasesFailed,
-        selectedId: filteredPhase?.id ?? null,
+      onNewEpic={newEpicIn}
+      epicIndex={{
+        epics,
+        failed: epicsFailed,
+        selectedId: filteredEpic?.id ?? null,
         onSelect: (id) => {
           closeDrawer();
-          selectPhase(id);
+          selectEpic(id);
         },
-        onCreate: (name) => createPhaseIn(selected?.id ?? '', name),
-        onRename: (phase, name) => {
-          void renamePhase(phase, name);
+        onCreate: (name) => createEpicIn(selected?.id ?? '', name),
+        onRename: (epic, name) => {
+          void renameEpic(epic, name);
         },
-        onArchive: (phase) => {
-          void leavePhase(phase, archivePhase.mutateAsync, unarchivePhase.mutateAsync, {
-            done: 'Fase arquivada',
-            failed: ARCHIVE_PHASE_FAILED_MESSAGE,
+        onArchive: (epic) => {
+          void leaveEpic(epic, archiveEpic.mutateAsync, unarchiveEpic.mutateAsync, {
+            done: 'Épico arquivado',
+            failed: ARCHIVE_EPIC_FAILED_MESSAGE,
           });
         },
-        newPhaseSignal:
-          newPhaseRequest?.initiativeId === selected?.id ? (newPhaseRequest?.nonce ?? 0) : 0,
-        onNewPhaseHandled: clearNewPhaseRequest,
-        onDelete: (phase) => {
-          void leavePhase(phase, deletePhase.mutateAsync, restorePhase.mutateAsync, {
-            done: 'Fase excluída',
-            failed: DELETE_PHASE_FAILED_MESSAGE,
+        newEpicSignal:
+          newEpicRequest?.initiativeId === selected?.id ? (newEpicRequest?.nonce ?? 0) : 0,
+        onNewEpicHandled: clearNewEpicRequest,
+        onDelete: (epic) => {
+          void leaveEpic(epic, deleteEpic.mutateAsync, restoreEpic.mutateAsync, {
+            done: 'Épico excluído',
+            failed: DELETE_EPIC_FAILED_MESSAGE,
           });
         },
       }}
@@ -484,7 +501,7 @@ export function InitiativesScreen() {
       {drawer}
       <InitiativeBoard
         initiative={selected}
-        phase={filteredPhase}
+        epic={filteredEpic}
         detailsOpen={detailsOpen}
         openerRef={opener}
         initiatives={data}
@@ -516,11 +533,11 @@ export function InitiativesScreen() {
       {selected && detailsOpen ? (
         <InitiativePanel
           initiative={selected}
-          phases={phases}
+          epics={epics}
           tasks={tasksQuery.data}
-          selectedPhaseId={filteredPhase?.id ?? null}
-          onSelectPhase={selectPhase}
-          onCreatePhase={(name) => createPhaseIn(selected.id, name)}
+          selectedEpicId={filteredEpic?.id ?? null}
+          onSelectEpic={selectEpic}
+          onCreateEpic={(name) => createEpicIn(selected.id, name)}
           opener={opener}
           fallbackFocus={() =>
             document.querySelector<HTMLElement>(`[data-initiative-id="${selected.id}"]`)

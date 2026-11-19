@@ -53,7 +53,7 @@ function removeFromList(list: Task[] | undefined, id: string) {
   return list?.filter((item) => item.id !== id);
 }
 
-// Archiving or deleting a phase or initiative hides its tasks, and undoing it brings them back.
+// Archiving or deleting an epic or initiative hides its tasks, and undoing it brings them back.
 export function refetchTasks(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: tasksKey, exact: true });
 }
@@ -321,23 +321,23 @@ export function useRemoveBlocker() {
   return useBlockerChange('DELETE');
 }
 
-const hiddenByPhase = new WeakMap<QueryClient, Map<string, Task[]>>();
+const hiddenByEpic = new WeakMap<QueryClient, Map<string, Task[]>>();
 
-// A phase that is archived or deleted takes its tasks off the board before the refetch answers.
-export function hideTasksOfPhase(queryClient: QueryClient, phaseId: string) {
-  const hidden = hiddenByPhase.get(queryClient) ?? new Map<string, Task[]>();
-  hiddenByPhase.set(queryClient, hidden);
+// An epic that is archived or deleted takes its tasks off the board before the refetch answers.
+export function hideTasksOfEpic(queryClient: QueryClient, epicId: string) {
+  const hidden = hiddenByEpic.get(queryClient) ?? new Map<string, Task[]>();
+  hiddenByEpic.set(queryClient, hidden);
   const current = queryClient.getQueryData<Task[]>(tasksKey) ?? [];
   hidden.set(
-    phaseId,
-    current.filter((task) => task.phaseId === phaseId),
+    epicId,
+    current.filter((task) => task.epicId === epicId),
   );
-  setList(queryClient, (list) => list?.filter((task) => task.phaseId !== phaseId));
+  setList(queryClient, (list) => list?.filter((task) => task.epicId !== epicId));
 }
 
-export function showTasksOfPhase(queryClient: QueryClient, phaseId: string) {
-  const back = hiddenByPhase.get(queryClient)?.get(phaseId) ?? [];
-  hiddenByPhase.get(queryClient)?.delete(phaseId);
+export function showTasksOfEpic(queryClient: QueryClient, epicId: string) {
+  const back = hiddenByEpic.get(queryClient)?.get(epicId) ?? [];
+  hiddenByEpic.get(queryClient)?.delete(epicId);
   setList(queryClient, (list) =>
     back.reduce<Task[] | undefined>((shown, task) => addToList(shown, task), list),
   );

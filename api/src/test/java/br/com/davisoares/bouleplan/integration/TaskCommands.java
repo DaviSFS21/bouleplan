@@ -10,8 +10,8 @@ final class TaskCommands {
 
   private TaskCommands() {}
 
-  static CreateTaskCommand create(String title, UUID phaseId) {
-    return new CreateTaskCommand(title, phaseId, null);
+  static CreateTaskCommand create(String title, UUID epicId) {
+    return new CreateTaskCommand(title, epicId, null);
   }
 
   static UpdateTaskCommand renameTo(String title) {
@@ -27,7 +27,7 @@ final class TaskCommands {
         Change.absent());
   }
 
-  static UpdateTaskCommand moveTo(UUID phaseId) {
+  static UpdateTaskCommand moveTo(UUID epicId) {
     return new UpdateTaskCommand(
         Change.absent(),
         Change.absent(),
@@ -36,7 +36,7 @@ final class TaskCommands {
         Change.absent(),
         Change.absent(),
         Change.absent(),
-        Change.of(phaseId),
+        Change.of(epicId),
         Change.absent());
   }
 }

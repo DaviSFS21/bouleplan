@@ -4,14 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
 import br.com.davisoares.bouleplan.application.port.in.AddTaskBlockerUseCase;
+import br.com.davisoares.bouleplan.application.port.in.CreateEpicUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
-import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.RemoveTaskBlockerUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.out.CurrentUser;
+import br.com.davisoares.bouleplan.domain.Epic;
 import br.com.davisoares.bouleplan.domain.Initiative;
-import br.com.davisoares.bouleplan.domain.Phase;
 import br.com.davisoares.bouleplan.domain.Task;
 import br.com.davisoares.bouleplan.domain.TaskPriority;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class TaskBlockerLockTest {
 
   @Inject CreateInitiativeUseCase createInitiative;
-  @Inject CreatePhaseUseCase createPhase;
+  @Inject CreateEpicUseCase createEpic;
   @Inject CreateTaskUseCase createTask;
   @Inject UpdateTaskUseCase updateTask;
   @Inject AddTaskBlockerUseCase addBlocker;
@@ -47,8 +47,8 @@ class TaskBlockerLockTest {
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = createInitiative.create("Study").getId();
-    design = createPhase.create(initiativeId, "Design").orElseThrow().getId();
-    build = createPhase.create(initiativeId, "Build").orElseThrow().getId();
+    design = createEpic.create(initiativeId, "Design").orElseThrow().getId();
+    build = createEpic.create(initiativeId, "Build").orElseThrow().getId();
     first = createTask.create(initiativeId, TaskCommands.create("A", design)).orElseThrow().getId();
     second = createTask.create(initiativeId, TaskCommands.create("B", build)).orElseThrow().getId();
   }
@@ -107,11 +107,11 @@ class TaskBlockerLockTest {
   }
 
   @Test
-  @DisplayName("a link write waits for a concurrent phase archive and is then refused")
-  void addWaitsForPhaseLock() throws InterruptedException, ExecutionException {
+  @DisplayName("a link write waits for a concurrent epic archive and is then refused")
+  void addWaitsForEpicLock() throws InterruptedException, ExecutionException {
     boolean linked =
         HeldLock.writeWhileHeld(
-            () -> entityManager.find(Phase.class, build, LockModeType.PESSIMISTIC_WRITE).archive(),
+            () -> entityManager.find(Epic.class, build, LockModeType.PESSIMISTIC_WRITE).archive(),
             () -> addBlocker.add(first, second));
 
     assertThat(linked).isFalse();
@@ -138,17 +138,17 @@ class TaskBlockerLockTest {
   }
 
   @Test
-  @DisplayName("a phase move waits for a concurrent archive of the target phase and is refused")
-  void moveWaitsForTargetPhaseLock() throws InterruptedException, ExecutionException {
+  @DisplayName("an epic move waits for a concurrent archive of the target epic and is refused")
+  void moveWaitsForTargetEpicLock() throws InterruptedException, ExecutionException {
     boolean moved =
         HeldLock.writeWhileHeld(
-            () -> entityManager.find(Phase.class, build, LockModeType.PESSIMISTIC_WRITE).archive(),
+            () -> entityManager.find(Epic.class, build, LockModeType.PESSIMISTIC_WRITE).archive(),
             () -> updateTask.update(first, TaskCommands.moveTo(build)).isPresent());
 
     assertThat(moved).isFalse();
     assertThat(
             QuarkusTransaction.requiringNew()
-                .call(() -> entityManager.find(Task.class, first).getPhase().getId()))
+                .call(() -> entityManager.find(Task.class, first).getEpic().getId()))
         .isEqualTo(design);
   }
 }

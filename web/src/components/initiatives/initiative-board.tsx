@@ -1,13 +1,13 @@
 import { Menu } from 'lucide-react';
 import type { ReactNode, RefObject } from 'react';
-import type { Initiative, Phase, Task } from '@/api/types';
+import type { Initiative, Epic, Task } from '@/api/types';
 import { Icon } from '@/components/icon/icon';
 import { TaskBoard, type TaskPanelControl } from '@/components/tasks/task-board';
 import styles from './initiative-board.module.css';
 
 interface InitiativeBoardProps {
   initiative: Initiative | null;
-  phase: Phase | null;
+  epic: Epic | null;
   detailsOpen: boolean;
   onOpenDetails: () => void;
   openerRef: RefObject<HTMLButtonElement | null>;
@@ -26,7 +26,7 @@ interface InitiativeBoardProps {
 
 export function InitiativeBoard({
   initiative,
-  phase,
+  epic,
   detailsOpen,
   onOpenDetails,
   openerRef,
@@ -41,8 +41,8 @@ export function InitiativeBoard({
   now,
 }: Readonly<InitiativeBoardProps>) {
   let title: ReactNode = 'Todas as tarefas';
-  if (phase) {
-    title = phase.name;
+  if (epic) {
+    title = epic.name;
   } else if (initiative) {
     title = (
       <button
@@ -83,7 +83,7 @@ export function InitiativeBoard({
         ) : null}
         {initiative ? (
           <p className={styles.overline}>
-            {phase ? (
+            {epic ? (
               <button
                 ref={openerRef}
                 type="button"
@@ -101,13 +101,13 @@ export function InitiativeBoard({
         <h1 className={styles.title}>{title}</h1>
       </header>
       <TaskBoard
-        key={`${initiative?.id ?? 'all'}:${phase?.id ?? ''}`}
+        key={`${initiative?.id ?? 'all'}:${epic?.id ?? ''}`}
         tasks={tasks}
         failed={tasksFailed}
         onRetry={onRetryTasks}
         initiatives={initiatives}
         initiative={initiative}
-        phase={phase}
+        epic={epic}
         taskPanel={taskPanel}
         now={now}
       />

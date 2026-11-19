@@ -7,7 +7,7 @@ import java.util.List;
 public interface ListTasksUseCase {
 
   /**
-   * Active tasks whose phase and initiative are active: priority (P1 first), deadline (none last),
+   * Active tasks whose epic and initiative are active: priority (P1 first), deadline (none last),
    * creation.
    */
   List<Task> listActive();

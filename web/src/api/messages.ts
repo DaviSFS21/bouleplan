@@ -54,34 +54,34 @@ export const SAVE_FAILED_MESSAGES: Readonly<Record<InitiativeField, string>> = {
   color: 'Não foi possível salvar a cor. Tente de novo.',
 };
 
-export const BLANK_PHASE_NAME_MESSAGE = 'Dê um nome à fase.';
+export const BLANK_EPIC_NAME_MESSAGE = 'Dê um nome ao épico.';
 
-const PHASE_NAME_MESSAGES: Readonly<Record<string, string>> = {
-  'phase.name.blank': BLANK_PHASE_NAME_MESSAGE,
-  'phase.name.too-long': 'Use no máximo 200 caracteres.',
-  'phase.name.invalid-characters': 'O nome tem caracteres inválidos.',
+const EPIC_NAME_MESSAGES: Readonly<Record<string, string>> = {
+  'epic.name.blank': BLANK_EPIC_NAME_MESSAGE,
+  'epic.name.too-long': 'Use no máximo 200 caracteres.',
+  'epic.name.invalid-characters': 'O nome tem caracteres inválidos.',
 };
 
-export const CREATE_PHASE_FALLBACK_MESSAGE = 'Não foi possível criar a fase. Tente de novo.';
-export const RENAME_PHASE_FALLBACK_MESSAGE = 'Não foi possível salvar o nome. Tente de novo.';
-export const ARCHIVE_PHASE_FAILED_MESSAGE = 'Não foi possível arquivar a fase. Tente de novo.';
-export const DELETE_PHASE_FAILED_MESSAGE = 'Não foi possível excluir a fase. Tente de novo.';
+export const CREATE_EPIC_FALLBACK_MESSAGE = 'Não foi possível criar o épico. Tente de novo.';
+export const RENAME_EPIC_FALLBACK_MESSAGE = 'Não foi possível salvar o nome. Tente de novo.';
+export const ARCHIVE_EPIC_FAILED_MESSAGE = 'Não foi possível arquivar o épico. Tente de novo.';
+export const DELETE_EPIC_FAILED_MESSAGE = 'Não foi possível excluir o épico. Tente de novo.';
 
-function phaseNameMessage(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? (PHASE_NAME_MESSAGES[error.code] ?? fallback) : fallback;
+function epicNameMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? (EPIC_NAME_MESSAGES[error.code] ?? fallback) : fallback;
 }
 
-export function createPhaseMessage(error: unknown): string {
-  return phaseNameMessage(error, CREATE_PHASE_FALLBACK_MESSAGE);
+export function createEpicMessage(error: unknown): string {
+  return epicNameMessage(error, CREATE_EPIC_FALLBACK_MESSAGE);
 }
 
-export function renamePhaseMessage(error: unknown): string {
-  return phaseNameMessage(error, RENAME_PHASE_FALLBACK_MESSAGE);
+export function renameEpicMessage(error: unknown): string {
+  return epicNameMessage(error, RENAME_EPIC_FALLBACK_MESSAGE);
 }
 
-export function phaseCountSuffix(count: number): string {
+export function epicCountSuffix(count: number): string {
   if (count === 0) return '';
-  return `, com ${String(count)} ${count === 1 ? 'fase' : 'fases'}`;
+  return `, com ${String(count)} ${count === 1 ? 'épico' : 'épicos'}`;
 }
 
 export const BLANK_TASK_TITLE_MESSAGE = 'Dê um título à tarefa.';
@@ -110,7 +110,7 @@ export type TaskField =
   | 'priority'
   | 'status'
   | 'isBlocked'
-  | 'phaseId'
+  | 'epicId'
   | 'plannedWeekStart';
 
 export const INVALID_EFFORT_MESSAGE = 'Use de 0,01 a 999 horas, com até 2 casas decimais.';
@@ -126,7 +126,7 @@ const UPDATE_TASK_MESSAGES: Readonly<Record<TaskField, Readonly<Record<string, s
   priority: {},
   status: {},
   isBlocked: {},
-  phaseId: { 'http.404': 'Essa fase não existe mais.' },
+  epicId: { 'http.404': 'Esse épico não existe mais.' },
   plannedWeekStart: { 'task.planned-week.invalid': 'Escolha uma semana válida.' },
 };
 
@@ -138,7 +138,7 @@ const UPDATE_TASK_FALLBACK_MESSAGES: Readonly<Record<TaskField, string>> = {
   priority: 'Não foi possível mudar a prioridade. Tente de novo.',
   status: 'Não foi possível mover a tarefa. Tente de novo.',
   isBlocked: 'Não foi possível atualizar o bloqueio. Tente de novo.',
-  phaseId: 'Não foi possível mudar a fase. Tente de novo.',
+  epicId: 'Não foi possível mudar o épico. Tente de novo.',
   plannedWeekStart: 'Não foi possível salvar a semana. Tente de novo.',
 };
 

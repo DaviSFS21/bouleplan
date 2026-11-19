@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.davisoares.bouleplan.TestData;
 import br.com.davisoares.bouleplan.application.port.in.AddTaskBlockerUseCase;
+import br.com.davisoares.bouleplan.application.port.in.CreateEpicUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateInitiativeUseCase;
-import br.com.davisoares.bouleplan.application.port.in.CreatePhaseUseCase;
 import br.com.davisoares.bouleplan.application.port.in.CreateTaskUseCase;
 import br.com.davisoares.bouleplan.application.port.in.RemoveTaskBlockerUseCase;
 import br.com.davisoares.bouleplan.application.port.in.UpdateTaskUseCase;
@@ -29,7 +29,7 @@ class TaskBlockerConcurrencyTest {
   private static final String ROUND_MESSAGE = "round %d";
 
   @Inject CreateInitiativeUseCase createInitiative;
-  @Inject CreatePhaseUseCase createPhase;
+  @Inject CreateEpicUseCase createEpic;
   @Inject CreateTaskUseCase createTask;
   @Inject UpdateTaskUseCase updateTask;
   @Inject AddTaskBlockerUseCase addBlocker;
@@ -44,8 +44,8 @@ class TaskBlockerConcurrencyTest {
     initiativeId = createInitiative.create("Study").getId();
   }
 
-  private UUID newTask(UUID phaseId) {
-    return createTask.create(initiativeId, TaskCommands.create("T", phaseId)).orElseThrow().getId();
+  private UUID newTask(UUID epicId) {
+    return createTask.create(initiativeId, TaskCommands.create("T", epicId)).orElseThrow().getId();
   }
 
   private UUID newTaskInNewInitiative(String name) {
@@ -93,7 +93,7 @@ class TaskBlockerConcurrencyTest {
   @Test
   @DisplayName("links of tasks in four initiatives that would close a ring never both stay")
   void ringOverDisjointPairs() throws ExecutionException, InterruptedException {
-    // Each task has its own initiative, so the two writes share no initiative, phase or task lock.
+    // Each task has its own initiative, so the two writes share no initiative, epic or task lock.
     UUID a = newTaskInNewInitiative("Ring A");
     UUID b = newTaskInNewInitiative("Ring B");
     UUID c = newTaskInNewInitiative("Ring C");
@@ -115,10 +115,10 @@ class TaskBlockerConcurrencyTest {
   }
 
   @Test
-  @DisplayName("opposite link writes racing opposite phase moves neither deadlock nor lose a rule")
-  void blockerWritesAndPhaseMovesDoNotDeadlock() throws ExecutionException, InterruptedException {
-    UUID design = createPhase.create(initiativeId, "Design").orElseThrow().getId();
-    UUID build = createPhase.create(initiativeId, "Build").orElseThrow().getId();
+  @DisplayName("opposite link writes racing opposite epic moves neither deadlock nor lose a rule")
+  void blockerWritesAndEpicMovesDoNotDeadlock() throws ExecutionException, InterruptedException {
+    UUID design = createEpic.create(initiativeId, "Design").orElseThrow().getId();
+    UUID build = createEpic.create(initiativeId, "Build").orElseThrow().getId();
     UUID first = newTask(design);
     UUID second = newTask(build);
     for (int round = 0; round < ROUNDS; round++) {
@@ -138,8 +138,8 @@ class TaskBlockerConcurrencyTest {
           .as(ROUND_MESSAGE, round)
           .hasSize(2)
           .allMatch(outcome -> LINKED.equals(outcome) || "task.blocker.cycle".equals(outcome));
-      assertThat(db().phaseOf(first)).as(ROUND_MESSAGE, round).isEqualTo(firstTarget);
-      assertThat(db().phaseOf(second)).as(ROUND_MESSAGE, round).isEqualTo(secondTarget);
+      assertThat(db().epicOf(first)).as(ROUND_MESSAGE, round).isEqualTo(firstTarget);
+      assertThat(db().epicOf(second)).as(ROUND_MESSAGE, round).isEqualTo(secondTarget);
       assertThat(db().storedLinks()).as(ROUND_MESSAGE, round).isLessThanOrEqualTo(1);
     }
   }

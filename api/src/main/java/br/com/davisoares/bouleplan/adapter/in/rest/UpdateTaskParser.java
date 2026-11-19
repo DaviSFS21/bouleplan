@@ -19,7 +19,7 @@ final class UpdateTaskParser {
           "priority",
           "status",
           "isBlocked",
-          "phaseId",
+          "epicId",
           "plannedWeekStart");
 
   private UpdateTaskParser() {}
@@ -34,7 +34,7 @@ final class UpdateTaskParser {
         JsonFields.required(JsonFields.token(root, "priority", TaskPriority::findByToken)),
         JsonFields.required(JsonFields.token(root, "status", TaskStatus::findByToken)),
         JsonFields.required(JsonFields.bool(root, "isBlocked")),
-        JsonFields.uuid(root, "phaseId"),
+        JsonFields.uuid(root, "epicId"),
         JsonFields.date(root, "plannedWeekStart"));
   }
 }

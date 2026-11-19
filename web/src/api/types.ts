@@ -3,7 +3,7 @@ import type { components } from './schema';
 export type Initiative = components['schemas']['Initiative'];
 export type InitiativeColor = Initiative['color'];
 export type Problem = components['schemas']['Problem'];
-export type Phase = components['schemas']['Phase'];
+export type Epic = components['schemas']['Epic'];
 
 export type Task = components['schemas']['Task'];
 export type TaskPriority = Task['priority'];
@@ -18,7 +18,7 @@ export type TaskChanges = Pick<
   | 'priority'
   | 'status'
   | 'isBlocked'
-  | 'phaseId'
+  | 'epicId'
   | 'plannedWeekStart'
 >;
 

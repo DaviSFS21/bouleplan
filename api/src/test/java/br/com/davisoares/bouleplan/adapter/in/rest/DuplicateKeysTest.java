@@ -13,32 +13,32 @@ class DuplicateKeysTest {
   private static final String DUPLICATE = "{\"name\": \"a\", \"name\": \"b\"}";
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
 
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
-    initiativeId = PhaseApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
+    initiativeId = EpicApi.initiativeId("Study");
+    epicId = EpicApi.createId(initiativeId, "Design");
   }
 
   @Test
   @DisplayName("both POST endpoints reject a duplicate key")
   void postRejectsDuplicates() {
     InitiativeAssertions.assertMalformed(InitiativeApi.post(DUPLICATE));
-    InitiativeAssertions.assertMalformed(PhaseApi.post(initiativeId, DUPLICATE));
+    InitiativeAssertions.assertMalformed(EpicApi.post(initiativeId, DUPLICATE));
 
     InitiativeApi.list().body("size()", Matchers.is(1));
-    PhaseApi.list(initiativeId).body("size()", Matchers.is(1));
+    EpicApi.list(initiativeId).body("size()", Matchers.is(1));
   }
 
   @Test
   @DisplayName("both PATCH endpoints reject a duplicate key and change nothing")
   void patchRejectsDuplicates() {
     InitiativeAssertions.assertMalformed(InitiativeApi.patch(initiativeId, DUPLICATE));
-    InitiativeAssertions.assertMalformed(PhaseApi.patch(phaseId, DUPLICATE));
+    InitiativeAssertions.assertMalformed(EpicApi.patch(epicId, DUPLICATE));
 
     InitiativeApi.get(initiativeId).body("name", Matchers.equalTo("Study"));
-    PhaseApi.get(phaseId).body("name", Matchers.equalTo("Design"));
+    EpicApi.get(epicId).body("name", Matchers.equalTo("Design"));
   }
 }

@@ -69,7 +69,7 @@
                     }
                 }
             },
-            "CreateInitiativeRequest": {
+            "CreateEpicRequest": {
                 "type": "object",
                 "required": [
                     "name"
@@ -81,7 +81,7 @@
                     }
                 }
             },
-            "CreatePhaseRequest": {
+            "CreateInitiativeRequest": {
                 "type": "object",
                 "required": [
                     "name"
@@ -129,12 +129,12 @@
                         "type": "string",
                         "maxLength": 300
                     },
-                    "phaseId": {
+                    "epicId": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "An active named phase of the initiative; absent or null means the implicit phase",
+                        "description": "An active named epic of the initiative; absent or null means the implicit epic",
                         "format": "uuid"
                     },
                     "status": {
@@ -145,6 +145,40 @@
                             "in_progress",
                             "done"
                         ]
+                    }
+                }
+            },
+            "Epic": {
+                "required": [
+                    "id",
+                    "initiativeId",
+                    "name",
+                    "origin",
+                    "createdAt",
+                    "updatedAt"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "initiativeId": {
+                        "$ref": "#/components/schemas/UUID"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "origin": {
+                        "type": "string",
+                        "enum": [
+                            "native"
+                        ]
+                    },
+                    "createdAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
+                    },
+                    "updatedAt": {
+                        "$ref": "#/components/schemas/OffsetDateTime"
                     }
                 }
             },
@@ -289,40 +323,6 @@
                 "examples": [
                     "2022-03-10T12:15:50-04:00"
                 ]
-            },
-            "Phase": {
-                "required": [
-                    "id",
-                    "initiativeId",
-                    "name",
-                    "origin",
-                    "createdAt",
-                    "updatedAt"
-                ],
-                "type": "object",
-                "properties": {
-                    "id": {
-                        "$ref": "#/components/schemas/UUID"
-                    },
-                    "initiativeId": {
-                        "$ref": "#/components/schemas/UUID"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "origin": {
-                        "type": "string",
-                        "enum": [
-                            "native"
-                        ]
-                    },
-                    "createdAt": {
-                        "$ref": "#/components/schemas/OffsetDateTime"
-                    },
-                    "updatedAt": {
-                        "$ref": "#/components/schemas/OffsetDateTime"
-                    }
-                }
             },
             "Planner": {
                 "required": [
@@ -488,7 +488,7 @@
                 "required": [
                     "id",
                     "initiativeId",
-                    "phaseId",
+                    "epicId",
                     "title",
                     "description",
                     "deadline",
@@ -512,12 +512,12 @@
                     "initiativeId": {
                         "$ref": "#/components/schemas/UUID"
                     },
-                    "phaseId": {
+                    "epicId": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "Null when the task is in the implicit phase",
+                        "description": "Null when the task is in the implicit epic",
                         "format": "uuid"
                     },
                     "title": {
@@ -632,6 +632,15 @@
                     }
                 }
             },
+            "UpdateEpicRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 200
+                    }
+                }
+            },
             "UpdateInitiativeRequest": {
                 "type": "object",
                 "properties": {
@@ -665,15 +674,6 @@
                             "rosa",
                             "marrom"
                         ]
-                    }
-                }
-            },
-            "UpdatePhaseRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string",
-                        "maxLength": 200
                     }
                 }
             },
@@ -758,12 +758,12 @@
                     "isBlocked": {
                         "type": "boolean"
                     },
-                    "phaseId": {
+                    "epicId": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "description": "An active named phase of the same initiative; null is the implicit phase",
+                        "description": "An active named epic of the same initiative; null is the implicit epic",
                         "format": "uuid"
                     },
                     "plannedWeekStart": {
@@ -780,13 +780,13 @@
     },
     "tags": [
         {
+            "name": "Epics"
+        },
+        {
             "name": "Initiatives"
         },
         {
             "name": "Introspecto"
-        },
-        {
-            "name": "Phases"
         },
         {
             "name": "Planner"
@@ -929,6 +929,266 @@
                     },
                     "404": {
                         "description": "No event with this id of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/epics/{id}": {
+            "delete": {
+                "summary": "Deletes an active epic",
+                "operationId": "deleteEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Epic deleted"
+                    },
+                    "404": {
+                        "description": "No active epic with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "summary": "Updates an active epic; absent fields stay",
+                "operationId": "updateEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/merge-patch+json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEpicRequest"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEpicRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "The updated epic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Epic"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Rule violation or malformed request",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active epic with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "get": {
+                "summary": "Gets an active epic by id",
+                "operationId": "getEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The epic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Epic"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active epic with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/epics/{id}/archive": {
+            "post": {
+                "summary": "Archives an active epic",
+                "operationId": "archiveEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The archived epic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Epic"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No active epic with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/epics/{id}/restore": {
+            "post": {
+                "summary": "Restores a deleted epic; a no-op if it is not deleted",
+                "operationId": "restoreEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The epic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Epic"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No epic with this id in an active initiative of the user",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/epics/{id}/unarchive": {
+            "post": {
+                "summary": "Unarchives an epic; a no-op if it is already active",
+                "operationId": "unarchiveEpic",
+                "tags": [
+                    "Epics"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/components/schemas/UUID"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The epic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Epic"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No archived or active epic with this id in an active initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1186,12 +1446,12 @@
                 }
             }
         },
-        "/initiatives/{id}/phases": {
+        "/initiatives/{id}/epics": {
             "get": {
-                "summary": "Lists the active phases of an active initiative in creation order",
-                "operationId": "listPhases",
+                "summary": "Lists the active epics of an active initiative in creation order",
+                "operationId": "listEpics",
                 "tags": [
-                    "Phases"
+                    "Epics"
                 ],
                 "parameters": [
                     {
@@ -1205,13 +1465,13 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Active named phases",
+                        "description": "Active named epics",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/Phase"
+                                        "$ref": "#/components/schemas/Epic"
                                     }
                                 }
                             }
@@ -1230,10 +1490,10 @@
                 }
             },
             "post": {
-                "summary": "Creates a phase in an active initiative",
-                "operationId": "createPhase",
+                "summary": "Creates an epic in an active initiative",
+                "operationId": "createEpic",
                 "tags": [
-                    "Phases"
+                    "Epics"
                 ],
                 "parameters": [
                     {
@@ -1249,7 +1509,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/CreatePhaseRequest"
+                                "$ref": "#/components/schemas/CreateEpicRequest"
                             }
                         }
                     },
@@ -1257,16 +1517,16 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "Phase created",
+                        "description": "Epic created",
                         "headers": {
                             "Location": {
-                                "description": "URI of the created phase"
+                                "description": "URI of the created epic"
                             }
                         },
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/Phase"
+                                    "$ref": "#/components/schemas/Epic"
                                 }
                             }
                         }
@@ -1337,7 +1597,7 @@
         },
         "/initiatives/{id}/tasks": {
             "post": {
-                "summary": "Creates a task in an active initiative; without phaseId it goes to the implicit phase",
+                "summary": "Creates a task in an active initiative; without epicId it goes to the implicit epic",
                 "operationId": "createTask",
                 "tags": [
                     "Tasks"
@@ -1389,7 +1649,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active initiative with this id, or phaseId is not an active named phase of it",
+                        "description": "No active initiative with this id, or epicId is not an active named epic of it",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -1609,266 +1869,6 @@
                 }
             }
         },
-        "/phases/{id}": {
-            "delete": {
-                "summary": "Deletes an active phase",
-                "operationId": "deletePhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Phase deleted"
-                    },
-                    "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "summary": "Updates an active phase; absent fields stay",
-                "operationId": "updatePhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/merge-patch+json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdatePhaseRequest"
-                            }
-                        },
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdatePhaseRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "The updated phase",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Phase"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Rule violation or malformed request",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "summary": "Gets an active phase by id",
-                "operationId": "getPhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The phase",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Phase"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/phases/{id}/archive": {
-            "post": {
-                "summary": "Archives an active phase",
-                "operationId": "archivePhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The archived phase",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Phase"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No active phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/phases/{id}/restore": {
-            "post": {
-                "summary": "Restores a deleted phase; a no-op if it is not deleted",
-                "operationId": "restorePhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The phase",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Phase"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/phases/{id}/unarchive": {
-            "post": {
-                "summary": "Unarchives a phase; a no-op if it is already active",
-                "operationId": "unarchivePhase",
-                "tags": [
-                    "Phases"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/components/schemas/UUID"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The phase",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Phase"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "No archived or active phase with this id in an active initiative of the user",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/Problem"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/planner": {
             "get": {
                 "summary": "Gets the fixed events and the items of visible tasks of one week",
@@ -1956,7 +1956,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2042,7 +2042,7 @@
                         }
                     },
                     "404": {
-                        "description": "No item with this id whose task is active in an active phase and initiative of the user",
+                        "description": "No item with this id whose task is active in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2094,7 +2094,7 @@
                         "description": "The item is gone"
                     },
                     "404": {
-                        "description": "No item with this id whose task is active in an active phase and initiative of the user",
+                        "description": "No item with this id whose task is active in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2108,7 +2108,7 @@
         },
         "/tasks": {
             "get": {
-                "summary": "Lists the active tasks whose phase and initiative are active, by priority, deadline and creation",
+                "summary": "Lists the active tasks whose epic and initiative are active, by priority, deadline and creation",
                 "operationId": "listTasks",
                 "tags": [
                     "Tasks"
@@ -2160,7 +2160,7 @@
                         "description": "The link does not exist"
                     },
                     "404": {
-                        "description": "Either task is not an active task in an active phase and initiative of the user",
+                        "description": "Either task is not an active task in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2200,7 +2200,7 @@
                         "description": "The link exists"
                     },
                     "404": {
-                        "description": "Either task is not an active task in an active phase and initiative of the user",
+                        "description": "Either task is not an active task in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2244,7 +2244,7 @@
                         "description": "Task deleted"
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2308,7 +2308,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2347,7 +2347,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2388,7 +2388,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2429,7 +2429,7 @@
                         }
                     },
                     "404": {
-                        "description": "No task with this id in an active phase and initiative of the user",
+                        "description": "No task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2473,7 +2473,7 @@
                         }
                     },
                     "404": {
-                        "description": "No active task with this id in an active phase and initiative of the user",
+                        "description": "No active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2514,7 +2514,7 @@
                         }
                     },
                     "404": {
-                        "description": "No archived or active task with this id in an active phase and initiative of the user",
+                        "description": "No archived or active task with this id in an active epic and initiative of the user",
                         "content": {
                             "application/problem+json": {
                                 "schema": {

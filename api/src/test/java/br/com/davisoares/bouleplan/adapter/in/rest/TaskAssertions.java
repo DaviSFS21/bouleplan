@@ -14,7 +14,7 @@ final class TaskAssertions {
     InitiativeAssertions.assertNotFound(TaskActions.restore(id));
   }
 
-  static String createBody(String phaseId) {
-    return "{\"title\": \"New\", \"phaseId\": \"" + phaseId + "\"}";
+  static String createBody(String epicId) {
+    return "{\"title\": \"New\", \"epicId\": \"" + epicId + "\"}";
   }
 }

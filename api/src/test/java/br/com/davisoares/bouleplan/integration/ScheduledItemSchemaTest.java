@@ -32,7 +32,7 @@ class ScheduledItemSchemaTest {
     UUID initiativeId = createInitiative.create("Study").getId();
     tasks =
         new TaskBlockerRows(
-            entityManager, UUID.fromString(TestData.insertImplicitPhase(initiativeId.toString())));
+            entityManager, UUID.fromString(TestData.insertImplicitEpic(initiativeId.toString())));
     taskId = tasks.insertTask();
     rows = new ScheduledItemRows(entityManager, taskId);
   }

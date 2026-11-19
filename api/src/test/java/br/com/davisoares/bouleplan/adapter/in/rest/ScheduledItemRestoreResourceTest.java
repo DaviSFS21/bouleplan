@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class ScheduledItemRestoreResourceTest {
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
   private String hiddenTask;
   private String visibleTask;
   private String hiddenBlock;
@@ -22,8 +22,8 @@ class ScheduledItemRestoreResourceTest {
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
-    hiddenTask = TaskApi.createIdInPhase(initiativeId, "Write", phaseId);
+    epicId = EpicApi.createId(initiativeId, "Design");
+    hiddenTask = TaskApi.createIdInEpic(initiativeId, "Write", epicId);
     visibleTask = TaskApi.createId(initiativeId, "Read");
     hiddenBlock = PlannerApi.createBlockId(hiddenTask, PlannerApi.TUESDAY, "09:00", "10:00");
   }
@@ -68,12 +68,12 @@ class ScheduledItemRestoreResourceTest {
   }
 
   @Test
-  @DisplayName("unarchiving a phase brings the blocks of its tasks back, even over a newer one")
-  void unarchivePhase() {
-    PhaseActions.archive(phaseId).statusCode(200);
+  @DisplayName("unarchiving an epic brings the blocks of its tasks back, even over a newer one")
+  void unarchiveEpic() {
+    EpicActions.archive(epicId).statusCode(200);
     planWhileHidden();
 
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
 
     assertRestoredOverlap();
   }

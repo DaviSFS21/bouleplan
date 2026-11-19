@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 
 import { useUpdateInitiative, type InitiativeChanges } from '@/api/initiatives';
 import {
   BLANK_NAME_MESSAGE,
-  BLANK_PHASE_NAME_MESSAGE,
-  createPhaseMessage,
+  BLANK_EPIC_NAME_MESSAGE,
+  createEpicMessage,
   SAVE_FAILED_MESSAGES,
   updateInitiativeMessage,
   type InitiativeField,
 } from '@/api/messages';
-import type { Initiative, Phase, Task } from '@/api/types';
+import type { Initiative, Epic, Task } from '@/api/types';
 import { ActionMenu } from '@/components/action-menu/action-menu';
 import { ColorPicker, colorName, type ColorToken } from '@/components/color-picker/color-picker';
 import { DeadlineField, localToday } from '@/components/deadline-field/deadline-field';
@@ -18,8 +18,8 @@ import { InlineText } from '@/components/inline-text/inline-text';
 import { SidePanel } from '@/components/side-panel/side-panel';
 import { formatDate, formatElapsed } from './initiative-dates';
 import { ProgressBar } from '@/components/progress/progress-bar';
-import { NO_PROGRESS, progressByInitiative, progressByPhase } from '@/components/tasks/task-filter';
-import { phaseLabel } from './phase-label';
+import { NO_PROGRESS, progressByInitiative, progressByEpic } from '@/components/tasks/task-filter';
+import { epicLabel } from './epic-label';
 import { QuickCreateField } from './quick-create-field';
 import styles from './initiative-panel.module.css';
 
@@ -36,12 +36,12 @@ export interface PanelRequest {
 
 interface InitiativePanelProps {
   initiative: Initiative;
-  phases: readonly Phase[] | undefined;
+  epics: readonly Epic[] | undefined;
   // undefined while the tasks load
   tasks: readonly Task[] | undefined;
-  selectedPhaseId: string | null;
-  onSelectPhase: (id: string | null) => void;
-  onCreatePhase: (name: string) => Promise<void>;
+  selectedEpicId: string | null;
+  onSelectEpic: (id: string | null) => void;
+  onCreateEpic: (name: string) => Promise<void>;
   opener: RefObject<HTMLElement | null>;
   fallbackFocus: () => HTMLElement | null;
   request: PanelRequest | null;
@@ -56,11 +56,11 @@ interface InitiativePanelProps {
 
 export function InitiativePanel({
   initiative,
-  phases,
+  epics,
   tasks,
-  selectedPhaseId,
-  onSelectPhase,
-  onCreatePhase,
+  selectedEpicId,
+  onSelectEpic,
+  onCreateEpic,
   opener,
   fallbackFocus,
   request,
@@ -83,7 +83,7 @@ export function InitiativePanel({
   const palette = useRef<HTMLDivElement>(null);
   const live = useRef({ mounted: true, id: initiative.id });
   const clock = now ?? new Date();
-  const phaseProgress = progressByPhase(tasks);
+  const epicProgress = progressByEpic(tasks);
   const color = pendingColor ?? initiative.color;
 
   if (boundId !== initiative.id) {
@@ -273,26 +273,26 @@ export function InitiativePanel({
         />
       </section>
       <section className={styles.section}>
-        <h2 className={styles.eyebrow}>Fases</h2>
-        {phases ? (
-          <ul className={styles.phases}>
-            {phases.map((phase, position) => {
-              const count = phaseProgress.get(phase.id);
+        <h2 className={styles.eyebrow}>Épicos</h2>
+        {epics ? (
+          <ul className={styles.epics}>
+            {epics.map((epic, position) => {
+              const count = epicProgress.get(epic.id);
               return (
-                <li key={phase.id} className={styles.phaseRow}>
+                <li key={epic.id} className={styles.epicRow}>
                   <button
                     type="button"
-                    className={styles.phase}
-                    aria-pressed={selectedPhaseId === phase.id}
-                    aria-describedby={count ? `panel-phase-count-${phase.id}` : undefined}
+                    className={styles.epic}
+                    aria-pressed={selectedEpicId === epic.id}
+                    aria-describedby={count ? `panel-epic-count-${epic.id}` : undefined}
                     onClick={() => {
-                      onSelectPhase(selectedPhaseId === phase.id ? null : phase.id);
+                      onSelectEpic(selectedEpicId === epic.id ? null : epic.id);
                     }}
                   >
-                    {phaseLabel(position, phase.name)}
+                    {epicLabel(position, epic.name)}
                   </button>
                   {count ? (
-                    <span id={`panel-phase-count-${phase.id}`} className={styles.phaseCount}>
+                    <span id={`panel-epic-count-${epic.id}`} className={styles.epicCount}>
                       {`${String(count.done)}/${String(count.total)}`}
                     </span>
                   ) : null}
@@ -301,15 +301,15 @@ export function InitiativePanel({
             })}
           </ul>
         ) : null}
-        {phases?.length === 0 ? <p className={styles.meta}>Nenhuma fase ainda.</p> : null}
+        {epics?.length === 0 ? <p className={styles.meta}>Nenhum épico ainda.</p> : null}
         <QuickCreateField
           key={initiative.id}
-          triggerLabel="+ Nova fase"
-          inputLabel="Nome da nova fase"
-          placeholder="Nome da fase"
-          blankMessage={BLANK_PHASE_NAME_MESSAGE}
-          errorMessage={createPhaseMessage}
-          onCreate={onCreatePhase}
+          triggerLabel="+ Novo épico"
+          inputLabel="Nome do novo épico"
+          placeholder="Nome do épico"
+          blankMessage={BLANK_EPIC_NAME_MESSAGE}
+          errorMessage={createEpicMessage}
+          onCreate={onCreateEpic}
           keepOpen
         />
       </section>

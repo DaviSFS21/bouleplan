@@ -264,13 +264,13 @@ describe('the URL', () => {
   });
 
   it('keeps the other params when it drops the task id', async () => {
-    navigateTo(`/?iniciativa=${reforma.id}&fase=${piso.id}&tarefa=nope`);
+    navigateTo(`/?iniciativa=${reforma.id}&epico=${piso.id}&tarefa=nope`);
     await renderScreen();
 
     await waitFor(() => {
       expect(params().has('tarefa')).toBe(false);
     });
-    expect(params().get('fase')).toBe(piso.id);
+    expect(params().get('epico')).toBe(piso.id);
   });
 });
 
@@ -319,16 +319,16 @@ describe('the path in the header', () => {
     expect(titleField()).toHaveValue('Lixar parede');
   });
 
-  it('filters the phase from its link and omits the phase for the implicit one', async () => {
+  it('filters the epic from its link and omits the epic for the implicit one', async () => {
     const { user } = await renderScreen();
     await user.click(card('Lixar parede'));
-    expect(within(panel()).queryByText(/Fase \d/)).not.toBeInTheDocument();
+    expect(within(panel()).queryByText(/Épico \d/)).not.toBeInTheDocument();
     expect(within(panel()).getAllByRole('link')).toHaveLength(1);
 
     await user.click(card('Comprar tinta'));
-    await user.click(await within(panel()).findByRole('link', { name: 'Fase 2 · Piso' }));
+    await user.click(await within(panel()).findByRole('link', { name: 'Épico 2 · Piso' }));
 
-    expect(params().get('fase')).toBe(piso.id);
+    expect(params().get('epico')).toBe(piso.id);
     expect(params().get('tarefa')).toBe(paint.id);
     expect(screen.getByRole('heading', { level: 1, name: 'Piso' })).toBeVisible();
   });

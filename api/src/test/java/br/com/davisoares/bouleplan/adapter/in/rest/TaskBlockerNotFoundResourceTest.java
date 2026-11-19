@@ -56,17 +56,17 @@ class TaskBlockerNotFoundResourceTest {
   }
 
   @Test
-  @DisplayName("a task in an archived phase is 404 until it comes back")
-  void hiddenPhase() {
-    String phase = PhaseApi.createId(initiativeId, "Design");
-    String inPhase = TaskApi.createIdInPhase(initiativeId, "In phase", phase);
-    PhaseActions.archive(phase).statusCode(200);
+  @DisplayName("a task in an archived epic is 404 until it comes back")
+  void hiddenEpic() {
+    String epic = EpicApi.createId(initiativeId, "Design");
+    String inEpic = TaskApi.createIdInEpic(initiativeId, "In epic", epic);
+    EpicActions.archive(epic).statusCode(200);
 
-    InitiativeAssertions.assertNotFound(TaskBlockerApi.block(first, inPhase));
-    InitiativeAssertions.assertNotFound(TaskBlockerApi.unblock(inPhase, first));
+    InitiativeAssertions.assertNotFound(TaskBlockerApi.block(first, inEpic));
+    InitiativeAssertions.assertNotFound(TaskBlockerApi.unblock(inEpic, first));
 
-    PhaseActions.unarchive(phase).statusCode(200);
-    TaskBlockerApi.block(first, inPhase).statusCode(204);
+    EpicActions.unarchive(epic).statusCode(200);
+    TaskBlockerApi.block(first, inEpic).statusCode(204);
   }
 
   @Test

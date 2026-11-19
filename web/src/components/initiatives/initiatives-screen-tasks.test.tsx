@@ -56,34 +56,34 @@ describe('progress in the index', () => {
     await within(index()).findByText('0 de 4 feitas');
   });
 
-  it('counts done tasks per phase next to the phase', async () => {
+  it('counts done tasks per epic next to the epic', async () => {
     const backend = serveTaskApi(world);
     backend.tasks[0] = { ...backend.tasks[0], status: 'done' } as (typeof backend.tasks)[number];
     navigateTo(`/?iniciativa=${reforma.id}`);
     renderWithQuery(<InitiativesScreen />);
 
     await screen.findByRole('navigation', { name: 'Iniciativas' });
-    const phaseButton = await within(index()).findByRole('button', { name: 'Fase 2 · Piso' });
+    const epicButton = await within(index()).findByRole('button', { name: 'Épico 2 · Piso' });
 
     await waitFor(() => {
-      expect(phaseButton).toHaveAccessibleDescription('1/1');
+      expect(epicButton).toHaveAccessibleDescription('1/1');
     });
     expect(
-      within(index()).getByRole('button', { name: 'Fase 1 · Demolição' }),
+      within(index()).getByRole('button', { name: 'Épico 1 · Demolição' }),
     ).toHaveAccessibleDescription('0/1');
   });
 });
 
-describe('hiding tasks with their phase or initiative', () => {
-  it('drops the tasks of an archived phase and brings them back on undo', async () => {
+describe('hiding tasks with their epic or initiative', () => {
+  it('drops the tasks of an archived epic and brings them back on undo', async () => {
     const user = userEvent.setup();
     serveTaskApi(world);
     navigateTo(`/?iniciativa=${reforma.id}`);
     renderWithQuery(<InitiativesScreen />);
     await screen.findByRole('article', { name: 'Comprar tinta' });
-    await within(index()).findByRole('button', { name: 'Fase 2 · Piso' });
+    await within(index()).findByRole('button', { name: 'Épico 2 · Piso' });
 
-    await user.click(within(index()).getByRole('button', { name: `Ações da fase ${piso.name}` }));
+    await user.click(within(index()).getByRole('button', { name: `Ações do épico ${piso.name}` }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
 
     await waitFor(() => {
@@ -120,16 +120,16 @@ describe('before the refetch answers', () => {
     navigateTo(`/?iniciativa=${reforma.id}`);
     renderWithQuery(<InitiativesScreen />);
     await screen.findByRole('article', { name: 'Comprar tinta' });
-    await within(index()).findByRole('button', { name: 'Fase 2 · Piso' });
+    await within(index()).findByRole('button', { name: 'Épico 2 · Piso' });
     return backend;
   }
 
   async function archivePiso(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(within(index()).getByRole('button', { name: `Ações da fase ${piso.name}` }));
+    await user.click(within(index()).getByRole('button', { name: `Ações do épico ${piso.name}` }));
     await user.click(screen.getByRole('menuitem', { name: 'Arquivar' }));
   }
 
-  it('hides the tasks of an archived phase while the task list is slow', async () => {
+  it('hides the tasks of an archived epic while the task list is slow', async () => {
     const user = userEvent.setup();
     await openReforma();
     let open: () => void = () => undefined;
@@ -138,7 +138,7 @@ describe('before the refetch answers', () => {
         await new Promise<void>((resolve) => {
           open = resolve;
         });
-        return HttpResponse.json(world.tasks.filter(({ phaseId }) => phaseId !== piso.id));
+        return HttpResponse.json(world.tasks.filter(({ epicId }) => epicId !== piso.id));
       }),
     );
 

@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Persistence port for scheduled items. Items of hidden tasks (a task, phase or initiative that is
+ * Persistence port for scheduled items. Items of hidden tasks (a task, epic or initiative that is
  * archived or deleted) are hidden: the queries that say "visible" leave them out.
  */
 @SuppressWarnings("PMD.TooManyMethods") // one method per query of the planner

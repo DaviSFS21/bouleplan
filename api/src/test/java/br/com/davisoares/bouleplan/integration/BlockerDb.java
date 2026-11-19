@@ -13,9 +13,9 @@ record BlockerDb(EntityManager entityManager) {
         .run(() -> entityManager.createNativeQuery("delete from task_blocker").executeUpdate());
   }
 
-  UUID phaseOf(UUID taskId) {
+  UUID epicOf(UUID taskId) {
     return QuarkusTransaction.requiringNew()
-        .call(() -> entityManager.find(Task.class, taskId).getPhase().getId());
+        .call(() -> entityManager.find(Task.class, taskId).getEpic().getId());
   }
 
   long storedLinks() {

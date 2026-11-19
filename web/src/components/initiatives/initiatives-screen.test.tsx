@@ -22,7 +22,7 @@ function serveInitiatives(items: Initiative[]) {
   server.use(
     http.get('*/api/initiatives', () => HttpResponse.json(items)),
     http.get('*/api/tasks', () => HttpResponse.json([])),
-    http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
+    http.get('*/api/initiatives/:id/epics', () => HttpResponse.json([])),
   );
 }
 
@@ -211,7 +211,7 @@ describe('InitiativesScreen quick create', () => {
     server.use(
       http.get('*/api/initiatives', () => HttpResponse.json(items)),
       http.get('*/api/tasks', () => HttpResponse.json([])),
-      http.get('*/api/initiatives/:id/phases', () => HttpResponse.json([])),
+      http.get('*/api/initiatives/:id/epics', () => HttpResponse.json([])),
       http.post('*/api/initiatives', async ({ request }) => {
         body = await request.json();
         items.push(created);

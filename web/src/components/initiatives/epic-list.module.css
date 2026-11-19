@@ -1,0 +1,109 @@
+.epics {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 6px var(--space-3);
+  border-left: 1px solid var(--borda);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+}
+
+.epic {
+  display: block;
+  width: 100%;
+  padding: 6px var(--space-10) 6px var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--tinta-muted);
+  font: 400 13px/18px var(--font-ui);
+  overflow-wrap: anywhere;
+  text-align: left;
+  cursor: pointer;
+}
+
+.epic:hover {
+  color: var(--tinta);
+}
+
+.epic[aria-pressed='true'] {
+  color: var(--tinta);
+  font-weight: 500;
+  box-shadow: inset 2px 0 0 var(--terracota);
+}
+
+.epic:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.actions {
+  position: absolute;
+  top: 0;
+  right: var(--space-1);
+  opacity: 0;
+}
+
+.row:hover .actions,
+.row:focus-within .actions,
+.actions:has([aria-expanded='true']) {
+  opacity: 1;
+}
+
+.editing {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  color: var(--tinta-muted);
+  font: 400 13px/18px var(--font-ui);
+}
+
+.editing > span {
+  flex: none;
+}
+
+.editing > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.editing input {
+  padding: 2px var(--space-2);
+  font: 500 13px/18px var(--font-ui);
+}
+
+.count {
+  position: absolute;
+  top: 6px;
+  right: var(--space-3);
+  font: var(--type-meta);
+  color: var(--tinta-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.row:hover .count,
+.row:focus-within .count,
+.row:has([aria-expanded='true']) .count {
+  opacity: 0;
+}
+
+@media (pointer: coarse) {
+  .epic {
+    min-height: 44px;
+    padding-block: var(--space-3);
+  }
+
+  .actions {
+    opacity: 1;
+  }
+}

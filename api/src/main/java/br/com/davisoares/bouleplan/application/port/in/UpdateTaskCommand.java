@@ -8,8 +8,8 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Partial update of a task: an absent change leaves the field alone. A {@code null} phase is the
- * implicit phase of the initiative.
+ * Partial update of a task: an absent change leaves the field alone. A {@code null} epic is the
+ * implicit epic of the initiative.
  */
 public record UpdateTaskCommand(
     Change<String> title,
@@ -19,5 +19,5 @@ public record UpdateTaskCommand(
     Change<TaskPriority> priority,
     Change<TaskStatus> status,
     Change<Boolean> blocked,
-    Change<UUID> phaseId,
+    Change<UUID> epicId,
     Change<LocalDate> plannedWeekStart) {}

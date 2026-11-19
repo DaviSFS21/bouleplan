@@ -20,11 +20,11 @@ final class TaskRows {
   static final String PLANNED_WEEK = "planned_week_start";
 
   private final EntityManager entityManager;
-  private final UUID phaseId;
+  private final UUID epicId;
 
-  TaskRows(EntityManager entityManager, UUID phaseId) {
+  TaskRows(EntityManager entityManager, UUID epicId) {
     this.entityManager = entityManager;
-    this.phaseId = phaseId;
+    this.epicId = epicId;
   }
 
   /** Inserts a task with a valid title and, if given, one more column. */
@@ -36,13 +36,13 @@ final class TaskRows {
           Query query =
               entityManager
                   .createNativeQuery(
-                      "insert into task (id, phase_id, title"
+                      "insert into task (id, epic_id, title"
                           + extraColumn
                           + ") values (?1, ?2, 'Write'"
                           + extraValue
                           + ")")
                   .setParameter(1, UUID.randomUUID())
-                  .setParameter(2, phaseId);
+                  .setParameter(2, epicId);
           if (column != null) {
             query.setParameter(3, value);
           }
@@ -52,21 +52,21 @@ final class TaskRows {
 
   /** Inserts a task with this title. */
   void insertTitled(String title) {
-    insertRaw(phaseId, title);
+    insertRaw(epicId, title);
   }
 
-  /** Inserts a task of this phase, which may not exist. */
-  void insertInPhase(UUID phase) {
-    insertRaw(phase, "x");
+  /** Inserts a task of this epic, which may not exist. */
+  void insertInEpic(UUID epic) {
+    insertRaw(epic, "x");
   }
 
-  private void insertRaw(UUID phase, String title) {
+  private void insertRaw(UUID epic, String title) {
     QuarkusTransaction.requiringNew()
         .run(() -> {
           entityManager
-              .createNativeQuery("insert into task (id, phase_id, title) values (?1, ?2, ?3)")
+              .createNativeQuery("insert into task (id, epic_id, title) values (?1, ?2, ?3)")
               .setParameter(1, UUID.randomUUID())
-              .setParameter(2, phase)
+              .setParameter(2, epic)
               .setParameter(3, title)
               .executeUpdate();
         });

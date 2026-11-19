@@ -11,14 +11,14 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useManyPhases } from '@/api/phases';
+import { useManyEpics } from '@/api/epics';
 import { BLANK_TASK_TITLE_MESSAGE, createTaskMessage } from '@/api/messages';
 import { compareTasks, useCreateTask } from '@/api/tasks';
-import type { Initiative, Phase, Task, TaskStatus } from '@/api/types';
+import type { Initiative, Epic, Task, TaskStatus } from '@/api/types';
 import { Loading } from '@/components/loading/loading';
 import { useIsCoarsePointer, useIsPhone } from '@/components/responsive/use-media-query';
 import { TabStrip, tabPanelProps } from '@/components/tab-strip/tab-strip';
-import { phaseLabel } from '@/components/initiatives/phase-label';
+import { epicLabel } from '@/components/initiatives/epic-label';
 import { QuickCreateField } from '@/components/initiatives/quick-create-field';
 import { rememberedInitiativeId, rememberInitiativeId } from './quick-initiative';
 import { useAddToToday } from '@/components/planner/use-add-to-today';
@@ -47,7 +47,7 @@ export interface TaskPanelControl {
   close: (id?: string) => void;
   // Opens it again only when nothing else was opened meanwhile.
   reopen: (id: string) => void;
-  selectPath: (initiativeId: string, phaseId: string | null) => void;
+  selectPath: (initiativeId: string, epicId: string | null) => void;
 }
 
 interface TaskBoardProps {
@@ -57,7 +57,7 @@ interface TaskBoardProps {
   onRetry: () => void;
   initiatives: readonly Initiative[];
   initiative: Initiative | null;
-  phase: Phase | null;
+  epic: Epic | null;
   taskPanel: TaskPanelControl;
   now?: Date;
 }
@@ -73,7 +73,7 @@ export function TaskBoard({
   onRetry,
   initiatives,
   initiative,
-  phase,
+  epic,
   taskPanel,
   now,
 }: Readonly<TaskBoardProps>) {
@@ -105,23 +105,23 @@ export function TaskBoard({
   const sensors = phone ? noSensors : fineOrTouch;
 
   const showPath = initiative === null;
-  const phaseOwners = useMemo(
+  const epicOwners = useMemo(
     () =>
       showPath
         ? initiatives.filter(({ id }) =>
-            tasks?.some((task) => task.initiativeId === id && task.phaseId !== null),
+            tasks?.some((task) => task.initiativeId === id && task.epicId !== null),
           )
         : [],
     [showPath, initiatives, tasks],
   );
-  const phaseLists = useManyPhases(phaseOwners.map(({ id }) => id));
-  const phaseLabels = useMemo(() => {
+  const epicLists = useManyEpics(epicOwners.map(({ id }) => id));
+  const epicLabels = useMemo(() => {
     const labels = new Map<string, string>();
-    for (const list of phaseLists) {
-      list?.forEach((item, position) => labels.set(item.id, phaseLabel(position, item.name)));
+    for (const list of epicLists) {
+      list?.forEach((item, position) => labels.set(item.id, epicLabel(position, item.name)));
     }
     return labels;
-  }, [phaseLists]);
+  }, [epicLists]);
 
   // The card may still be on its way to the requested column, so the request waits for it.
   useEffect(() => {
@@ -141,10 +141,7 @@ export function TaskBoard({
     const live = new Set(initiatives.map(({ id }) => id));
     return (tasks ?? []).filter((task) => live.has(task.initiativeId));
   }, [tasks, initiatives]);
-  const visible = useMemo(
-    () => visibleTasks(listed, initiative, phase),
-    [listed, initiative, phase],
-  );
+  const visible = useMemo(() => visibleTasks(listed, initiative, epic), [listed, initiative, epic]);
   const openTask = taskPanel.openId ? listed.find(({ id }) => id === taskPanel.openId) : undefined;
   const clock = useClock(now);
   const todayList = useAddToToday(localToday(clock), setError);
@@ -161,7 +158,7 @@ export function TaskBoard({
   function pathOf(task: Task): string | null {
     if (!showPath) return null;
     const name = names.get(task.initiativeId) ?? '';
-    const label = task.phaseId === null ? undefined : phaseLabels.get(task.phaseId);
+    const label = task.epicId === null ? undefined : epicLabels.get(task.epicId);
     return label ? `${name} › ${label}` : name;
   }
 
@@ -222,7 +219,7 @@ export function TaskBoard({
             initiativeId: target.id,
             title,
             status,
-            phaseId: phase?.id,
+            epicId: epic?.id,
           });
           if (!initiative) chooseInitiative(target.id);
         }}

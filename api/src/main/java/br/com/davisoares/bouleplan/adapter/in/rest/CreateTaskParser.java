@@ -6,10 +6,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Set;
 
-/** Reads the body of a task create: a null {@code phaseId} is the implicit phase. */
+/** Reads the body of a task create: a null {@code epicId} is the implicit epic. */
 final class CreateTaskParser {
 
-  private static final Set<String> FIELDS = Set.of("title", "phaseId", "status");
+  private static final Set<String> FIELDS = Set.of("title", "epicId", "status");
 
   private CreateTaskParser() {}
 
@@ -17,7 +17,7 @@ final class CreateTaskParser {
     JsonNode root = JsonBodies.readObject(mapper, body, FIELDS);
     return new CreateTaskCommand(
         JsonBodies.text(root, "title").value(),
-        JsonFields.uuid(root, "phaseId").value(),
+        JsonFields.uuid(root, "epicId").value(),
         JsonFields.required(JsonFields.token(root, "status", TaskStatus::findByToken)).value());
   }
 }

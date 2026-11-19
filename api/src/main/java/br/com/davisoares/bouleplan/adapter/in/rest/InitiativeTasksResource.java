@@ -45,7 +45,7 @@ public class InitiativeTasksResource {
   @Operation(
       operationId = "createTask",
       summary =
-          "Creates a task in an active initiative; without phaseId it goes to the implicit phase")
+          "Creates a task in an active initiative; without epicId it goes to the implicit epic")
   @RequestBody(
       required = true,
       content =
@@ -70,7 +70,7 @@ public class InitiativeTasksResource {
   @APIResponse(
       responseCode = Responses.NOT_FOUND,
       description =
-          "No active initiative with this id, or phaseId is not an active named phase of it",
+          "No active initiative with this id, or epicId is not an active named epic of it",
       content =
           @Content(
               mediaType = Problem.MEDIA_TYPE,

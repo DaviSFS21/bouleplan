@@ -15,9 +15,9 @@ public record CreateTaskRequest(
             implementation = String.class,
             format = "uuid",
             description =
-                "An active named phase of the initiative; absent or null means the implicit phase",
+                "An active named epic of the initiative; absent or null means the implicit epic",
             nullable = true)
-        UUID phaseId,
+        UUID epicId,
     @Schema(
             type = SchemaType.STRING,
             enumeration = {"to_do", "in_progress", "done"},

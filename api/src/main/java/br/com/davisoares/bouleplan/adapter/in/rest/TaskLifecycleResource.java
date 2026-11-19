@@ -84,7 +84,7 @@ public class TaskLifecycleResource {
   @APIResponse(
       responseCode = Responses.NOT_FOUND,
       description =
-          "No archived or active task with this id in an active phase and initiative of the user",
+          "No archived or active task with this id in an active epic and initiative of the user",
       content =
           @Content(
               mediaType = Problem.MEDIA_TYPE,
@@ -125,7 +125,7 @@ public class TaskLifecycleResource {
               schema = @Schema(implementation = TaskResponse.class)))
   @APIResponse(
       responseCode = Responses.NOT_FOUND,
-      description = "No task with this id in an active phase and initiative of the user",
+      description = "No task with this id in an active epic and initiative of the user",
       content =
           @Content(
               mediaType = Problem.MEDIA_TYPE,

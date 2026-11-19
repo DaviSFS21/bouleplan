@@ -22,13 +22,13 @@ class TaskListResourceTest {
   @Inject EntityManager entityManager;
 
   private String initiativeId;
-  private String phaseId;
+  private String epicId;
 
   @BeforeEach
   void prepare() {
     TestData.deleteAllInitiatives();
     initiativeId = TaskApi.initiativeId("Study");
-    phaseId = PhaseApi.createId(initiativeId, "Design");
+    epicId = EpicApi.createId(initiativeId, "Design");
   }
 
   private void patch(String id, String json) {
@@ -41,7 +41,7 @@ class TaskListResourceTest {
     String p3Early = TaskApi.createId(initiativeId, "p3 early");
     TaskApi.createId(initiativeId, "p2 no deadline");
     String p2Late = TaskApi.createId(initiativeId, "p2 late");
-    String p2EarlyFirst = TaskApi.createIdInPhase(initiativeId, "p2 early first", phaseId);
+    String p2EarlyFirst = TaskApi.createIdInEpic(initiativeId, "p2 early first", epicId);
     final String p2EarlySecond = TaskApi.createId(initiativeId, "p2 early second");
     final String p1NoDeadline = TaskApi.createId(initiativeId, "p1 no deadline");
     patch(p3Early, "{\"priority\": \"P3\", \"deadline\": \"2026-01-01\"}");
@@ -64,11 +64,11 @@ class TaskListResourceTest {
   }
 
   @Test
-  @DisplayName("tasks of every initiative and phase, implicit or named, are listed together")
+  @DisplayName("tasks of every initiative and epic, implicit or named, are listed together")
   void everyInitiative() {
     String other = TaskApi.initiativeId("Work");
     TaskApi.createId(initiativeId, IMPLICIT);
-    TaskApi.createIdInPhase(initiativeId, NAMED, phaseId);
+    TaskApi.createIdInEpic(initiativeId, NAMED, epicId);
     TaskApi.createId(other, OTHER);
 
     TaskApi.list().body(TITLES, contains(IMPLICIT, NAMED, OTHER));
@@ -87,34 +87,34 @@ class TaskListResourceTest {
   }
 
   @Test
-  @DisplayName("an archived phase hides its tasks and they return with it")
-  void archivedPhase() {
-    TaskApi.createIdInPhase(initiativeId, NAMED, phaseId);
+  @DisplayName("an archived epic hides its tasks and they return with it")
+  void archivedEpic() {
+    TaskApi.createIdInEpic(initiativeId, NAMED, epicId);
     TaskApi.createId(initiativeId, IMPLICIT);
-    PhaseActions.archive(phaseId).statusCode(200);
+    EpicActions.archive(epicId).statusCode(200);
 
     TaskApi.list().body(TITLES, contains(IMPLICIT));
 
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
     TaskApi.list().body(TITLES, contains(NAMED, IMPLICIT));
   }
 
   @Test
-  @DisplayName("a deleted phase hides its tasks and they return when it is restored")
-  void deletedPhase() {
-    TaskApi.createIdInPhase(initiativeId, NAMED, phaseId);
-    PhaseActions.delete(phaseId).statusCode(204);
+  @DisplayName("a deleted epic hides its tasks and they return when it is restored")
+  void deletedEpic() {
+    TaskApi.createIdInEpic(initiativeId, NAMED, epicId);
+    EpicActions.delete(epicId).statusCode(204);
 
     TaskApi.list().body("", empty());
 
-    PhaseActions.restore(phaseId).statusCode(200);
+    EpicActions.restore(epicId).statusCode(200);
     TaskApi.list().body(TITLES, contains(NAMED));
   }
 
   @Test
   @DisplayName("an archived or deleted initiative hides all its tasks and they return with it")
   void hiddenInitiative() {
-    TaskApi.createIdInPhase(initiativeId, NAMED, phaseId);
+    TaskApi.createIdInEpic(initiativeId, NAMED, epicId);
     TaskApi.createId(initiativeId, IMPLICIT);
     String other = TaskApi.initiativeId("Work");
     TaskApi.createId(other, OTHER);
@@ -140,14 +140,14 @@ class TaskListResourceTest {
   }
 
   @Test
-  @DisplayName("archiving a phase or an initiative leaves the task itself untouched")
+  @DisplayName("archiving an epic or an initiative leaves the task itself untouched")
   void taskKeepsItsState() {
-    String id = TaskApi.createIdInPhase(initiativeId, NAMED, phaseId);
-    String archived = TaskApi.createIdInPhase(initiativeId, "archived", phaseId);
+    String id = TaskApi.createIdInEpic(initiativeId, NAMED, epicId);
+    String archived = TaskApi.createIdInEpic(initiativeId, "archived", epicId);
     TaskActions.archive(archived).statusCode(200);
 
-    PhaseActions.archive(phaseId).statusCode(200);
-    PhaseActions.unarchive(phaseId).statusCode(200);
+    EpicActions.archive(epicId).statusCode(200);
+    EpicActions.unarchive(epicId).statusCode(200);
 
     TaskApi.list().body(TITLES, contains(NAMED));
     TaskApi.get(id).statusCode(200);

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { initiative, phase, task } from '@/test/fixtures';
+import { initiative, epic, task } from '@/test/fixtures';
 import {
   progressByInitiative,
-  progressByPhase,
+  progressByEpic,
   statusTitle,
   tasksIn,
   visibleTasks,
@@ -10,9 +10,9 @@ import {
 
 const reforma = initiative();
 const horta = initiative({ id: '22222222-2222-4222-8222-222222222222' });
-const piso = phase();
+const piso = epic();
 const sem = task({ id: 'a' });
-const noPiso = task({ id: 'b', phaseId: piso.id, status: 'done' });
+const noPiso = task({ id: 'b', epicId: piso.id, status: 'done' });
 const naHorta = task({ id: 'c', initiativeId: horta.id, status: 'done' });
 const all = [sem, noPiso, naHorta];
 
@@ -21,11 +21,11 @@ describe('visibleTasks', () => {
     expect(visibleTasks(all, null, null)).toEqual(all);
   });
 
-  it('shows every phase of the initiative, implicit included', () => {
+  it('shows every epic of the initiative, implicit included', () => {
     expect(visibleTasks(all, reforma, null).map(({ id }) => id)).toEqual(['a', 'b']);
   });
 
-  it('shows only the phase when one is filtered', () => {
+  it('shows only the epic when one is filtered', () => {
     expect(visibleTasks(all, reforma, piso).map(({ id }) => id)).toEqual(['b']);
   });
 });
@@ -46,8 +46,8 @@ describe('progress', () => {
     expect(progress.get(horta.id)).toEqual({ done: 1, total: 1 });
   });
 
-  it('counts per named phase and ignores the implicit one', () => {
-    const progress = progressByPhase(all);
+  it('counts per named epic and ignores the implicit one', () => {
+    const progress = progressByEpic(all);
 
     expect(progress.get(piso.id)).toEqual({ done: 1, total: 1 });
     expect(progress.size).toBe(1);

@@ -1,5 +1,5 @@
 import { screen, within } from '@testing-library/react';
-import { initiative, phase, task } from './fixtures';
+import { initiative, epic, task } from './fixtures';
 
 export const reforma = initiative();
 export const horta = initiative({
@@ -9,8 +9,8 @@ export const horta = initiative({
   createdAt: '2026-01-02T10:00:00-03:00',
 });
 
-export const demolicao = phase({ name: 'Demolição' });
-export const piso = phase({
+export const demolicao = epic({ name: 'Demolição' });
+export const piso = epic({
   id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
   name: 'Piso',
   createdAt: '2026-01-02T10:00:00-03:00',
@@ -22,7 +22,7 @@ export const paint = task({
   description: 'Duas latas de branco.',
   priority: 'P1',
   deadline: '2026-11-06',
-  phaseId: piso.id,
+  epicId: piso.id,
 });
 export const sand = task({
   id: 'a1a1a1a1-0000-4000-8000-000000000002',
@@ -41,7 +41,7 @@ export const smash = task({
   id: 'a1a1a1a1-0000-4000-8000-000000000004',
   title: 'Quebrar piso',
   deadline: '2026-11-10',
-  phaseId: demolicao.id,
+  epicId: demolicao.id,
 });
 export const quote = task({
   id: 'a1a1a1a1-0000-4000-8000-000000000005',
@@ -51,7 +51,7 @@ export const quote = task({
 
 export const world = {
   initiatives: [reforma, horta],
-  phases: [demolicao, piso],
+  epics: [demolicao, piso],
   tasks: [paint, sand, lettuce, smash, quote],
 };
 

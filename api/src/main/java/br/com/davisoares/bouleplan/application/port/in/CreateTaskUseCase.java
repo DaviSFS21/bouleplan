@@ -8,8 +8,8 @@ import java.util.UUID;
 public interface CreateTaskUseCase {
 
   /**
-   * The new task, or empty if the initiative is not active and the user's, or the phase is not an
-   * active named phase of that initiative.
+   * The new task, or empty if the initiative is not active and the user's, or the epic is not an
+   * active named epic of that initiative.
    */
   Optional<Task> create(UUID initiativeId, CreateTaskCommand command);
 }
