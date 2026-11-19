@@ -5,7 +5,7 @@ import { DUPLICATE_ITEM_MESSAGE } from '@/api/messages';
 import type { ScheduledItem, Task } from '@/api/types';
 import { deadlineWeekday, dayRow } from './planner-dates';
 import { resolveDrop, type DragData, type DropContext, type DropIntent } from './planner-drop';
-import { pixelsFromMinutes, type Span } from './planner-geometry';
+import { findOverlap, pixelsFromMinutes, type Span } from './planner-geometry';
 import { itemSpan } from './planner-model';
 import { MAX_END, QUARTER, formatApiTime, formatRange } from './planner-time';
 
@@ -57,7 +57,7 @@ interface Options {
   // Sends the request of a drop intent, the same one a drag sends.
   apply: (intent: DropIntent) => Promise<void>;
   // Keeps focus on the thing that moved when it is drawn again somewhere else.
-  keepFocus: (selector: string | null) => void;
+  keepFocus: (selector: string | null, blockId?: string) => void;
 }
 
 interface Landing {
@@ -69,6 +69,8 @@ interface Landing {
 export interface PlannerKeyboard {
   moves: Omit<KeyboardMoves, 'startReserve'>;
   reserve: (origin: ReserveOrigin, date: string, start: number) => boolean;
+  // Puts a block at an exact day and time; false when another block is in the way.
+  placeBlock: (planned: PlannedItem, date: string, span: Span) => boolean;
   announcement: { id: number; text: string };
 }
 
@@ -147,7 +149,7 @@ export function usePlannerKeyboard({
       announce(steps.quarters < 0 ? DAY_START_MESSAGE : DAY_END_MOVE_MESSAGE);
     if (intent.type !== 'move-block') return;
     announce(`Bloco movido para ${when(intent.date, intent.span)}.`);
-    if (intent.date !== current.date) keepFocus(`[data-block-id="${item.id}"]`);
+    if (intent.date !== current.date) keepFocus(`[data-block-id="${item.id}"]`, item.id);
     send(item, intent.date, intent.span, intent);
   }
 
@@ -217,9 +219,22 @@ export function usePlannerKeyboard({
     return true;
   }
 
+  function placeBlock({ item }: PlannedItem, date: string, span: Span): boolean {
+    const current = latest(item);
+    if (findOverlap(span, context().blocksOf(date), item.id)) {
+      announce(NO_ROOM_MESSAGE);
+      return false;
+    }
+    announce(`Bloco movido para ${when(date, span)}.`);
+    if (date !== current.date) keepFocus(`[data-block-id="${item.id}"]`, item.id);
+    send(item, date, span, { type: 'move-block', item: current, date, span });
+    return true;
+  }
+
   return {
     moves: { moveBlock, resizeBlock, moveFicha },
     reserve,
+    placeBlock,
     announcement,
   };
 }

@@ -1,11 +1,14 @@
 .week {
+  --head: calc(var(--space-10) + var(--space-1) + var(--space-4));
   display: grid;
   flex: 1;
   grid-template-columns: 28px repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto auto auto;
+  grid-template-rows: var(--head) auto auto;
   column-gap: 6px;
   min-width: 0;
-  padding: var(--space-4);
+  padding: 0 var(--space-4) var(--space-4);
+  max-height: max(calc(var(--space-12) * 10), calc(100dvh - var(--space-16) * 3 - var(--space-2)));
+  overflow-y: auto;
   border-radius: var(--radius-lg);
   background: var(--papel-elevado);
 }
@@ -19,10 +22,27 @@
 }
 
 .head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  /* Spans every row so that it can stick while the day scrolls under it. */
+  grid-area: 1 / 1 / span 3;
+  align-self: start;
   display: flex;
+  background: var(--papel-elevado);
   align-items: baseline;
   gap: 6px;
-  height: 44px;
+  box-sizing: border-box;
+  height: var(--head);
+  padding-top: var(--space-4);
+}
+
+.day > :nth-child(2) {
+  grid-area: 2 / 1;
+}
+
+.day > :nth-child(3) {
+  grid-area: 3 / 1;
 }
 
 .number {
@@ -41,6 +61,20 @@
   font: var(--type-sobretitulo);
   letter-spacing: var(--type-sobretitulo-tracking);
   text-transform: uppercase;
+}
+
+.corner {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  grid-area: 1 / 1 / span 3;
+  align-self: start;
+  height: var(--head);
+  background: var(--papel-elevado);
+}
+
+.hours {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .labels {
@@ -83,6 +117,7 @@
   background: transparent;
   color: var(--tinta-muted);
   cursor: pointer;
+  transition: background-color var(--motion-enter) var(--ease-enter);
 }
 
 .dayTab[aria-selected='true'] {
@@ -127,22 +162,28 @@
   .hours {
     position: sticky;
     left: 0;
-    z-index: 1;
+    z-index: 7;
     background: var(--papel-elevado);
   }
 }
 
 @media (max-width: 767px) {
   .week {
+    grid-template-rows: 0 auto auto;
     grid-template-columns: 28px minmax(0, 1fr);
     overflow-x: visible;
     scroll-snap-type: none;
     padding: var(--space-3);
   }
 
+  .corner {
+    display: none;
+  }
+
   /* The day strip names the day; the row stays so the subgrid keeps its three rows. */
   .head {
     height: 0;
+    padding-top: 0;
     overflow: hidden;
     visibility: hidden;
   }

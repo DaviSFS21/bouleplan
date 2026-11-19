@@ -95,7 +95,7 @@ for (const { name, size, touch } of VIEWPORTS) {
       });
       await page.goto('/semana');
       await expect(
-        page.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00', exact: true }),
+        page.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00', exact: true }),
       ).toBeVisible();
       await expect(
         page.getByRole('button', { name: 'Reunião com o arquiteto, 14:00 – 15:00', exact: true }),

@@ -1,5 +1,6 @@
 'use client';
 
+import { focusIsLost } from '@/components/focus-trap/focus-lost';
 import {
   DndContext,
   DragOverlay,
@@ -16,6 +17,7 @@ import { BLANK_TASK_TITLE_MESSAGE, createTaskMessage } from '@/api/messages';
 import { compareTasks, useCreateTask } from '@/api/tasks';
 import type { Initiative, Epic, Task, TaskStatus } from '@/api/types';
 import { Loading } from '@/components/loading/loading';
+import { Presence } from '@/components/motion/presence';
 import { useIsCoarsePointer, useIsPhone } from '@/components/responsive/use-media-query';
 import { TabStrip, tabPanelProps } from '@/components/tab-strip/tab-strip';
 import { epicLabel } from '@/components/initiatives/epic-label';
@@ -132,8 +134,7 @@ export function TaskBoard({
       ? column?.querySelector<HTMLElement>(`[data-task-id="${request.taskId}"]`)
       : column?.querySelector<HTMLElement>('[data-quick-create]');
     // A slow answer must not take focus from wherever the person went meanwhile.
-    const lost = !document.activeElement || document.activeElement === document.body;
-    if (target && lost) target.focus();
+    if (target && focusIsLost()) target.focus();
     if (target || request.taskId === null) pendingFocus.current = null;
   }, [focusTick, tasks]);
 
@@ -337,24 +338,26 @@ export function TaskBoard({
           ) : null}
         </DragOverlay>
       </DndContext>
-      {openTask ? (
-        <TaskPanel
-          task={openTask}
-          tasks={listed}
-          initiativeNames={names}
-          actions={actions}
-          onOpenTask={(id) => {
-            taskPanel.open(id);
-            focusPanel();
-          }}
-          focusSignal={panelFocus}
-          onSelectPath={taskPanel.selectPath}
-          fallbackFocus={() =>
-            root.current?.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`) ?? null
-          }
-          now={now}
-        />
-      ) : null}
+      <Presence>
+        {openTask ? (
+          <TaskPanel
+            task={openTask}
+            tasks={listed}
+            initiativeNames={names}
+            actions={actions}
+            onOpenTask={(id) => {
+              taskPanel.open(id);
+              focusPanel();
+            }}
+            focusSignal={panelFocus}
+            onSelectPath={taskPanel.selectPath}
+            fallbackFocus={() =>
+              root.current?.querySelector<HTMLElement>(`[data-task-id="${openTask.id}"]`) ?? null
+            }
+            now={now}
+          />
+        ) : null}
+      </Presence>
     </div>
   );
 }

@@ -1,12 +1,15 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Initiative } from '@/api/types';
+import { formatDeadline, localToday } from '@/components/deadline-field/deadline-field';
 import { initiative, epic, problemResponse, task } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
+import { PHONE, findVeil, setViewport } from '@/test/viewport';
 import { InitiativePanel } from './initiative-panel';
 import { InitiativesScreen } from './initiatives-screen';
 
@@ -374,17 +377,18 @@ describe('editing in the panel', () => {
     );
   });
 
-  it('sets the overall deadline on Enter and shows it', async () => {
+  it('sets the overall deadline from the calendar and shows it', async () => {
     const user = userEvent.setup();
     const { backend, panel } = await renderOpen();
 
     await user.click(within(panel).getByRole('button', { name: 'Prazo geral: sem prazo' }));
-    await user.type(screen.getByLabelText('Prazo geral'), '2099-12-18{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Hoje' }));
 
+    const today = localToday();
     expect(
-      await within(panel).findByRole('button', { name: 'Prazo geral: sex, 18 dez 2099' }),
+      await within(panel).findByRole('button', { name: `Prazo geral: ${formatDeadline(today)}` }),
     ).toBeInTheDocument();
-    expect(backend.patches).toEqual([{ overallDeadline: '2099-12-18' }]);
+    expect(backend.patches).toEqual([{ overallDeadline: today }]);
   });
 
   it('removes the deadline with "Remover prazo"', async () => {
@@ -405,7 +409,7 @@ describe('editing in the panel', () => {
     server.use(http.patch('*/api/initiatives/:id', () => problemResponse('internal', 500)));
 
     await user.click(within(panel).getByRole('button', { name: 'Prazo geral: sem prazo' }));
-    await user.type(screen.getByLabelText('Prazo geral'), '2099-12-18{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Hoje' }));
 
     expect(await within(panel).findByRole('alert')).toHaveTextContent(
       'Não foi possível salvar. Tente de novo.',
@@ -969,5 +973,46 @@ describe('description trimming and per-initiative pending color', () => {
 
     expect(within(panel).getByRole('button', { name: 'Rosa' })).toBeInTheDocument();
     gates.get(horta.id)?.release();
+  });
+});
+
+describe('leaving the sheet on a phone with a description being typed', () => {
+  async function typeDescription() {
+    setViewport(PHONE);
+    const backend = serve([reforma, horta]);
+    navigateTo(detailsUrl(reforma.id));
+    renderWithQuery(<InitiativesScreen />);
+    const sheet = await screen.findByRole('dialog', { name: 'Iniciativa' });
+    const user = userEvent.setup();
+    await user.type(within(sheet).getByRole('textbox', { name: 'Descrição' }), 'rascunho');
+    return { backend, user };
+  }
+
+  afterEach(() => {
+    setViewport({ width: 1440, coarse: false });
+  });
+
+  it('saves it when the veil is tapped', async () => {
+    const { backend, user } = await typeDescription();
+
+    await user.click(findVeil());
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: 'rascunho' }]);
+    });
+  });
+
+  it('saves it when the handle is dragged down', async () => {
+    const { backend } = await typeDescription();
+    const handle = document.querySelector('[data-sheet-handle]');
+    if (!handle) throw new Error('No handle');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 320 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 320 });
+
+    await waitFor(() => {
+      expect(backend.patches).toEqual([{ description: 'rascunho' }]);
+    });
   });
 });

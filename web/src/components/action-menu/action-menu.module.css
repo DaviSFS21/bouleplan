@@ -143,18 +143,6 @@
   padding: var(--space-2) var(--space-2) calc(var(--space-4) + env(safe-area-inset-bottom));
   overflow-y: auto;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  animation: rise 200ms ease-out;
-}
-
-.sheet::before {
-  content: '';
-  display: block;
-  flex: none;
-  width: 36px;
-  height: 4px;
-  margin: 2px auto var(--space-2);
-  border-radius: 2px;
-  background: var(--borda);
 }
 
 .sheet .item {
@@ -163,18 +151,6 @@
 
 .sheet .chips {
   padding-block: var(--space-2);
-}
-
-@keyframes rise {
-  from {
-    transform: translateY(100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sheet {
-    animation: none;
-  }
 }
 
 @media (pointer: coarse) {

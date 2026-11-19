@@ -212,4 +212,18 @@ describe('InlineText trim', () => {
     expect(onCommit).not.toHaveBeenCalled();
     expect(input).toHaveValue('Reforma');
   });
+
+  it('is dismissed by blurring, not cancelled, unlike a single-line title', () => {
+    render(
+      <>
+        <InlineText label="Descrição" value="" multiline onCommit={vi.fn()} />
+        <InlineText label="Nome" value="" onCommit={vi.fn()} />
+      </>,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Descrição' })).not.toHaveAttribute(
+      'data-cancel-on-dismiss',
+    );
+    expect(screen.getByRole('textbox', { name: 'Nome' })).toHaveAttribute('data-cancel-on-dismiss');
+  });
 });

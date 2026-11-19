@@ -20,21 +20,8 @@
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   background: var(--papel-flutuante);
   box-shadow: var(--sombra-flutuante);
-  animation: slide-in 200ms ease-out;
 }
 
 .drawer:focus {
   outline: none;
-}
-
-@keyframes slide-in {
-  from {
-    transform: translateX(-100%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .drawer {
-    animation: none;
-  }
 }

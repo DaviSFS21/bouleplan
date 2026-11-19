@@ -12,8 +12,11 @@ import {
   type FocusEvent,
   type ReactNode,
 } from 'react';
+import { motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useModalTarget } from '@/components/modal-host/modal-host';
+import { Presence } from '@/components/motion/presence';
+import { RISE, preset } from '@/components/motion/tokens';
 import styles from './toast.module.css';
 
 export const TOAST_DURATION_MS = 6000;
@@ -39,6 +42,7 @@ function isTextField(target: EventTarget | null): boolean {
 }
 
 export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProps>) {
+  const present = useIsPresent();
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const paused = hovered || focused;
@@ -89,8 +93,10 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
   }
 
   return (
-    <div
+    <motion.div
       className={styles.toast}
+      inert={!present}
+      {...preset(RISE)}
       onMouseEnter={() => {
         setHovered(true);
       }}
@@ -119,7 +125,7 @@ export function UndoToast({ message, onUndo, onDismiss }: Readonly<UndoToastProp
         </>
       ) : null}
       <span className={styles.time} aria-hidden="true" />
-    </div>
+    </motion.div>
   );
 }
 
@@ -177,16 +183,18 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
       className={styles.region}
       data-hosted={host ? '' : undefined}
     >
-      {current ? (
-        <UndoToast
-          key={current.id}
-          message={current.message}
-          onUndo={current.onUndo}
-          onDismiss={() => {
-            setCurrent(null);
-          }}
-        />
-      ) : null}
+      <Presence>
+        {current ? (
+          <UndoToast
+            key={current.id}
+            message={current.message}
+            onUndo={current.onUndo}
+            onDismiss={() => {
+              setCurrent(null);
+            }}
+          />
+        ) : null}
+      </Presence>
     </div>
   );
 

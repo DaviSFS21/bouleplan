@@ -12,24 +12,35 @@ interface Section {
   icon: LucideIcon;
 }
 
+const BOARD: Section = { href: '/', label: 'Quadro', icon: SquareKanban };
+
 const SECTIONS: readonly Section[] = [
-  { href: '/', label: 'Quadro', icon: SquareKanban },
+  BOARD,
   { href: '/semana', label: 'Semana', icon: CalendarDays },
   { href: '/introspecto', label: 'Introspecto', icon: Notebook },
 ];
 
+export function isActive(href: string, pathname: string): boolean {
+  return href === '/' ? pathname === '/' : pathname.startsWith(href);
+}
+
+// The section the path belongs to; the board is the fallback.
+export function sectionOf(pathname: string): Section {
+  return SECTIONS.find(({ href }) => href !== '/' && isActive(href, pathname)) ?? BOARD;
+}
+
 interface AppNavProps {
-  // The header on top, or the bar fixed at the bottom of a phone.
+  // The links inside the header, or the bar fixed at the bottom of a phone.
   placement?: 'top' | 'bottom';
 }
 
 export function AppNav({ placement = 'top' }: Readonly<AppNavProps>) {
   const pathname = usePathname();
-  const nav = (
+  return (
     <nav aria-label="Seções" className={placement === 'top' ? undefined : styles.bar}>
       <div className={styles.links}>
         {SECTIONS.map(({ href, label, icon }) => {
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          const active = isActive(href, pathname);
           return (
             <Link
               key={href}
@@ -45,5 +56,4 @@ export function AppNav({ placement = 'top' }: Readonly<AppNavProps>) {
       </div>
     </nav>
   );
-  return placement === 'top' ? <header className={styles.header}>{nav}</header> : nav;
 }

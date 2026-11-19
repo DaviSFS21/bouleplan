@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { pickDate } from './pick-date';
 import { resetDatabase } from './reset-database';
 
 test.beforeEach(async ({ page }) => {
@@ -82,11 +83,7 @@ test('edits the title, state, priority, deadline, effort and week', async ({ pag
   await panel(page).getByRole('radio', { name: 'P1', exact: true }).click();
   await expect(panel(page).getByRole('radio', { name: 'P1', exact: true })).toBeChecked();
 
-  await panel(page)
-    .getByRole('button', { name: /^Prazo:/ })
-    .click();
-  await panel(page).getByLabel('Prazo', { exact: true }).fill('2099-12-18');
-  await panel(page).getByLabel('Prazo', { exact: true }).press('Enter');
+  await pickDate(page, panel(page).getByRole('button', { name: /^Prazo:/ }), '2099-12-18');
   await expect(
     panel(page).getByRole('button', { name: 'Prazo: vence sex, 18 dez 2099', exact: true }),
   ).toBeVisible();

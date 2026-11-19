@@ -1,19 +1,11 @@
 .popover {
-  position: fixed;
-  z-index: 100;
+  width: 260px;
+}
+
+.stack {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  box-sizing: border-box;
-  width: 260px;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--papel-flutuante);
-  box-shadow: var(--sombra-flutuante);
-}
-
-.popover:focus {
-  outline: none;
 }
 
 .meta {

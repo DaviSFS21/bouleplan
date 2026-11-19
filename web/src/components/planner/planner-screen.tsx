@@ -16,7 +16,7 @@ import {
 import { useIsMutating } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInitiatives } from '@/api/initiatives';
 import { DUPLICATE_ITEM_MESSAGE, LOAD_PLANNER_FAILED_MESSAGE } from '@/api/messages';
 import { resolveId, usePlanner } from '@/api/planner';
@@ -31,6 +31,8 @@ import {
   WEEK_PARAM,
 } from '@/components/initiatives/url-params';
 import { Loading } from '@/components/loading/loading';
+import { focusIsLost } from '@/components/focus-trap/focus-lost';
+import { Presence } from '@/components/motion/presence';
 import { useIsBelowDesktop, useIsCoarsePointer } from '@/components/responsive/use-media-query';
 import { StatusStrip } from '@/components/status-strip/status-strip';
 import { TaskPanel } from '@/components/tasks/task-panel';
@@ -45,6 +47,7 @@ import {
 } from '@/components/tasks/task-week';
 import { useMinuteClock } from '@/components/tasks/use-minute-clock';
 import type { Draft } from './day-column';
+import { BlockPopover } from './block-popover';
 import { EventPopover } from './event-popover';
 import {
   KeyboardMovesContext,
@@ -61,15 +64,15 @@ import {
   type Preview,
   type Resolution,
 } from './planner-drop';
-import { visibleHours } from './planner-geometry';
 import {
   blockSpans,
   buildDays,
-  weekSpans,
   type BlockModel,
+  type DayModel,
   type EntryModel,
 } from './planner-model';
 import { RISK_FILTER, atRiskTasks, trayTasks } from './planner-tasks';
+import { DAY_END_HOUR, DAY_START_HOUR } from './planner-time';
 import { ReservePopover } from './reserve-popover';
 import { Tray, TrayPreview } from './tray';
 import { usePlannerActions } from './use-planner-actions';
@@ -80,6 +83,33 @@ import styles from './planner-screen.module.css';
 const DRAG_ACTIVATION_DISTANCE = 6;
 const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 const TRAY = '[data-planner-tray]';
+
+// Read when the pointer moves: the week scrolls inside itself, so a rect measured earlier is stale.
+function agendaTop(date: string, measured: number): number {
+  const agenda = document.querySelector(`[data-day="${date}"]`);
+  return agenda?.getBoundingClientRect().top ?? measured;
+}
+
+// A popover keeps focus while it fades out, which would hide that focus was lost.
+function releaseFocus() {
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+}
+
+// A block moved off the phone's day is not drawn; its day's tab is the nearest place.
+function dayTabOfBlock(blockId: string | undefined, days: readonly DayModel[]): HTMLElement | null {
+  const date = days.find((day) => day.blocks.some(({ item }) => item.id === blockId))?.date;
+  return date ? document.querySelector<HTMLElement>(`[role="tab"][id$="-tab-${date}"]`) : null;
+}
+
+interface PointerTrack {
+  y: number;
+  startY: number;
+  startScroll: number;
+}
+
+function weekScroll(): number {
+  return document.querySelector<HTMLElement>('[data-week-scroller]')?.scrollTop ?? 0;
+}
 
 function isWeekStart(value: string | null): value is string {
   return value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && weekStartOf(value) === value;
@@ -115,10 +145,13 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   const [overStrip, setOverStrip] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [popover, setPopover] = useState<{ id: string } | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [reserving, setReserving] = useState<ReserveOrigin | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const pendingFocus = useRef<(() => HTMLElement | null) | null>(null);
-  const keptFocus = useRef<{ selector: string; settled: boolean } | null>(null);
+  // dnd-kit adds the scroll of the week to its translation, so the pointer is read directly.
+  const pointer = useRef<PointerTrack | null>(null);
+  const keptFocus = useRef<{ selector: string; blockId?: string; settled: boolean } | null>(null);
   const belowDesktop = useIsBelowDesktop();
   // Touch is for reading the week: moves go through the menus, and the tray is not shown.
   const coarse = useIsCoarsePointer();
@@ -160,7 +193,8 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
 
   const todayIndex = dates.indexOf(today);
   const nowMinutes = todayIndex < 0 ? null : clock.getHours() * 60 + clock.getMinutes();
-  const { startHour, endHour } = visibleHours(weekSpans(days), nowMinutes);
+  const startHour = DAY_START_HOUR;
+  const endHour = DAY_END_HOUR;
 
   const activeFilter =
     filter === RISK_FILTER
@@ -268,6 +302,9 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     },
   });
 
+  const editedBlock = editing
+    ? days.flatMap((day) => day.blocks).find(({ item }) => item.id === editing)
+    : undefined;
   const openedEvent = popover
     ? plannerQuery.data?.events.find(({ id }) => id === resolveId(popover.id))
     : undefined;
@@ -277,7 +314,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     const finder = pendingFocus.current;
     if (!finder) return;
     pendingFocus.current = null;
-    const lost = !document.activeElement || document.activeElement === document.body;
+    const lost = focusIsLost();
     const target = finder();
     if (target && lost) target.focus();
   }, [focusTick]);
@@ -286,8 +323,10 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   useEffect(() => {
     const kept = keptFocus.current;
     if (kept === null) return;
-    const lost = !document.activeElement || document.activeElement === document.body;
-    const target = lost ? document.querySelector<HTMLElement>(kept.selector) : null;
+    const lost = focusIsLost();
+    const target = lost
+      ? (document.querySelector<HTMLElement>(kept.selector) ?? dayTabOfBlock(kept.blockId, days))
+      : null;
     // Once the request is over, the next draw is the last one that can need it.
     if (target || kept.settled) keptFocus.current = null;
     target?.focus();
@@ -303,6 +342,17 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
       document.removeEventListener('pointerdown', forget, true);
     };
   }, []);
+
+  const trackPointer = useCallback((move: PointerEvent) => {
+    if (pointer.current) pointer.current.y = move.clientY;
+  }, []);
+
+  useEffect(
+    () => () => {
+      window.removeEventListener('pointermove', trackPointer, true);
+    },
+    [trackPointer],
+  );
 
   function requestFocus(finder: () => HTMLElement | null) {
     pendingFocus.current = finder;
@@ -331,11 +381,16 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     const target =
       over && info
         ? info.kind === 'day'
-          ? ({ kind: 'day', date: info.date, top: over.rect.top } as const)
+          ? ({ kind: 'day', date: info.date, top: agendaTop(info.date, over.rect.top) } as const)
           : ({ kind: 'strip', date: info.date } as const)
         : null;
-    const pointerY = (event.activatorEvent as MouseEvent).clientY + event.delta.y;
-    return resolveDrop(data, target, pointerY, event.delta.y, dropContext());
+    const track = pointer.current;
+    const pointerY = track?.y ?? (event.activatorEvent as MouseEvent).clientY + event.delta.y;
+    // Moves follow the pointer and whatever the week scrolled under it.
+    const deltaY = track
+      ? track.y - track.startY + weekScroll() - track.startScroll
+      : event.delta.y;
+    return resolveDrop(data, target, pointerY, deltaY, dropContext());
   }
 
   function apply(intent: DropIntent): Promise<void> {
@@ -366,11 +421,11 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
     startHour,
     context: dropContext,
     apply,
-    keepFocus: (selector) => {
+    keepFocus: (selector, blockId) => {
       if (selector === null) {
         if (keptFocus.current) keptFocus.current.settled = true;
       } else {
-        keptFocus.current = { selector, settled: false };
+        keptFocus.current = { selector, blockId, settled: false };
       }
     },
   });
@@ -383,13 +438,18 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   }
 
   function resetDrag() {
+    window.removeEventListener('pointermove', trackPointer, true);
+    pointer.current = null;
     setDragging(null);
     setPreview(null);
     setOverStrip(null);
   }
 
-  function handleDragStart({ active }: DragStartEvent) {
+  function handleDragStart({ active, activatorEvent }: DragStartEvent) {
     setError(null);
+    const startY = (activatorEvent as MouseEvent).clientY;
+    pointer.current = { y: startY, startY, startScroll: weekScroll() };
+    window.addEventListener('pointermove', trackPointer, true);
     setDragging(active.data.current as DragData);
   }
 
@@ -428,6 +488,7 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
   }
 
   async function removeBlock(block: BlockModel) {
+    setEditing(null);
     const date = block.item.date;
     const next = nextTo(dayOf(date)?.blocks ?? [], ({ item }) => item.id === block.item.id);
     if (await planner.removeBlock(block.item)) {
@@ -604,8 +665,9 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
               onRemoveEntry={(entry) => {
                 void removeEntry(entry);
               }}
-              onRemoveBlock={(block) => {
-                void removeBlock(block);
+              editing={editing}
+              onEditBlock={(block) => {
+                setEditing(block.item.id);
               }}
               onOpenEvent={openEvent}
               onDraw={setDraft}
@@ -630,65 +692,98 @@ export function PlannerScreen({ now }: Readonly<{ now?: Date }>) {
       <div role="status" aria-label="Movimentos da agenda" className={styles.announcer}>
         <span key={keyboard.announcement.id}>{keyboard.announcement.text}</span>
       </div>
-      {reserving ? (
-        <ReservePopover
-          origin={reserving}
-          dates={dates}
-          initialDate={
-            reserving.kind === 'ficha'
-              ? reserving.item.date
-              : (dates.find((date) => date === today) ?? weekStart)
-          }
-          anchorSelector={reserveAnchor(reserving)}
-          onReserve={(date, start) => {
-            const fitted = keyboard.reserve(reserving, date, start);
-            if (fitted) {
-              setReserving(null);
-              requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(reserving)));
+      <Presence>
+        {reserving ? (
+          <ReservePopover
+            key="reserve"
+            origin={reserving}
+            dates={dates}
+            initialDate={
+              reserving.kind === 'ficha'
+                ? reserving.item.date
+                : (dates.find((date) => date === today) ?? weekStart)
             }
-            return fitted;
-          }}
-          onCancel={() => {
-            const origin = reserving;
-            setReserving(null);
-            requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(origin)));
-          }}
-        />
-      ) : null}
-      {popover && openedEvent ? (
-        <EventPopover
-          event={openedEvent}
-          onClose={() => {
-            setPopover(null);
-          }}
-          onRename={(title) => {
-            void planner.renameEvent(openedEvent, title);
-          }}
-          onDelete={() => {
-            void removeEvent(openedEvent);
-          }}
-        />
-      ) : null}
-      {openTask ? (
-        <TaskPanel
-          task={openTask}
-          tasks={listed}
-          initiativeNames={names}
-          actions={taskActions}
-          onOpenTask={(id) => {
-            taskPanel.open(id);
-            focusPanel();
-          }}
-          focusSignal={panelFocus}
-          onSelectPath={taskPanel.selectPath}
-          fallbackFocus={() =>
-            document.querySelector<HTMLElement>(
-              `[data-task-id="${openTask.id}"], [data-block-task-id="${openTask.id}"]`,
-            )
-          }
-          now={now}
-        />
-      ) : null}
+            anchorSelector={reserveAnchor(reserving)}
+            onReserve={(date, start) => {
+              const fitted = keyboard.reserve(reserving, date, start);
+              if (fitted) {
+                releaseFocus();
+                setReserving(null);
+                requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(reserving)));
+              }
+              return fitted;
+            }}
+            onCancel={() => {
+              const origin = reserving;
+              releaseFocus();
+              setReserving(null);
+              requestFocus(() => document.querySelector<HTMLElement>(reserveAnchor(origin)));
+            }}
+          />
+        ) : null}
+        {editedBlock ? (
+          <BlockPopover
+            key={editedBlock.item.id}
+            block={editedBlock}
+            dates={dates}
+            onClose={() => {
+              setEditing(null);
+            }}
+            onSave={(date, span) => {
+              const saved = keyboard.placeBlock(editedBlock, date, span);
+              if (saved) {
+                releaseFocus();
+                setEditing(null);
+              }
+              return saved;
+            }}
+            onRemove={() => {
+              void removeBlock(editedBlock);
+            }}
+            onOpenTask={() => {
+              setEditing(null);
+              openFromPlanner(editedBlock.task.id);
+            }}
+          />
+        ) : null}
+        {popover && openedEvent ? (
+          <EventPopover
+            key="event"
+            event={openedEvent}
+            onClose={() => {
+              setPopover(null);
+            }}
+            onRename={(title) => {
+              void planner.renameEvent(openedEvent, title);
+            }}
+            onDelete={() => {
+              void removeEvent(openedEvent);
+            }}
+          />
+        ) : null}
+      </Presence>
+      <Presence>
+        {openTask ? (
+          <TaskPanel
+            task={openTask}
+            tasks={listed}
+            initiativeNames={names}
+            actions={taskActions}
+            onOpenTask={(id) => {
+              taskPanel.open(id);
+              focusPanel();
+            }}
+            focusSignal={panelFocus}
+            onSelectPath={taskPanel.selectPath}
+            fallbackFocus={() =>
+              document.querySelector<HTMLElement>(
+                `[data-task-id="${openTask.id}"], [data-block-task-id="${openTask.id}"]`,
+              )
+            }
+            now={now}
+          />
+        ) : null}
+      </Presence>
     </main>
   );
 }

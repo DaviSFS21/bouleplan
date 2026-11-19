@@ -23,6 +23,11 @@
   font: var(--type-rotulo);
 }
 
+.priority::before {
+  /* Drawn, not written: axe compares the name with the visible text, and the label is the name. */
+  content: attr(data-priority);
+}
+
 .titleText {
   min-width: 0;
   overflow: hidden;
@@ -71,19 +76,6 @@
   color: var(--terracota-escuro);
   font: var(--type-meta);
   font-weight: 500;
-}
-
-.menu {
-  position: absolute;
-  top: 0;
-  right: 0;
-  opacity: 0;
-}
-
-.dedicated:hover .menu,
-.dedicated:focus-within .menu,
-.menu:has([aria-expanded='true']) {
-  opacity: 1;
 }
 
 .handle {
@@ -145,7 +137,6 @@
 .deadlines {
   position: absolute;
   right: 0;
-  bottom: 0;
   left: 0;
   z-index: 3;
   display: flex;
@@ -213,10 +204,6 @@
 }
 
 @media (pointer: coarse) {
-  .menu {
-    opacity: 1;
-  }
-
   .handle {
     display: none;
   }

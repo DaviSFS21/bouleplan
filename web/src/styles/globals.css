@@ -1,7 +1,15 @@
 @import './tokens.css';
 
+/* Mirrors components/motion/tokens.ts for CSS transitions; a test keeps the two in step. */
 html {
-  --nav-height: 48px;
+  --motion-enter: 220ms;
+  --motion-exit: 180ms;
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+html {
+  --nav-height: var(--space-12);
   --bar-target: 52px;
   --bar-offset: 0px;
   color-scheme: light;
@@ -10,7 +18,6 @@ html {
 /* On phones the navigation is a bottom bar: the page makes room for it and floating pieces sit above it. */
 @media (max-width: 767px) {
   html {
-    --nav-height: 0px;
     --bar-offset: calc(var(--bar-target) + 2 * var(--space-1) + env(safe-area-inset-bottom));
   }
 

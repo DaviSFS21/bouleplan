@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 function block(page: Page, name: string): Locator {
-  return page.getByRole('group', { name, exact: true });
+  return page.getByRole('button', { name, exact: true });
 }
 
 function announced(page: Page): Locator {
@@ -47,7 +47,7 @@ test('moves and resizes a block with the keyboard, and announces each change', a
 
   await page.keyboard.press('Alt+ArrowRight');
   await expect(
-    page.locator('[data-day="2026-11-19"]').getByRole('group', {
+    page.locator('[data-day="2026-11-19"]').getByRole('button', {
       name: 'Comprar tinta, 9:15 – 11:30',
       exact: true,
     }),

@@ -15,7 +15,7 @@ import {
 } from './blocks';
 import { dayLabel } from './planner-dates';
 import type { Preview } from './planner-drop';
-import { HOUR_HEIGHT, formatClock } from './planner-time';
+import { FOCUS_END_HOUR, FOCUS_START_HOUR, HOUR_HEIGHT, formatClock } from './planner-time';
 import {
   drawnSpan,
   layoutLanes,
@@ -39,7 +39,8 @@ interface DayColumnProps {
   preview: Preview | null;
   draft: Draft | null;
   onOpenTask: (taskId: string) => void;
-  onRemoveBlock: (block: BlockModel) => void;
+  editing: string | null;
+  onEditBlock: (block: BlockModel) => void;
   onOpenEvent: (event: CalendarEvent) => void;
   onDraw: (draft: Draft) => void;
   onCommitDraft: (title: string) => void;
@@ -54,7 +55,8 @@ export function DayColumn({
   preview,
   draft,
   onOpenTask,
-  onRemoveBlock,
+  editing,
+  onEditBlock,
   onOpenEvent,
   onDraw,
   onCommitDraft,
@@ -131,6 +133,16 @@ export function DayColumn({
       tabIndex={-1}
       onPointerDown={startDrawing}
     >
+      <div
+        className={styles.shade}
+        style={{ top: 0, height: (FOCUS_START_HOUR - startHour) * HOUR_HEIGHT }}
+        data-shade="before"
+      />
+      <div
+        className={styles.shade}
+        style={{ bottom: 0, height: (endHour - FOCUS_END_HOUR) * HOUR_HEIGHT }}
+        data-shade="after"
+      />
       {hours.slice(0, -1).map((hour) => (
         <div
           key={hour}
@@ -149,8 +161,8 @@ export function DayColumn({
           lane={lanes.get(block.item.id) ?? { column: 0, columns: 1 }}
           span={resizing?.sourceId === block.item.id ? resizing.span : undefined}
           moving={preview?.sourceId === block.item.id && !preview.resizing}
-          onOpen={onOpenTask}
-          onRemove={onRemoveBlock}
+          editing={editing === block.item.id}
+          onEdit={onEditBlock}
         />
       ))}
       {here && !here.resizing ? (
@@ -171,7 +183,11 @@ export function DayColumn({
           onCancel={onCancelDraft}
         />
       ) : null}
-      <DeadlineLines deadlines={day.deadlines} onOpen={onOpenTask} />
+      <DeadlineLines
+        deadlines={day.deadlines}
+        bottom={(endHour - FOCUS_END_HOUR) * HOUR_HEIGHT}
+        onOpen={onOpenTask}
+      />
       {nowMinutes === null ? null : (
         <NowLine
           top={pixelsFromMinutes(nowMinutes - startHour * 60)}

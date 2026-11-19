@@ -179,43 +179,50 @@ describe('the agenda', () => {
     expect(within(week).getByText('18').parentElement).not.toHaveAttribute('aria-current');
   });
 
-  it('labels the hours from 8h to 18h', async () => {
+  it('labels the whole day, from 0h to 24h', async () => {
     await renderWeek();
 
     const labels = Array.from(document.querySelectorAll('[data-hour]')).map(
       (element) => element.textContent,
     );
-    expect(labels).toEqual([
-      '8h',
-      '9h',
-      '10h',
-      '11h',
-      '12h',
-      '13h',
-      '14h',
-      '15h',
-      '16h',
-      '17h',
-      '18h',
-    ]);
-    expect(agenda('2026-11-17').style.height).toBe('480px');
+    expect(labels).toHaveLength(25);
+    expect(labels[0]).toBe('0h');
+    expect(labels[8]).toBe('8h');
+    expect(labels.at(-1)).toBe('24h');
+    expect(agenda('2026-11-17').style.height).toBe(`${String(24 * 48)}px`);
   });
 
-  it('expands the hours to hold an early block, a late event and the now line', async () => {
+  it('opens the week on 8h', async () => {
+    await renderWeek();
+
+    expect(screen.getByRole('group', { name: 'Semana 47' }).scrollTop).toBe(384);
+  });
+
+  it('shades the hours outside 8h to 21h', async () => {
+    await renderWeek();
+
+    const before = agenda('2026-11-17').querySelector<HTMLElement>('[data-shade="before"]');
+    const after = agenda('2026-11-17').querySelector<HTMLElement>('[data-shade="after"]');
+    expect(before).toHaveStyle({ top: '0px', height: '384px' });
+    expect(after).toHaveStyle({ bottom: '0px', height: '144px' });
+  });
+
+  it('keeps early and late time where it is, without growing the day', async () => {
     await renderWeek({
       items: [block({ startTime: '06:30', endTime: '07:15' })],
-      events: [{ ...daily, startTime: '19:00', endTime: '19:30' }],
+      events: [{ ...daily, startTime: '22:00', endTime: '22:30' }],
     });
 
-    const labels = Array.from(document.querySelectorAll('[data-hour]')).map(
-      (element) => element.textContent,
-    );
-    expect(labels[0]).toBe('6h');
-    expect(labels.at(-1)).toBe('20h');
-    expect(agenda('2026-11-17').style.height).toBe(`${String(14 * 48)}px`);
+    expect(screen.getByRole('button', { name: 'Comprar tinta, 6:30 – 7:15' })).toHaveStyle({
+      top: '312px',
+    });
+    expect(screen.getByRole('button', { name: 'Daily, 22:00 – 22:30' })).toHaveStyle({
+      top: '1056px',
+    });
+    expect(agenda('2026-11-17').style.height).toBe(`${String(24 * 48)}px`);
   });
 
-  it('expands the hours to hold the now line', async () => {
+  it('draws the now line outside the focal hours without moving the day', async () => {
     vi.setSystemTime(new Date(2026, 10, 17, 21, 10));
     navigateTo('/semana');
     serveTaskApi(plannerWorld);
@@ -223,8 +230,9 @@ describe('the agenda', () => {
     renderWithQuery(<PlannerScreen now={new Date(2026, 10, 17, 21, 10)} />);
     await screen.findByRole('heading', { level: 1 });
 
-    expect(screen.getByRole('img', { name: 'agora, 21:10' })).toBeVisible();
-    expect(agenda('2026-11-17').style.height).toBe(`${String(14 * 48)}px`);
+    expect(screen.getByRole('img', { name: 'agora, 21:10' })).toHaveStyle({ top: '1016px' });
+    expect(screen.getByRole('group', { name: 'Semana 47' }).scrollTop).toBe(1016);
+    expect(agenda('2026-11-17').style.height).toBe(`${String(24 * 48)}px`);
     vi.useRealTimers();
   });
 
@@ -235,13 +243,13 @@ describe('the agenda', () => {
     });
 
     const event = screen.getByRole('button', { name: 'Daily, 9:00 – 9:30' });
-    expect(event).toHaveStyle({ top: '48px', height: '20px' });
+    expect(event).toHaveStyle({ top: '432px', height: '20px' });
     expect(event).toHaveTextContent('Daily');
     expect(event).not.toHaveTextContent('9:00');
 
-    const dedicated = screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' });
-    expect(dedicated).toHaveStyle({ top: '48px', height: '92px' });
-    expect(within(dedicated).getByText('P1')).toBeVisible();
+    const dedicated = screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' });
+    expect(dedicated).toHaveStyle({ top: '432px', height: '92px' });
+    expect(dedicated).toHaveAccessibleDescription('Prioridade P1');
 
     const list = screen.getByRole('region', { name: 'Lista de quarta-feira, 18 de novembro' });
     expect(within(list).getByRole('article', { name: 'Lixar parede' })).toBeVisible();
@@ -251,7 +259,7 @@ describe('the agenda', () => {
     await renderWeek();
 
     const now = screen.getByRole('img', { name: 'agora, 11:45' });
-    expect(now).toHaveStyle({ top: '180px' });
+    expect(now).toHaveStyle({ top: '564px' });
     expect(within(agenda('2026-11-17')).getByRole('img', { name: 'agora, 11:45' })).toBe(now);
     expect(screen.getAllByRole('img')).toHaveLength(1);
   });
@@ -268,7 +276,7 @@ describe('the agenda', () => {
       items: [block({ taskId: 'a1a1a1a1-0000-4000-8000-0000000000ff' })],
     });
 
-    expect(screen.queryByRole('group', { name: /Comprar tinta/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
   });
 });
 
@@ -278,6 +286,8 @@ describe('deadline lines', () => {
 
     const thursday = within(agenda('2026-11-19'));
     expect(thursday.getByRole('button', { name: /^prazo · Comprar tinta/ })).toBeVisible();
+    const line = thursday.getByRole('button', { name: /^prazo · Comprar tinta/ }).parentElement;
+    expect(line).toHaveStyle({ bottom: '144px' });
     const wednesday = within(agenda('2026-11-18'));
     expect(
       wednesday.getByRole('button', { name: 'prazo · Plantar alface · faltam 1,5h' }),

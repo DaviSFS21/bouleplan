@@ -35,6 +35,9 @@ Opens at <http://localhost:3000>.
 - Themes: `papel` (light) and `grafite` (dark). The system preference applies by default; `<html data-theme="papel|grafite">` forces one.
 - Fonts come from `next/font/google` (Fraunces, Spectral, Work Sans) as `--font-display`, `--font-body` and `--font-ui`.
 - Icons: use the `Icon` component (`@/components/icon/icon`), which fixes the Lucide stroke at 1.5 and sizes at 14, 16, 18 or 20.
+- Brand: the header uses the lockups in `public/brand/` (the `-grafite` variants follow the theme); `src/app/icon.svg`, `src/app/apple-icon.png`, `public/icon-*.png` and `src/app/manifest.ts` carry the favicon and app icons.
+- Motion: `motion` (`motion/react`) under `<MotionConfig reducedMotion="user">`. Durations and easings live in `src/components/motion/tokens.ts` (CSS transitions use the mirrored `--motion-*` and `--ease-*` properties in `globals.css`). Tests set `MotionGlobalConfig.skipAnimations`, so removals are immediate; wrap conditionally rendered motion children in `Presence`, never in `AnimatePresence` directly.
+- Phones: panels and popovers are bottom sheets (`src/components/sheet`); drag the handle down or tap the veil to close. `Sheet` takes `open`, `onClose`, `label`, `children` and an optional `initialFocus`.
 - Server state: TanStack Query, provided by `Providers` in the root layout.
 
 ## API client
@@ -48,6 +51,8 @@ Opens at <http://localhost:3000>.
 - `/` is the board (Quadro) and `/semana?semana=YYYY-MM-DD` the weekly planner (Semana). Both open the task panel through `?tarefa=<id>`.
 - `/introspecto?semana=YYYY-MM-DD` is the weekly review sheet (Introspecto). Without the parameter it reviews the current week from Friday to Sunday and the previous week from Monday to Thursday. The summary of the week and the planning of the next one are derived on the client from `GET /tasks`; planning writes `plannedWeekStart` through the task update.
 - The planner drags with `@dnd-kit/core` (pointer only); the drop rules are pure functions in `src/components/planner/planner-drop.ts`.
+- The week draws the whole day (0h to 24h) and opens on the focal hours, 8h to 21h; the hours outside are shaded and deadline lines sit at 21h. A click or Enter on a block opens its edit popover (day, start and end), which saves through the same optimistic move as a drag.
+- Dates are chosen in a calendar built on `react-day-picker` (`src/components/date-picker/`), a popover on a desktop and a sheet on a phone; there is no native date input.
 
 ## Checks
 

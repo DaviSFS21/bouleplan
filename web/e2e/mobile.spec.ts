@@ -85,7 +85,7 @@ test.describe('on a phone', () => {
     await expect(tabs.getByRole('tab', { name: 'Feito · 1', exact: true })).toBeFocused();
   });
 
-  test('opens a task full screen over the bar, and "Voltar" returns focus to its card', async ({
+  test('opens a task as a bottom sheet over the bar, and "Voltar" returns focus to its card', async ({
     page,
   }) => {
     const { initiativeId } = await seedBoard(page);
@@ -96,10 +96,11 @@ test.describe('on a phone', () => {
     const panel = page.getByRole('dialog', { name: 'Tarefa', exact: true });
     await expect(panel).toBeVisible();
     await expect(panel).toHaveAttribute('aria-modal', 'true');
-    const area = await box(panel);
+    const area = await box(panel.locator('[data-sheet]'));
     expect(area.x).toBe(0);
     expect(area.width).toBe(390);
-    expect(area.y).toBe(0);
+    expect(area.y).toBeGreaterThan(0);
+    expect(area.height).toBeLessThanOrEqual(844 * 0.9 + 1);
     expect(area.y + area.height).toBe(844);
     const bar = await box(page.getByRole('navigation', { name: 'Seções', exact: true }));
     expect(
@@ -116,7 +117,7 @@ test.describe('on a phone', () => {
     await expect(card(page, 'Comprar tinta')).toBeFocused();
   });
 
-  test('keeps Tab inside the full screen panel', async ({ page }) => {
+  test('keeps Tab inside the open sheet', async ({ page }) => {
     const { initiativeId } = await seedBoard(page);
     await page.goto(`/?iniciativa=${initiativeId}`);
     await card(page, 'Comprar tinta').tap();

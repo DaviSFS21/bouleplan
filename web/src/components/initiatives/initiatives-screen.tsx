@@ -36,6 +36,7 @@ import type { Epic } from '@/api/types';
 import { useToast } from '@/components/toast/toast';
 import { Drawer } from '@/components/drawer/drawer';
 import { Loading } from '@/components/loading/loading';
+import { Presence } from '@/components/motion/presence';
 import { useIsBelowDesktop } from '@/components/responsive/use-media-query';
 import { InitiativeBoard } from './initiative-board';
 import { InitiativeIndex, type FocusRequest } from './initiative-index';
@@ -489,11 +490,15 @@ export function InitiativesScreen() {
 
   let drawer: ReactNode = index;
   if (belowDesktop) {
-    drawer = drawerOpen ? (
-      <Drawer label="Gaveta de iniciativas" opener={drawerOpener} onClose={closeDrawer}>
-        {index}
-      </Drawer>
-    ) : null;
+    drawer = (
+      <Presence>
+        {drawerOpen ? (
+          <Drawer label="Gaveta de iniciativas" opener={drawerOpener} onClose={closeDrawer}>
+            {index}
+          </Drawer>
+        ) : null}
+      </Presence>
+    );
   }
 
   return (
@@ -530,33 +535,35 @@ export function InitiativesScreen() {
           if (selected) openDetails(selected.id);
         }}
       />
-      {selected && detailsOpen ? (
-        <InitiativePanel
-          initiative={selected}
-          epics={epics}
-          tasks={tasksQuery.data}
-          selectedEpicId={filteredEpic?.id ?? null}
-          onSelectEpic={selectEpic}
-          onCreateEpic={(name) => createEpicIn(selected.id, name)}
-          opener={opener}
-          fallbackFocus={() =>
-            document.querySelector<HTMLElement>(`[data-initiative-id="${selected.id}"]`)
-          }
-          request={request}
-          onRequestHandled={clearRequest}
-          onClose={closeDetails}
-          onArchive={() => {
-            void archive(selected.id);
-          }}
-          onDelete={() => {
-            void remove(selected.id);
-          }}
-          onSaved={() => {
-            setActionError(null);
-          }}
-          onSaveFailed={reportError}
-        />
-      ) : null}
+      <Presence>
+        {selected && detailsOpen ? (
+          <InitiativePanel
+            initiative={selected}
+            epics={epics}
+            tasks={tasksQuery.data}
+            selectedEpicId={filteredEpic?.id ?? null}
+            onSelectEpic={selectEpic}
+            onCreateEpic={(name) => createEpicIn(selected.id, name)}
+            opener={opener}
+            fallbackFocus={() =>
+              document.querySelector<HTMLElement>(`[data-initiative-id="${selected.id}"]`)
+            }
+            request={request}
+            onRequestHandled={clearRequest}
+            onClose={closeDetails}
+            onArchive={() => {
+              void archive(selected.id);
+            }}
+            onDelete={() => {
+              void remove(selected.id);
+            }}
+            onSaved={() => {
+              setActionError(null);
+            }}
+            onSaveFailed={reportError}
+          />
+        ) : null}
+      </Presence>
     </main>
   );
 }

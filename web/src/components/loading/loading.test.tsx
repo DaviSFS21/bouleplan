@@ -16,4 +16,18 @@ describe('Loading', () => {
     rerender(<Loading size={96} />);
     expect(screen.getByRole('img')).toHaveAttribute('height', '96');
   });
+
+  it('keeps the three lines and their tracks from 32px up', () => {
+    const { container } = render(<Loading size={32} />);
+
+    expect(container.querySelectorAll('line')).toHaveLength(6);
+  });
+
+  it('shows only the spinning ring below 32px', () => {
+    const { container } = render(<Loading size={24} />);
+
+    expect(screen.getByRole('img', { name: 'Carregando' })).toBeInTheDocument();
+    expect(container.querySelectorAll('circle')).toHaveLength(1);
+    expect(container.querySelectorAll('line')).toHaveLength(0);
+  });
 });

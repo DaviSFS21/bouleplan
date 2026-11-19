@@ -1,11 +1,14 @@
 'use client';
 
 import { Check, Ellipsis } from 'lucide-react';
+import { motion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import {
+  Fragment,
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -13,7 +16,12 @@ import {
 } from 'react';
 import { Icon } from '@/components/icon/icon';
 import { useModalTarget } from '@/components/modal-host/modal-host';
+import { InertOnExit } from '@/components/motion/inert-on-exit';
+import { Presence } from '@/components/motion/presence';
+import { FADE, POP, SLIDE_UP, preset } from '@/components/motion/tokens';
 import { useIsPhone } from '@/components/responsive/use-media-query';
+import { SheetHandle } from '@/components/sheet/sheet-frame';
+import { useSheetDrag } from '@/components/sheet/use-sheet-drag';
 import { placeMenu } from './place-menu';
 import styles from './action-menu.module.css';
 
@@ -51,6 +59,8 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const veil = useRef<HTMLButtonElement>(null);
+  const leaving = useMemo(() => [veil, menu], []);
   const menuId = useId();
   const sheet = useIsPhone();
   const modalTarget = useModalTarget();
@@ -156,6 +166,8 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
     trigger.current?.focus();
   }
 
+  const drag = useSheetDrag(menu, dismiss);
+
   function select(item: { onSelect: () => void }) {
     setOpen(false);
     trigger.current?.focus();
@@ -178,26 +190,32 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
       >
         {custom?.children ?? <Icon icon={Ellipsis} />}
       </button>
-      {open
-        ? createPortal(
-            <>
+      {createPortal(
+        <Presence>
+          {open ? (
+            <Fragment key="menu">
               {sheet ? (
-                <button
+                <motion.button
+                  ref={veil}
                   type="button"
                   className={styles.veil}
                   aria-hidden="true"
                   tabIndex={-1}
                   onClick={dismiss}
+                  {...preset(FADE)}
                 />
               ) : null}
-              <div
+              <motion.div
                 ref={menu}
                 id={menuId}
                 role="menu"
                 aria-label={label}
                 className={[styles.menu, sheet ? styles.sheet : ''].join(' ').trim()}
-                style={sheet ? undefined : position}
+                style={sheet ? { y: drag.y } : { ...position, transformOrigin: 'top left' }}
+                {...preset(sheet ? SLIDE_UP : POP)}
               >
+                <InertOnExit targets={leaving} />
+                {sheet ? <SheetHandle handlers={drag.handlers} /> : null}
                 {items.map((entry, index) =>
                   'separator' in entry ? (
                     <div
@@ -267,11 +285,12 @@ export function ActionMenu({ label, items, trigger: custom }: Readonly<ActionMen
                     </button>
                   ),
                 )}
-              </div>
-            </>,
-            modalTarget ?? document.body,
-          )
-        : null}
+              </motion.div>
+            </Fragment>
+          ) : null}
+        </Presence>,
+        modalTarget ?? document.body,
+      )}
     </div>
   );
 }

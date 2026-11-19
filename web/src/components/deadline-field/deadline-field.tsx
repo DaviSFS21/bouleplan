@@ -1,6 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, type FocusEvent, type KeyboardEvent } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { Calendar } from '@/components/date-picker/calendar';
+import { DatePopover } from '@/components/date-picker/date-popover';
+import { atNoon } from '@/components/date-picker/iso-date';
+import { Presence } from '@/components/motion/presence';
 import styles from './deadline-field.module.css';
 
 const FORMAT = new Intl.DateTimeFormat('pt-BR', {
@@ -10,10 +14,9 @@ const FORMAT = new Intl.DateTimeFormat('pt-BR', {
 });
 
 export function formatDeadline(iso: string, today: string = localToday()): string {
-  const [year = 0, month = 1, day = 1] = iso.split('-').map(Number);
-  const parts = new Map(
-    FORMAT.formatToParts(new Date(year, month - 1, day)).map((part) => [part.type, part.value]),
-  );
+  const [year = 0, month = 1, day = 1] = iso.split('-').map((part) => Number(part));
+  const date = atNoon(year, month - 1, day);
+  const parts = new Map(FORMAT.formatToParts(date).map((part) => [part.type, part.value]));
   const weekday = parts.get('weekday')?.replace('.', '') ?? '';
   const monthName = parts.get('month')?.replace('.', '') ?? '';
   const label = `${weekday}, ${parts.get('day') ?? ''} ${monthName}`;
@@ -42,99 +45,68 @@ export function DeadlineField({
   today = localToday(),
   display,
 }: Readonly<DeadlineFieldProps>) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-  const input = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const restoreFocus = useRef(false);
-  const finished = useRef(false);
+  const anchor = useCallback(() => trigger.current, []);
+  const close = useCallback(() => {
+    setOpen(false);
+  }, []);
   const overdue = display ? display.alert : value !== null && value < today;
   const text = display?.text ?? (value === null ? 'sem prazo' : formatDeadline(value, today));
 
-  useEffect(() => {
-    if (editing) input.current?.focus();
-  }, [editing]);
-
-  useEffect(() => {
-    if (!editing && restoreFocus.current) {
-      restoreFocus.current = false;
-      trigger.current?.focus();
-    }
-  }, [editing]);
-
-  function startEditing() {
-    finished.current = false;
-    setDraft(value ?? '');
-    setEditing(true);
-  }
-
-  function finish(next: string | null, returnFocus: boolean) {
-    finished.current = true;
-    restoreFocus.current = returnFocus;
-    setEditing(false);
-    if (next !== null && next !== (value ?? '')) onChange(next === '' ? null : next);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      finish(null, true);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      finish(event.currentTarget.value, true);
-    }
-  }
-
-  function handleBlur(event: FocusEvent<HTMLInputElement>) {
-    if (finished.current) return;
-    finish(event.currentTarget.validity.badInput ? null : event.currentTarget.value, false);
+  function choose(next: string | null) {
+    setOpen(false);
+    if (next !== value) onChange(next);
   }
 
   return (
     <div className={styles.field}>
-      {editing ? (
-        <input
-          ref={input}
-          type="date"
-          className={styles.input}
-          aria-label={label}
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-          }}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-        />
-      ) : (
-        <button
-          ref={trigger}
-          type="button"
-          className={[styles.value, overdue ? styles.overdue : ''].join(' ')}
-          aria-label={`${label}: ${text}${overdue && !display ? ', vencido' : ''}`}
-          onClick={startEditing}
-        >
-          {text}
-          {overdue && !display ? <span className={styles.badge}>· vencido</span> : null}
-        </button>
-      )}
+      <button
+        ref={trigger}
+        type="button"
+        className={[styles.value, overdue ? styles.overdue : ''].join(' ')}
+        aria-label={`${label}: ${text}${overdue && !display ? ', vencido' : ''}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((current) => !current);
+        }}
+      >
+        {text}
+        {overdue && !display ? <span className={styles.badge}>· vencido</span> : null}
+      </button>
       {value !== null ? (
         <button
           type="button"
           className={styles.remove}
-          onMouseDown={(event) => {
-            event.preventDefault();
-          }}
           onClick={() => {
-            finished.current = true;
-            restoreFocus.current = true;
-            setEditing(false);
+            setOpen(false);
+            trigger.current?.focus();
             onChange(null);
           }}
         >
           Remover prazo
         </button>
       ) : null}
+      <Presence>
+        {open ? (
+          <DatePopover
+            key="date"
+            anchor={anchor}
+            label={`Escolher ${label.toLowerCase()}`}
+            onClose={close}
+          >
+            <Calendar
+              value={value}
+              today={today}
+              onPick={choose}
+              onClear={() => {
+                choose(null);
+              }}
+            />
+          </DatePopover>
+        ) : null}
+      </Presence>
     </div>
   );
 }

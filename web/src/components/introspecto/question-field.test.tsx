@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cancelEditing } from '@/components/focus-trap/cancel-editing';
 import { QuestionField, type Flush } from './question-field';
 
 beforeEach(() => {
@@ -67,6 +68,14 @@ describe('QuestionField', () => {
     expect(screen.getByLabelText('O que foi bom?')).toBe(field);
   });
 
+  it('invites a calm answer while the field is empty', () => {
+    setup({ value: '' });
+
+    expect(screen.getByPlaceholderText('Escreva com calma…')).toBe(
+      screen.getByRole('textbox', { name: 'O que foi bom?' }),
+    );
+  });
+
   it('saves 800 ms after the last keystroke, not before', () => {
     // Timers that only move when the test moves them, so a slow machine cannot blur the 800 ms.
     vi.useFakeTimers();
@@ -86,6 +95,16 @@ describe('QuestionField', () => {
     });
 
     expect(save).toHaveBeenCalledExactlyOnceWith('Texto salvo!?');
+  });
+
+  it('saves a pending answer when a dialog around it is dismissed', async () => {
+    const { save, user, field, view } = setup();
+    await user.type(field, ' mais');
+
+    cancelEditing(view.container);
+
+    expect(save).toHaveBeenCalledWith('Texto salvo mais');
+    expect(field).toHaveValue('Texto salvo mais');
   });
 
   it('saves on blur at once and does not save again when the timer fires', async () => {

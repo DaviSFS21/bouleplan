@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type SubmitEvent } from 'react';
-import { createPortal } from 'react-dom';
-import { placeMenu } from '@/components/action-menu/place-menu';
-import { trapTab } from '@/components/focus-trap/trap-tab';
+import { useCallback, useId, useRef, useState, type SubmitEvent } from 'react';
+import { Popover } from '@/components/floating/popover';
 import { NO_ROOM_MESSAGE, type ReserveOrigin } from './keyboard-moves';
 import { remainingMinutes } from './planner-tasks';
 import { dayLabel } from './planner-dates';
@@ -36,119 +34,84 @@ export function ReservePopover({
   onReserve,
   onCancel,
 }: Readonly<ReservePopoverProps>) {
-  const box = useRef<HTMLDivElement>(null);
   const first = useRef<HTMLSelectElement>(null);
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const [date, setDate] = useState(initialDate);
   const starts = startsFor(durationFor(remainingMinutes(origin.task)));
   const [start, setStart] = useState(Math.min(DEFAULT_START, starts.at(-1) ?? 0));
   const [refused, setRefused] = useState(false);
   const ids = { day: useId(), start: useId() };
 
-  useLayoutEffect(() => {
-    const element = document.querySelector<HTMLElement>(anchorSelector);
-    const size = box.current?.getBoundingClientRect();
-    if (!element || !size) return;
-    setPosition(
-      placeMenu(element.getBoundingClientRect(), size, {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }),
-    );
-  }, [anchorSelector]);
-
-  useEffect(() => {
-    first.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    function closeOnOutsidePointer(pointer: PointerEvent) {
-      const target = pointer.target;
-      if (!(target instanceof Node)) return;
-      const anchor = document.querySelector(anchorSelector);
-      if (box.current?.contains(target) === true || anchor?.contains(target) === true) return;
-      onCancel();
-    }
-    document.addEventListener('pointerdown', closeOnOutsidePointer);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnOutsidePointer);
-    };
-  }, [anchorSelector, onCancel]);
+  const anchor = useCallback(
+    () => document.querySelector<HTMLElement>(anchorSelector),
+    [anchorSelector],
+  );
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
     setRefused(!onReserve(date, start));
   }
 
-  return createPortal(
-    <div
-      ref={box}
-      role="dialog"
-      aria-label="Reservar tempo"
+  const form = (
+    <form className={styles.form} onSubmit={submit}>
+      <p className={styles.title}>{origin.task.title}</p>
+      <div className={styles.field}>
+        <label htmlFor={ids.day}>Dia</label>
+        <select
+          ref={first}
+          id={ids.day}
+          className={styles.select}
+          value={date}
+          onChange={(change) => {
+            setDate(change.target.value);
+            setRefused(false);
+          }}
+        >
+          {dates.map((value) => (
+            <option key={value} value={value}>
+              {dayLabel(value)}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className={styles.field}>
+        <label htmlFor={ids.start}>Início</label>
+        <select
+          id={ids.start}
+          className={styles.select}
+          value={start}
+          onChange={(change) => {
+            setStart(Number(change.target.value));
+            setRefused(false);
+          }}
+        >
+          {starts.map((minutes) => (
+            <option key={minutes} value={minutes}>
+              {formatClock(minutes)}
+            </option>
+          ))}
+        </select>
+      </div>
+      {refused ? <p className={styles.refusal}>{NO_ROOM_MESSAGE}</p> : null}
+      <div className={styles.actions}>
+        <button type="submit" className={styles.submit}>
+          Reservar
+        </button>
+        <button type="button" className={styles.cancel} onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <Popover
+      anchor={anchor}
+      label="Reservar tempo"
       className={styles.popover}
-      style={position}
-      onKeyDown={(keyboard) => {
-        trapTab(keyboard, box.current);
-        if (keyboard.key === 'Escape') {
-          keyboard.stopPropagation();
-          onCancel();
-        }
-      }}
-      onBlur={(blur) => {
-        const next = blur.relatedTarget;
-        if (next instanceof Node && !blur.currentTarget.contains(next)) onCancel();
-      }}
+      initialFocus={first}
+      onClose={onCancel}
     >
-      <form className={styles.form} onSubmit={submit}>
-        <p className={styles.title}>{origin.task.title}</p>
-        <div className={styles.field}>
-          <label htmlFor={ids.day}>Dia</label>
-          <select
-            ref={first}
-            id={ids.day}
-            className={styles.select}
-            value={date}
-            onChange={(change) => {
-              setDate(change.target.value);
-              setRefused(false);
-            }}
-          >
-            {dates.map((value) => (
-              <option key={value} value={value}>
-                {dayLabel(value)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.field}>
-          <label htmlFor={ids.start}>Início</label>
-          <select
-            id={ids.start}
-            className={styles.select}
-            value={start}
-            onChange={(change) => {
-              setStart(Number(change.target.value));
-              setRefused(false);
-            }}
-          >
-            {starts.map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {formatClock(minutes)}
-              </option>
-            ))}
-          </select>
-        </div>
-        {refused ? <p className={styles.refusal}>{NO_ROOM_MESSAGE}</p> : null}
-        <div className={styles.actions}>
-          <button type="submit" className={styles.submit}>
-            Reservar
-          </button>
-          <button type="button" className={styles.cancel} onClick={onCancel}>
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>,
-    document.body,
+      {form}
+    </Popover>
   );
 }

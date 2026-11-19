@@ -1,12 +1,18 @@
 'use client';
 
 import { useDraggable } from '@dnd-kit/core';
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import { isPending } from '@/api/planner';
 import { BLOCKED_DROP_MESSAGE } from '@/api/messages';
 import type { CalendarEvent } from '@/api/types';
-import { ActionMenu } from '@/components/action-menu/action-menu';
-import { PrioritySelo } from '@/components/selo/selo';
+import { seloClassName } from '@/components/selo/selo';
 import type { DragData } from './planner-drop';
 import { arrowStep, useKeyboardMoves } from './keyboard-moves';
 import { blockStyle, type Lane, type Span } from './planner-geometry';
@@ -14,8 +20,8 @@ import type { BlockModel, DeadlineModel } from './planner-model';
 import { formatRange, parseTime } from './planner-time';
 import styles from './blocks.module.css';
 
-// Pointer and key events from the menu must not open the task.
-const INTERACTIVE = 'button, input, a, [role="menu"]';
+// Pointer events from anything interactive inside the block must not open the popover.
+const INTERACTIVE = 'button, input, a';
 
 function join(...names: (string | false | undefined)[]): string {
   return names.filter((name) => Boolean(name)).join(' ');
@@ -36,8 +42,8 @@ interface DedicatedBlockProps {
   span?: Span;
   lane: Lane;
   moving: boolean;
-  onOpen: (taskId: string) => void;
-  onRemove: (block: BlockModel) => void;
+  editing: boolean;
+  onEdit: (block: BlockModel) => void;
 }
 
 export function DedicatedBlock({
@@ -46,8 +52,8 @@ export function DedicatedBlock({
   span,
   lane,
   moving,
-  onOpen,
-  onRemove,
+  editing,
+  onEdit,
 }: Readonly<DedicatedBlockProps>) {
   const { item, task, color } = model;
   const shown = span ?? model.span;
@@ -62,7 +68,7 @@ export function DedicatedBlock({
     data: { kind: 'resize', item, task } satisfies DragData,
     disabled,
   });
-  const root = useRef<HTMLDivElement | null>(null);
+  const priorityId = useId();
   const keyboard = useKeyboardMoves();
   const range = formatRange(shown.start, shown.end, true);
 
@@ -76,26 +82,28 @@ export function DedicatedBlock({
       else if (step.days === 0) keyboard.resizeBlock({ item, task }, step.quarters);
       return;
     }
-    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+    if ((event.key === 'Enter' || event.key === ' ') && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      root.current?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.click();
+      onEdit(model);
     }
   }
 
   function handleClick(event: MouseEvent<HTMLDivElement>) {
-    if ((event.target as Element).closest(INTERACTIVE) === null) onOpen(task.id);
+    if ((event.target as Element).closest(INTERACTIVE) === null) onEdit(model);
   }
 
   return (
     <div
       {...block.listeners}
       ref={(element) => {
-        root.current = element;
         block.setNodeRef(element);
       }}
-      role="group"
+      role="button"
       tabIndex={0}
+      aria-haspopup="dialog"
+      aria-expanded={editing}
       aria-label={`${task.title}, ${range}`}
+      aria-describedby={priorityId}
       className={join(styles.event, styles.dedicated, moving && styles.source)}
       style={
         {
@@ -110,29 +118,14 @@ export function DedicatedBlock({
       onClick={handleClick}
     >
       <div className={styles.title}>
-        <PrioritySelo priority={task.priority} mini />
+        <span
+          aria-hidden="true"
+          className={join(seloClassName(task.priority, true), styles.priority)}
+          data-priority={task.priority}
+        />
         <span className={styles.titleText}>{task.title}</span>
       </div>
-      <div className={styles.menu}>
-        <ActionMenu
-          label={`Ações do tempo de ${task.title}`}
-          items={[
-            {
-              label: 'Abrir tarefa',
-              onSelect: () => {
-                onOpen(task.id);
-              },
-            },
-            {
-              label: 'Tirar da agenda',
-              disabled,
-              onSelect: () => {
-                onRemove(model);
-              },
-            },
-          ]}
-        />
-      </div>
+      <span id={priorityId} hidden>{`Prioridade ${task.priority}`}</span>
       <span
         {...handleListeners}
         ref={(element) => {
@@ -263,13 +256,15 @@ export function DrawingBlock({ span, startHour }: Readonly<{ span: Span; startHo
 
 interface DeadlineLinesProps {
   deadlines: readonly DeadlineModel[];
+  // Distance from the bottom of the day to the line.
+  bottom: number;
   onOpen: (taskId: string) => void;
 }
 
-export function DeadlineLines({ deadlines, onOpen }: Readonly<DeadlineLinesProps>) {
+export function DeadlineLines({ deadlines, bottom, onOpen }: Readonly<DeadlineLinesProps>) {
   if (deadlines.length === 0) return null;
   return (
-    <div className={styles.deadlines}>
+    <div className={styles.deadlines} style={{ bottom }}>
       {deadlines.map(({ task, text }) => (
         <button
           key={task.id}

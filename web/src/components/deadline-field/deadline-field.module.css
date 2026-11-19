@@ -4,8 +4,7 @@
   gap: var(--space-2);
 }
 
-.value,
-.input {
+.value {
   padding: 6px var(--space-2);
   margin-left: calc(-1 * var(--space-2));
   border: 0;
@@ -17,18 +16,11 @@
   cursor: pointer;
 }
 
-.input {
-  margin-left: 0;
-  border: 1px solid var(--borda);
-  background: var(--papel);
-}
-
 .value:hover {
   background: var(--papel-elevado);
 }
 
 .value:focus-visible,
-.input:focus-visible,
 .remove:focus-visible {
   outline: 2px solid var(--tinta);
   outline-offset: 2px;
@@ -61,7 +53,6 @@
 
 @media (pointer: coarse) {
   .value,
-  .input,
   .remove {
     min-width: 44px;
     min-height: 44px;

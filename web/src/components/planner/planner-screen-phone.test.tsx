@@ -148,4 +148,20 @@ describe('the week on a touch screen', () => {
       expect(within(strip('2026-11-18')).queryByRole('article')).not.toBeInTheDocument();
     });
   });
+
+  it('gives focus to the tab of the target day when a block leaves the day in view', async () => {
+    const user = await renderWeek();
+    await user.click(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Comprar tinta' });
+
+    await user.selectOptions(within(dialog).getByLabelText('Dia'), '2026-11-19');
+    await user.click(within(dialog).getByRole('button', { name: 'Salvar' }));
+
+    await waitFor(() => {
+      expect(dayTab(/quinta-feira/)).toHaveFocus();
+    });
+    expect(screen.getByRole('status', { name: 'Movimentos da agenda' })).toHaveTextContent(
+      'Bloco movido para qui, 9:00–11:00.',
+    );
+  });
 });

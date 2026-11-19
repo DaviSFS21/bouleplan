@@ -1,0 +1,88 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  box-sizing: border-box;
+  height: var(--nav-height);
+  padding: 0 var(--space-4);
+  background: var(--papel);
+  box-shadow: 0 1px 0 var(--borda);
+}
+
+.brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.brand img {
+  width: auto;
+  height: var(--space-8);
+}
+
+.account {
+  flex: 1;
+  min-width: var(--space-10);
+}
+
+.dark {
+  display: none;
+}
+
+html[data-theme='grafite'] .light {
+  display: none;
+}
+
+html[data-theme='grafite'] .dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='papel']) .light {
+    display: none;
+  }
+
+  html:not([data-theme='papel']) .dark {
+    display: block;
+  }
+}
+
+.topBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  height: var(--nav-height);
+  padding: 0 var(--space-4);
+  background: var(--papel);
+  box-shadow: 0 1px 0 var(--borda);
+}
+
+.topBar img {
+  width: var(--space-6);
+  height: var(--space-6);
+}
+
+.section {
+  margin: 0;
+  color: var(--tinta);
+  font: var(--type-titulo-tarefa);
+}
+
+/* Before hydration the server renders the header; on a phone the bar replaces it. */
+@media (max-width: 767px) {
+  .header {
+    display: none;
+  }
+
+  .topBar {
+    display: flex;
+  }
+}

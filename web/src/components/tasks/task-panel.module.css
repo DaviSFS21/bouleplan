@@ -46,6 +46,11 @@
 
 .valueButton svg {
   color: var(--tinta-muted);
+  transition: transform var(--motion-enter) var(--ease-enter);
+}
+
+.valueButton[aria-expanded='true'] svg {
+  transform: rotate(180deg);
 }
 
 .stateRow {

@@ -6,6 +6,7 @@ import { InitiativesScreen } from '@/components/initiatives/initiatives-screen';
 import { problemResponse } from '@/test/fixtures';
 import { navigateTo } from '@/test/next-navigation';
 import { renderWithQuery } from '@/test/render';
+import { PHONE, findVeil, setViewport } from '@/test/viewport';
 import { server } from '@/test/server';
 import { serveTaskApi, type TaskBackend } from '@/test/task-backend';
 import {
@@ -430,11 +431,11 @@ describe('the deadline', () => {
     expect(button.className).toContain('overdue');
   });
 
-  it('says "sem prazo" and saves a date picked on Enter', async () => {
+  it('says "sem prazo" and saves a day picked in the calendar', async () => {
     const { backend, user } = await openTask(sand);
 
     await user.click(inPanel().getByRole('button', { name: 'Prazo: sem prazo' }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-11-20{Enter}');
+    await user.click(screen.getByRole('button', { name: /sexta-feira, 20 de novembro/ }));
 
     await waitFor(() => {
       expect(patches(backend)).toEqual([{ deadline: '2026-11-20' }]);
@@ -447,9 +448,10 @@ describe('the deadline', () => {
     const { backend, user } = await openTask(paint);
 
     await user.click(inPanel().getByRole('button', { name: /^Prazo:/ }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-12-24{Escape}');
+    await user.keyboard('{ArrowRight}{Escape}');
 
     expect(panel()).toBeVisible();
+    expect(screen.queryByRole('dialog', { name: 'Escolher prazo' })).not.toBeInTheDocument();
     expect(patches(backend)).toEqual([]);
     expect(inPanel().getByRole('button', { name: 'Prazo: venceu sex, 6 nov' })).toBeVisible();
   });
@@ -470,7 +472,7 @@ describe('the deadline', () => {
     failPatches('task.deadline.invalid');
 
     await user.click(inPanel().getByRole('button', { name: 'Prazo: sem prazo' }));
-    await user.type(inPanel().getByLabelText('Prazo'), '2026-11-20{Enter}');
+    await user.click(screen.getByRole('button', { name: /sexta-feira, 20 de novembro/ }));
 
     expect(await inPanel().findByText('Use uma data válida.')).toBeVisible();
     expect(inPanel().getByRole('button', { name: 'Prazo: sem prazo' })).toBeVisible();
@@ -912,7 +914,7 @@ describe('the description', () => {
 describe('the footer', () => {
   it('shows the creation date and a relative time of the last change', async () => {
     const recent = world.tasks.map((item) =>
-      item.id === sand.id ? { ...item, updatedAt: '2026-11-18T10:00:00-03:00' } : item,
+      item.id === sand.id ? { ...item, updatedAt: new Date(2026, 10, 18, 10).toISOString() } : item,
     );
     await openTask(sand, { tasks: recent });
 
@@ -934,7 +936,7 @@ describe('the footer', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     vi.setSystemTime(new Date(2026, 10, 18, 12, 0, 30));
     const recent = world.tasks.map((item) =>
-      item.id === sand.id ? { ...item, updatedAt: '2026-11-18T12:00:00-03:00' } : item,
+      item.id === sand.id ? { ...item, updatedAt: new Date(2026, 10, 18, 12).toISOString() } : item,
     );
     await openTask(sand, { tasks: recent });
     expect(inPanel().getByText(/alterada agora/)).toBeVisible();
@@ -957,6 +959,47 @@ describe('the panel header', () => {
       `?iniciativa=${reforma.id}&epico=${piso.id}`,
     );
     expect(inPanel().getByRole('link', { name: 'Reforma' })).toBeVisible();
+  });
+});
+
+describe('leaving the sheet on a phone with a description being typed', () => {
+  async function openSheet() {
+    setViewport(PHONE);
+    navigateTo(`/?iniciativa=${reforma.id}&tarefa=${sand.id}`);
+    const backend = serveTaskApi(world);
+    renderWithQuery(<InitiativesScreen />);
+    const sheet = await screen.findByRole('dialog', { name: 'Tarefa' });
+    const user = userEvent.setup();
+    await user.type(within(sheet).getByRole('textbox', { name: 'Descrição' }), 'rascunho');
+    return { backend, user };
+  }
+
+  afterEach(() => {
+    setViewport({ width: 1440, coarse: false });
+  });
+
+  it('saves it when the veil is tapped', async () => {
+    const { backend, user } = await openSheet();
+
+    await user.click(findVeil());
+
+    await waitFor(() => {
+      expect(patches(backend)).toEqual([{ description: 'rascunho' }]);
+    });
+  });
+
+  it('saves it when the handle is dragged down', async () => {
+    const { backend } = await openSheet();
+    const handle = document.querySelector('[data-sheet-handle]');
+    if (!handle) throw new Error('No handle');
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 });
+    fireEvent.pointerMove(handle, { pointerId: 1, clientY: 320 });
+    fireEvent.pointerUp(handle, { pointerId: 1, clientY: 320 });
+
+    await waitFor(() => {
+      expect(patches(backend)).toEqual([{ description: 'rascunho' }]);
+    });
   });
 });
 

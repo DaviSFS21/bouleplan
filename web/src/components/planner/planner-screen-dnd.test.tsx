@@ -39,17 +39,17 @@ const STRIP_TOP = 100;
 function layOut() {
   vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
     const day = this.getAttribute('data-day');
-    if (day) return new DOMRect(DAYS.indexOf(day) * 100, AGENDA_TOP, 100, 480);
+    if (day) return new DOMRect(DAYS.indexOf(day) * 100, AGENDA_TOP, 100, 24 * 48);
     const list = this.getAttribute('data-strip');
     if (list) return new DOMRect(DAYS.indexOf(list) * 100, STRIP_TOP, 100, 80);
     return new DOMRect(0, 0, 100, 20);
   });
 }
 
-// The pointer position over a day: x in its column, y at the given hour from 8h.
+// The pointer position over a day: x in its column, y at the given hour of the day.
 const at = (date: string, hours: number) => ({
   x: DAYS.indexOf(date) * 100 + 50,
-  y: AGENDA_TOP + (hours - 8) * 48,
+  y: AGENDA_TOP + hours * 48,
 });
 const onStrip = (date: string) => ({ x: DAYS.indexOf(date) * 100 + 50, y: STRIP_TOP + 20 });
 
@@ -117,7 +117,7 @@ describe('dragging from the tray', () => {
       ]);
     });
     expect(
-      await screen.findByRole('group', { name: 'Comprar tinta, 11:00 – 15:00' }),
+      await screen.findByRole('button', { name: 'Comprar tinta, 11:00 – 15:00' }),
     ).toBeVisible();
     expect(await screen.findByText('Tempo reservado')).toBeVisible();
   });
@@ -204,7 +204,9 @@ describe('dragging from the tray', () => {
 
     await drag(trayItem('Comprar tinta'), at('2026-11-17', 9));
 
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 13:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 13:00' }),
+    ).toBeVisible();
     expect(screen.getByText(/1 tarefa vence/)).toBeVisible();
     await waitFor(() => {
       expect(backend.items).toHaveLength(1);
@@ -221,7 +223,7 @@ describe('dragging from the tray', () => {
       'Não foi possível reservar o tempo. Tente de novo.',
     );
     await waitFor(() => {
-      expect(screen.queryByRole('group', { name: /Comprar tinta, / })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Comprar tinta, / })).not.toBeInTheDocument();
     });
     expect(screen.getByText('Prazos sem tempo reservado.')).toBeVisible();
   });
@@ -236,7 +238,9 @@ describe('dragging a ficha', () => {
 
     await drag(ficha, at('2026-11-18', 10));
 
-    expect(await screen.findByRole('group', { name: 'Quebrar piso, 10:00 – 12:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Quebrar piso, 10:00 – 12:00' }),
+    ).toBeVisible();
     expect(backend.bodies).toEqual([{ date: '2026-11-18', startTime: '10:00', endTime: '12:00' }]);
     expect(within(strip('2026-11-17')).queryByRole('article')).not.toBeInTheDocument();
 
@@ -317,7 +321,7 @@ describe('dragging a ficha', () => {
 });
 
 describe('dragging a block', () => {
-  const dedicated = () => screen.getByRole('group', { name: /^Comprar tinta, / });
+  const dedicated = () => screen.getByRole('button', { name: /^Comprar tinta, / });
 
   it('moves it to another day and time, and back on undo', async () => {
     const { backend, user } = await renderWeek({ items: [block()] });
@@ -326,13 +330,15 @@ describe('dragging a block', () => {
     await drag(dedicated(), at('2026-11-17', 11.5), at('2026-11-17', 9.5));
 
     expect(
-      await screen.findByRole('group', { name: 'Comprar tinta, 11:00 – 13:00' }),
+      await screen.findByRole('button', { name: 'Comprar tinta, 11:00 – 13:00' }),
     ).toBeVisible();
     expect(backend.bodies).toEqual([{ startTime: '11:00', endTime: '13:00' }]);
     expect(await screen.findByText('Tempo movido')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Desfazer' }));
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }),
+    ).toBeVisible();
     expect(backend.bodies.at(-1)).toEqual({
       date: '2026-11-17',
       startTime: '09:00',
@@ -375,7 +381,7 @@ describe('dragging a block', () => {
     await release(at('2026-11-17', 12.5));
 
     expect(backend.calls).toEqual([]);
-    expect(screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
   });
 
   it('does nothing when dropped where it was', async () => {
@@ -396,7 +402,7 @@ describe('dragging a block', () => {
       'Não foi possível mover. Tente de novo.',
     );
     await waitFor(() => {
-      expect(screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
     });
   });
 
@@ -406,7 +412,7 @@ describe('dragging a block', () => {
 
     press(handle);
     moveTo({ x: 5, y: 5 + 36 });
-    expect(screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:45' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:45' })).toBeVisible();
     await release({ x: 5, y: 5 + 36 });
 
     await waitFor(() => {
@@ -415,7 +421,9 @@ describe('dragging a block', () => {
     expect(await screen.findByText('Duração ajustada')).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Desfazer' }));
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }),
+    ).toBeVisible();
     expect(backend.bodies.at(-1)).toEqual({ endTime: '11:00' });
   });
 
@@ -730,27 +738,29 @@ describe('menu alternatives', () => {
     expect(await screen.findByRole('complementary', { name: 'Tarefa' })).toBeVisible();
   });
 
-  it('opens the task from the block menu', async () => {
+  it('opens the task from the block popover', async () => {
     const { user } = await renderWeek({ items: [block()] });
 
-    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Comprar tinta' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Abrir tarefa' }));
+    await user.click(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
+    await user.click(screen.getByRole('button', { name: 'Abrir tarefa Comprar tinta' }));
 
     expect(await screen.findByRole('complementary', { name: 'Tarefa' })).toBeVisible();
   });
 
-  it('takes a block off the agenda with the menu and puts it back on undo', async () => {
+  it('takes a block off the agenda with the popover and puts it back on undo', async () => {
     const { backend, user } = await renderWeek({ items: [block()] });
 
-    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Comprar tinta' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+    await user.click(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
+    await user.click(screen.getByRole('button', { name: 'Tirar da agenda' }));
 
     await waitFor(() => {
-      expect(screen.queryByRole('group', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Comprar tinta, / })).not.toBeInTheDocument();
     });
     await user.click(await screen.findByRole('button', { name: 'Desfazer' }));
 
-    expect(await screen.findByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' })).toBeVisible();
+    expect(
+      await screen.findByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }),
+    ).toBeVisible();
     expect(backend.bodies.at(-1)).toEqual({
       taskId: paint.id,
       date: '2026-11-17',
@@ -759,19 +769,21 @@ describe('menu alternatives', () => {
     });
   });
 
-  it('opens the block menu with Enter on the focused block, and opens the task on click', async () => {
+  it('opens the block popover with Enter on the focused block, and with a click', async () => {
     const { user } = await renderWeek({ items: [block()] });
-    const dedicated = screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' });
+    const dedicated = screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' });
 
     dedicated.focus();
     await user.keyboard('{Enter}');
-    expect(
-      await screen.findByRole('menu', { name: 'Ações do tempo de Comprar tinta' }),
-    ).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'Comprar tinta' })).toBeVisible();
     await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(dedicated).toHaveFocus();
 
     await user.click(dedicated);
-    expect(await screen.findByRole('complementary', { name: 'Tarefa' })).toBeVisible();
+    expect(await screen.findByRole('dialog', { name: 'Comprar tinta' })).toBeVisible();
   });
 
   it('keeps the undo shortcut working', async () => {
@@ -812,8 +824,8 @@ describe('overlapping blocks', () => {
       ],
     });
 
-    const first = screen.getByRole('group', { name: 'Comprar tinta, 9:00 – 11:00' });
-    const second = screen.getByRole('group', { name: 'Quebrar piso, 10:00 – 12:00' });
+    const first = screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' });
+    const second = screen.getByRole('button', { name: 'Quebrar piso, 10:00 – 12:00' });
 
     expect(first).toBeVisible();
     expect(second).toBeVisible();
@@ -866,7 +878,7 @@ describe('things that still have a temporary id', () => {
 
   it('keeps an event popover open, read-only, until its id arrives', async () => {
     const { backend, user } = await renderWeek();
-    backend.latencyMs = 400;
+    backend.latencyMs = 1500;
 
     press(agenda('2026-11-18'), at('2026-11-18', 9));
     moveTo(at('2026-11-18', 10));
@@ -896,11 +908,9 @@ describe('things that still have a temporary id', () => {
     backend.latencyMs = 400;
 
     await drag(trayItem('Comprar tinta'), at('2026-11-17', 11));
-    await user.click(
-      await screen.findByRole('button', { name: 'Ações do tempo de Comprar tinta' }),
-    );
+    await user.click(await screen.findByRole('button', { name: /^Comprar tinta, / }));
 
-    expect(screen.getByRole('menuitem', { name: 'Tirar da agenda' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Tirar da agenda' })).toBeDisabled();
     await user.keyboard('{Escape}');
   });
 });
@@ -956,14 +966,14 @@ describe('focus after a removal', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Comprar tinta' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+    await user.click(screen.getByRole('button', { name: 'Comprar tinta, 9:00 – 11:00' }));
+    await user.click(screen.getByRole('button', { name: 'Tirar da agenda' }));
     await waitFor(() => {
-      expect(screen.getByRole('group', { name: 'Quebrar piso, 13:00 – 14:00' })).toHaveFocus();
+      expect(screen.getByRole('button', { name: 'Quebrar piso, 13:00 – 14:00' })).toHaveFocus();
     });
 
-    await user.click(screen.getByRole('button', { name: 'Ações do tempo de Quebrar piso' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Tirar da agenda' }));
+    await user.click(screen.getByRole('button', { name: 'Quebrar piso, 13:00 – 14:00' }));
+    await user.click(screen.getByRole('button', { name: 'Tirar da agenda' }));
     await waitFor(() => {
       expect(agenda('2026-11-17')).toHaveFocus();
     });
@@ -1015,7 +1025,8 @@ describe('focus after a removal', () => {
   it('finds the block of the task when the panel closes', async () => {
     const { user } = await renderWeek({ items: [block({ taskId: sand.id })] });
 
-    await user.click(screen.getByRole('group', { name: /^Lixar parede, / }));
+    await user.click(screen.getByRole('button', { name: /^Lixar parede, / }));
+    await user.click(await screen.findByRole('button', { name: 'Abrir tarefa Lixar parede' }));
     await screen.findByRole('complementary', { name: 'Tarefa' });
     await user.keyboard('{Escape}');
 

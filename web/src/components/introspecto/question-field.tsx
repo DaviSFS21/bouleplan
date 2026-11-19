@@ -163,6 +163,7 @@ export function QuestionField({
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             rows={2}
+            placeholder="Escreva com calma…"
             maxLength={MAX_LENGTH}
             readOnly={locked}
             value={draft}

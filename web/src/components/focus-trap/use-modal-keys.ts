@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { ownsKeys } from '@/components/modal-host/modal-host';
+import { isCancellingEdit } from './cancel-editing';
 import { trapTab } from './trap-tab';
 
 // A document listener, not React's onKeyDown: portaled children (the toast) are DOM descendants
@@ -16,7 +18,9 @@ export function useModalKeys(
   useEffect(() => {
     if (!modal) return;
     function handle(event: KeyboardEvent) {
+      if (isCancellingEdit()) return;
       if (!(event.target instanceof Node) || !modal?.contains(event.target)) return;
+      if (!ownsKeys(modal, event.target)) return;
       if (event.key === 'Escape') escape.current();
       else if (trap) trapTab(event, modal);
     }
