@@ -103,6 +103,15 @@ function removeFromList(list: Epic[] | undefined, id: string) {
   return list?.filter((item) => item.id !== id);
 }
 
+function withEpic(list: Epic[] | undefined, created: Epic) {
+  if (!list) return list;
+  return list.some(({ id }) => id === created.id) ? list : [...list, created];
+}
+
+function replaceEpic(list: Epic[] | undefined, updated: Epic) {
+  return list?.map((item) => (item.id === updated.id ? updated : item));
+}
+
 export function useCreateEpic() {
   const queryClient = useQueryClient();
   return useMemo(
@@ -121,10 +130,7 @@ export function useCreateEpic() {
               }),
             ),
           (created) => {
-            setList(queryClient, initiativeId, (list) => {
-              if (!list) return list;
-              return list.some(({ id }) => id === created.id) ? list : [...list, created];
-            });
+            setList(queryClient, initiativeId, (list) => withEpic(list, created));
           },
         ),
     }),
@@ -150,9 +156,7 @@ export function useUpdateEpic() {
               }),
             ),
           (updated) => {
-            setList(queryClient, epic.initiativeId, (list) =>
-              list?.map((item) => (item.id === updated.id ? updated : item)),
-            );
+            setList(queryClient, epic.initiativeId, (list) => replaceEpic(list, updated));
           },
         ),
     }),
